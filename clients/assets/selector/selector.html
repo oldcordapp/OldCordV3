@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>OLDCORD SELECTOR</title>
+        <link rel="stylesheet" href="/assets/selector/selector.css">
+    </head>
+    <body>
+        <script>
+            function launch() {
+                event.preventDefault();
+                location.href = `launch?release_date=${document.querySelector("#launcher > select").value}`;
+            }
+
+            document.addEventListener('DOMContentLoaded', (event) => {
+                const builds = [
+                    "june_12_2015",
+                    "july_10_2015",
+                    "august_10_2015",
+                    "september_2_2015",
+                    "november_6_2015",
+                    "december_23_2015",
+                    "january_22_2016",
+                    "february_9_2016",
+                    "february_18_2016",
+                    "march_4_2016",
+                    "march_18_2016",
+                    "april_8_2016",
+                    "may_5_2016",
+                    "may_19_2016",
+                    "june_3_2016",
+                    "june_23_2016",
+                    "july_11_2016",
+                    "july_28_2016",
+                    "august_24_2016",
+                    "september_8_2016",
+                    "september_26_2016",
+                    "october_13_2016",
+                    "november_3_2016",
+                    "november_22_2016",
+                    "december_22_2016"
+                ];
+
+                const selectElement = document.querySelector("#launcher > select");
+
+                builds.forEach(build => {
+                    const option = document.createElement("option");
+                    const formattedDate = build.replace(/_/g, ' ').replace(/(\d+)(st|nd|rd|th)/g, (match, p1, p2) => p1 + ' ' + p2);
+                    option.value = build;
+                    option.textContent = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+                    selectElement.appendChild(option);
+                });
+
+                selectElement.value = "december_22_2016";
+            });
+        </script>
+        <div id="main">
+            <div id="background"></div>
+            <div class="center">
+                <div id="decision">
+                    <div id="decision-header">
+                        <h1>OLDCORD BUILD SELECTOR</h1>
+                    </div>
+                    <div id="decision-body">
+                        <p>Please choose your flavor of Old Discord below, please note that earlier versions may be lacking some functionality defined in later builds bundled in 2016.</p>
+                        <div id="launcher">
+                            <select>
+                            </select>
+                            <a href="" class="launch" onclick="launch()">LAUNCH!</a>
+                        </div>
+                        <hr>
+                        <p class="notice">
+                            While there is only a few official instances running with Oldcord (2015, 2016, etc), <b>please keep in mind the defined rules that may exist in 3rd party OldCord instances.</b><br>
+                            Please be mindful of what you post, <b>illegal content is reported.</b>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

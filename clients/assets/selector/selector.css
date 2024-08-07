@@ -1,0 +1,147 @@
+.center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 99999;
+}
+
+@font-face {
+    font-family: "Discord";
+    src: url(/assets/selector/UniSansHeavy.otf);
+}
+
+@font-face {
+    font-family: "Discord Lite";
+    src: url(/assets/selector/unisansthin.otf);
+}
+
+#main {
+    left: 0;
+    top: 0;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    overflow: hidden;
+}
+
+#background {
+    background-image: linear-gradient(to top, black 50%, rgba(0, 0, 0, 0) 100%), url(https://files.catbox.moe/o9bgvp.jpg);
+    background-repeat: no-repeat;
+    background-size: cover;
+    filter: blur(8px);
+    -webkit-filter: blur(8px);
+    height: 100%; 
+    background-position: center;
+}
+
+#decision {
+    background-color: #1e2124;
+    border: 2px solid white;
+    padding: 1em;
+    color: white;
+    font-family: "Discord Lite";
+    border-radius: 8px;
+}
+
+#decision-header > h1 {
+    margin-top: -5px;
+    font-family: "Discord";
+    padding-bottom: 5px;
+    border-bottom: 2px solid white;
+}
+
+
+#decision-body > p {
+    margin-bottom: 5px;
+}
+
+#launcher > select {
+    text-align: center;
+    width: 100%;
+    background-color: #424549;
+    color: white;
+    font-family: "Discord Lite"
+}
+
+#launcher > a {
+    display: block;
+    text-align: center;
+    margin-top: 10px;
+    font-size: 24px;
+    color: white;
+    transition: 0.3s color;
+    text-shadow: -2px 1px 1px white;
+}
+
+#launcher > a:hover {
+    color: grey;
+    animation: 0.4s takeoff infinite, 2s colorchange infinite; 
+}
+
+@keyframes colorchange {
+    to {
+        color: red;
+    }
+}
+
+@keyframes takeoff {
+    10% {
+        margin-top: -2px;
+        margin-left: -4px;
+    }
+    20% {
+        margin-left: 4px;
+        margin-top: 2px;
+    }
+    30% {
+        margin-left: 2px;
+        margin-top: 0px;
+    }
+    40% {
+        margin-left: 6px;
+        margin-top: 4px;
+    }
+    50% {
+        margin-left: 4px;
+        margin-top: 2px;
+    }
+    60% {
+        margin-top: -2px;
+        margin-left: -4px;
+    }
+    70% {
+        margin-left: 4px;
+        margin-top: 2px;
+    }
+    80% {
+        margin-left: 2px;
+        margin-top: 0px;
+    }
+    90% {
+        margin-left: 6px;
+        margin-top: 4px;
+    }
+    100% {
+        margin-left: 0px;
+        margin-top: 0px;
+    }
+}
+
+.notice {
+    color: red;
+    font-size: 18px;
+}
+
+@font-face {
+    font-family: "Discord";
+    src: url(../fonts/unisansheavy.otf);
+}
+
+@font-face {
+    font-family: "Discord Lite";
+    src: url(../fonts/unisansthin.otf);
+}
