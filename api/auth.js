@@ -58,7 +58,55 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                 code: 400,
                 email: registrationAttempt.reason
             });
-        } 
+        }
+
+        if (req.body.invite) {
+            let code = req.body.invite;
+            
+            let invite = await globalUtils.database.getInvite(code);
+
+            if (invite) {
+                let account = await globalUtils.database.getAccountByToken(registrationAttempt.token);
+
+                if (account == null) {
+                    return res.status(500).json({
+                        code: 500,
+                        message: "Internal Server Error"
+                    });
+                }
+
+                await globalUtils.database.joinGuild(account.id, invite.guild.id);
+
+                let guild = await globalUtils.database.getGuildById(invite.guild.id);
+                
+                if (guild) {
+                    dispatcher.dispatchEventTo(registrationAttempt.token, "GUILD_CREATE", guild);
+
+                    await dispatcher.dispatchEventInGuild(invite.guild.id, "GUILD_MEMBER_ADD", {
+                        roles: [],
+                        user: {
+                            username: account.username,
+                            discriminator: account.discriminator,
+                            id: account.id,
+                            avatar: account.avatar
+                        },
+                        guild_id: invite.guild.id
+                    });
+    
+                    await dispatcher.dispatchEventInGuild(invite.guild.id, "PRESENCE_UPDATE", {
+                        game_id: null,
+                        status: "online",
+                        user: {
+                            username: account.username,
+                            discriminator: account.discriminator,
+                            id: account.id,
+                            avatar: account.avatar
+                        },
+                        guild_id: invite.guild.id
+                    });
+                }
+            }
+        }
 
         const autoJoinGuild = config.instance_flags.filter(x => x.toLowerCase().includes("autojoin:"));
 

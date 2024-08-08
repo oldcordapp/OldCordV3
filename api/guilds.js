@@ -16,6 +16,10 @@ router.param('guildid', async (req, _, next, guildid) => {
     next();
 });
 
+router.get("/:guildid", guildMiddleware, async (req, res) => {
+    return res.status(200).json(req.guild);
+});
+
 router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
     try {
         if (!req.body.name || req.body.name == "") {

@@ -66,6 +66,10 @@ router.param('channelid', async (req, res, next, channelid) => {
     next();
 });
 
+router.get("/:channelid", channelMiddleware, channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req, res) => {
+    return res.status(200).json(req.channel);
+});
+
 router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(100, 1000 * 60), async (req, res) => {
     try {
         const typer = req.account;

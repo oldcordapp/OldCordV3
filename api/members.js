@@ -41,7 +41,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
             });
         }
 
-        dispatcher.dispatchEventTo(client.token, "GUILD_DELETE", {
+        dispatcher.dispatchEventTo(sender.token, "GUILD_DELETE", {
             id: req.params.guildid
         });
 

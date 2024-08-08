@@ -17,6 +17,18 @@ router.param('userid', async (req, res, next, userid) => {
 
 router.use("/@me", me);
 
+router.get("/:userid", async (req, res) => {
+    let return_user = req.user;
+
+    delete return_user.email;
+    delete return_user.password;
+    delete return_user.token;
+    delete return_user.settings;
+    delete return_user.verified;
+
+    return res.status(200).json(req.user);
+});
+
 router.get("/:userid/avatars/:file", async (req, res) => {
     try {
         if (req.user == null) {
