@@ -10,6 +10,7 @@ const gateway = require('../gateway');
 const embedder = require('./embedder');
 
 let db_config = globalUtils.config.db_config;
+let config = globalUtils.config;
 
 const pool = new Pool(db_config);
 let cache = {};
@@ -110,7 +111,7 @@ const database = {
                 permission_overwrites TEXT,
                 name TEXT,
                 position INTEGER DEFAULT 0
-            );`, []); //type 0, aka "text", 1 for "voice" - and so on and so forth
+            );`, []); //type 0, aka "text", 1 for "dm", 2 for "voice" - and so on and so forth
 
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS relationships (

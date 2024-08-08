@@ -5,9 +5,12 @@ const { channelPermissionsMiddleware, rateLimitMiddleware } = require('../helper
 const dispatcher = require('../helpers/dispatcher');
 const fs = require('fs');
 const mime = require('mime');
+const multer = require('multer');
 const sizeOf = require('image-size');
 const permissions = require('../helpers/permissions');
+const Snowflake = require('../helpers/snowflake');
 
+const upload = multer();
 const router = express.Router({ mergeParams: true });
 
 router.param('messageid', async (req, res, next, messageid) => {
@@ -127,16 +130,10 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             }
 
             if (req.file) {
-                let canGetExtension = mime.extension(req.file.mimetype);
-                let extension = ".unknown";
-
-                if (!canGetExtension) {
-                    extension = req.file.originalname.split(".")[1];
-                } else extension = canGetExtension.toString()
-
                 let attachment_id = Snowflake.generate();
     
                 let name = req.file.originalname.split(".")[0];
+                let extension = req.file.originalname.split(".")[1];
                 let size = req.file.size;
                 
                 if (!fs.existsSync(`./user_assets/attachments/${channel.id}`)) {
@@ -203,16 +200,10 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             }
     
             if (req.file) {
-                let canGetExtension = mime.extension(req.file.mimetype);
-                let extension = ".unknown";
-
-                if (!canGetExtension) {
-                    extension = req.file.originalname.split(".")[1];
-                } else extension = canGetExtension.toString()
-
                 let attachment_id = Snowflake.generate();
     
                 let name = req.file.originalname.split(".")[0];
+                let extension = req.file.originalname.split(".")[1];
                 let size = req.file.size;
     
                 if (!fs.existsSync(`./user_assets/attachments/${channel.id}`)) {
@@ -225,6 +216,10 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
     
                 fs.writeFileSync(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`, req.file.buffer);
                 
+                if (!req.body.tts) {
+                    req.body.tts = "false";
+                }
+
                 if (req.body.tts == "true") {
                     let canTts = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
     
@@ -257,6 +252,10 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     return res.status(200).json(createMessage);
                 });
             } else {
+                if (!req.body.tts) {
+                    req.body.tts = false;
+                }
+                
                 const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
     
                 if (createMessage == null) {
@@ -470,16 +469,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                     message: "Unknown Channel"
                 });
             }
-
-            const inGuild = await globalUtils.isInGuild(guy.id, channel.guild_id);
-
-            if (!inGuild) {
-                return res.status(404).json({
-                    code: 404,
-                    message: "Unknown Guild"
-                });
-            }
-
+            
             if (message.author.id != guy.id) {
                 return res.status(403).json({
                     code: 403,

@@ -11,14 +11,24 @@ const config = globalUtils.config;
 router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddleware(5, 1000 * 60 * 60), async (req, res) => {
     try {
         let release_date = req.client_build;
-        let ignore_missing_fields = release_date == "june_12_2015";
-    
-        if (!req.body.email && !ignore_missing_fields) {
+
+        if (!req.body.email && release_date == "june_12_2015") {
+            req.body.email = `june_12_2015_app${globalUtils.generateString(10)}@oldcordrouter.com`
+        } else if (!req.body.email) {
             return res.status(400).json({
                 code: 400,
                 email: "This field is required",
             });
-        } else req.body.email = `june_12_2015_app${globalUtils.generateString(10)}@oldcordrouter.com`
+        }
+
+        if (!req.body.password && release_date == "june_12_2015") {
+            req.body.password = globalUtils.generateString(20);
+        } else if (!req.body.password) {
+            return res.status(400).json({
+                code: 400,
+                password: "This field is required",
+            });  
+        }
 
         if (!req.body.username) {
             return res.status(400).json({
@@ -26,13 +36,6 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                 username: "This field is required",
             });
         }
-
-        if (!req.body.password && !ignore_missing_fields) {
-            return res.status(400).json({
-                code: 400,
-                email: "This field is required",
-            });
-        } else req.body.password = globalUtils.generateString(20);
         
         if (req.body.password.length > 64) {
             return res.status(400).json({
