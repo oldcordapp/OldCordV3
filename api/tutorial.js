@@ -1,6 +1,6 @@
 const express = require('express');
 const { logText } = require('../helpers/logger');
-const database = require('../helpers/database');
+const globalUtils = require('../helpers/globalutils');
 
 const router = express.Router();
 
@@ -13,7 +13,7 @@ router.get("/", async (req, res) => {
         });
     }
     
-    const tutorial = await database.getTutorial(req.account.id);
+    const tutorial = await globalUtils.database.getTutorial(req.account.id);
 
     if (tutorial == null) {
         return res.status(200).json({
@@ -42,7 +42,7 @@ router.post("/indicators/suppress", async (req, res) => {
             });
         }
 
-        const tutorial = await database.getTutorial(req.account.id);
+        const tutorial = await globalUtils.database.getTutorial(req.account.id);
 
         if (tutorial == null) {
             return res.status(500).json({
@@ -57,7 +57,7 @@ router.post("/indicators/suppress", async (req, res) => {
 
         let confirmed = tutorial.indicators_confirmed;
 
-        let attempt = await database.updateTutorial(req.account.id, true, confirmed);
+        let attempt = await globalUtils.database.updateTutorial(req.account.id, true, confirmed);
 
         if (!attempt) {
             return res.status(500).json({
@@ -89,7 +89,7 @@ router.put("/indicators/:indicator", async (req, res) => {
             });
         }
 
-        const tutorial = await database.getTutorial(req.account.id);
+        const tutorial = await globalUtils.database.getTutorial(req.account.id);
 
         if (tutorial == null) {
             return res.status(500).json({
@@ -126,7 +126,7 @@ router.put("/indicators/:indicator", async (req, res) => {
 
         confirmed.push(req.params.indicator.toLowerCase());
 
-        let attempt = await database.updateTutorial(req.account.id, tutorial.indicators_suppressed, confirmed);
+        let attempt = await globalUtils.database.updateTutorial(req.account.id, tutorial.indicators_suppressed, confirmed);
 
         if (!attempt) {
             return res.status(500).json({

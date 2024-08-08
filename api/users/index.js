@@ -1,6 +1,5 @@
 const express = require('express');
 const fs = require('fs');
-const database = require('../../helpers/database');
 const { logText } = require('../../helpers/logger');
 const me = require('./me');
 const path = require('path');
@@ -11,7 +10,7 @@ const dispatcher = require('../../helpers/dispatcher');
 const router = express.Router();
 
 router.param('userid', async (req, res, next, userid) => {
-    req.user = await database.getAccountByUserId(userid);
+    req.user = await globalUtils.database.getAccountByUserId(userid);
 
     next();
 });
@@ -56,7 +55,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
           });
         }
 
-        const user = await database.getAccountByUserId(req.body.recipient_id);
+        const user = await globalUtils.database.getAccountByUserId(req.body.recipient_id);
 
         if (user == null) {
             return res.status(404).json({
@@ -72,12 +71,12 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        const dm_channels = await database.getDMChannels(account.id);
+        const dm_channels = await globalUtils.database.getDMChannels(account.id);
         const openedAlready = dm_channels.find(x => x.receiver_of_channel_id == user.id || x.author_of_channel_id == user.id);
 
         if (openedAlready) {
             if (openedAlready.is_closed) {
-                await database.openDMChannel(openedAlready.id);
+                await globalUtils.database.openDMChannel(openedAlready.id);
 
                 dispatcher.dispatchEventTo(account.token, "CHANNEL_CREATE", {
                     id: openedAlready.id,
@@ -123,8 +122,8 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        const theirguilds = await database.getUsersGuilds(user.id);
-        const myguilds = await database.getUsersGuilds(account.id);
+        const theirguilds = await globalUtils.database.getUsersGuilds(user.id);
+        const myguilds = await globalUtils.database.getUsersGuilds(account.id);
 
         let share = false;
 
@@ -155,7 +154,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        const channel = await database.createDMChannel(account.id, user.id);
+        const channel = await globalUtils.database.createDMChannel(account.id, user.id);
 
         if (channel == null) {
             return res.status(500).json({

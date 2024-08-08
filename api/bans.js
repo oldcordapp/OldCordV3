@@ -1,14 +1,13 @@
 const express = require('express');
-const gateway = require('../gateway');
-const database = require('../helpers/database');
 const { logText } = require('../helpers/logger');
+const globalUtils = require('../helpers/globalutils');
 const { rateLimitMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
 const dispatcher = require('../helpers/dispatcher');
 
 const router = express.Router({ mergeParams: true });
 
 router.param('memberid', async (req, res, next, memberid) => {
-    req.member = await database.getGuildMemberById(req.params.guildid, memberid);
+    req.member = await globalUtils.database.getGuildMemberById(req.params.guildid, memberid);
     
     next();
 });
@@ -24,7 +23,7 @@ router.get("/", guildPermissionsMiddleware("BAN_MEMBERS"), async (req, res) => {
             });
         }
 
-        const bans = await database.getGuildBans(req.params.guildid);
+        const bans = await globalUtils.database.getGuildBans(req.params.guildid);
 
         return res.status(200).json(bans);
     } catch (error) {
@@ -64,9 +63,8 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
             });
         }
 
-        const client = gateway.clients.filter(x => x.user.id == member.id)[0];
-        const attempt = await database.leaveGuild(member.id, req.params.guildid);
-        const tryBan = await database.banMember(req.params.guildid, member.id);
+        const attempt = await globalUtils.database.leaveGuild(member.id, req.params.guildid);
+        const tryBan = await globalUtils.database.banMember(req.params.guildid, member.id);
 
         if (!attempt || !tryBan) {
             return res.status(500).json({
@@ -75,13 +73,11 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
             });
         }
 
-        if (client != null) {
-            client.sequence++;
+        const member_account = await globalUtils.database.getAccountByUserId(member.id);
 
-            dispatcher.dispatchEventTo(client.token, "GUILD_DELETE", {
-                id: req.params.guildid
-            });
-        }
+        dispatcher.dispatchEventTo(member_account.token, "GUILD_DELETE", {
+            id: req.params.guildid
+        });
 
         await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
             type: "ban",
@@ -120,7 +116,7 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
             }
 
             if (deleteMessageDays > 0) {
-                let messages = await database.getUsersMessagesInGuild(req.params.guildid, member.user.id);
+                let messages = await globalUtils.database.getUsersMessagesInGuild(req.params.guildid, member.user.id);
 
                 const deletemessagedaysDate = new Date();
                 
@@ -134,7 +130,7 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
 
                 if (messages.length > 0) {
                     for(var message of messages) {
-                        let tryDelete = await database.deleteMessage(message.id);
+                        let tryDelete = await globalUtils.database.deleteMessage(message.id);
 
                         if (tryDelete) {
                             await dispatcher.dispatchEventInChannel(message.channel_id, "MESSAGE_DELETE", {
@@ -177,7 +173,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimit
             });
         }
 
-        const bans = await database.getGuildBans(req.params.guildid);
+        const bans = await globalUtils.database.getGuildBans(req.params.guildid);
 
         const ban = bans.find(x => x.user.id == req.params.memberid);
 
@@ -188,7 +184,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimit
             });
         }
 
-        const attempt = await database.unbanMember(req.params.guildid, req.params.memberid);
+        const attempt = await globalUtils.database.unbanMember(req.params.guildid, req.params.memberid);
 
         if (!attempt) {
             return res.status(500).json({

@@ -19,8 +19,8 @@ app.use("/tutorial", tutorial);
 app.use("/users", users);
 app.use("/voice", voice);
 app.use("/guilds", guilds);
-app.use("/invite", invites);
 app.use("/channels", channels);
+app.use("/invite", invites);
 
 app.use("/track", (_, res) => {
     return res.status(204).send();

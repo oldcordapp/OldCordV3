@@ -1,5 +1,4 @@
 const express = require('express');
-const database = require('../helpers/database');
 const { logText } = require('../helpers/logger');
 const messages = require('./messages');
 const { channelPermissionsMiddleware, rateLimitMiddleware, guildPermissionsMiddleware, channelMiddleware } = require('../helpers/middlewares');
@@ -7,18 +6,18 @@ const dispatcher = require('../helpers/dispatcher');
 const globalUtils = require('../helpers/globalutils');
 
 const router = express.Router({ mergeParams: true });
+const config = globalUtils.config;
 
 router.param('channelid', async (req, res, next, channelid) => {
-    const channel = await database.getChannelById(channelid);
+    const channel = await globalUtils.database.getChannelById(channelid);
 
-    globalUtils.requiresIntForMiddl
     if (channel == null) {
-        let dmChannel = await database.getDMChannelById(channelid);
+        let dmChannel = await globalUtils.database.getDMChannelById(channelid);
 
         if (dmChannel == null) {
             req.channel = null;
         } else {
-            let user = await database.getAccountByToken(req.headers['authorization']);
+            let user = await globalUtils.database.getAccountByToken(req.headers['authorization']);
 
             if (user != null) {
                 if (dmChannel.author_of_channel_id == user.id) {
@@ -60,14 +59,14 @@ router.param('channelid', async (req, res, next, channelid) => {
         req.channel = channel;
 
         if (channel && channel.guild_id) {
-            req.guild = await database.getGuildById(channel.guild_id);
+            req.guild = await globalUtils.database.getGuildById(channel.guild_id);
         }
     }
 
     next();
 });
 
-router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(100, 1000 * 60), async (req, res) => {
+router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(100, 1000 * 60), async (req, res) => {
     try {
         const typer = req.account;
 
@@ -180,7 +179,7 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
         channel.name = req.body.name;
         channel.position = req.body.position;
 
-        const outcome = await database.updateChannel(channel.id, channel);
+        const outcome = await globalUtils.database.updateChannel(channel.id, channel);
 
         if (channel == null || !outcome) {
             return res.status(500).json({
@@ -193,7 +192,7 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 
-        await dispatcher.dispatchEventInChannel(channel.id, "CHANNEL_UPDATE", channel);
+        await dispatcher.dispatchEventToAllPerms(channel.guild_id, channel.id, "READ_MESSAGE_HISTORY", "CHANNEL_UPDATE", channel);
 
         return res.status(200).json(channel);
       } catch (error) {
@@ -217,7 +216,7 @@ router.get("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewar
             });
         }
 
-        const invites = await database.getChannelInvites(req.params.channelid);
+        const invites = await globalUtils.database.getChannelInvites(req.params.channelid);
 
         return res.status(200).json(invites);
       } catch (error) {
@@ -274,7 +273,7 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
             regenerate = true;
         }
 
-        const invite = await database.createInvite(req.params.guildid, req.params.channelid, sender.id, temporary, max_uses, max_age, xkcdpass, regenerate);
+        const invite = await globalUtils.database.createInvite(req.params.guildid, req.params.channelid, sender.id, temporary, max_uses, max_age, xkcdpass, regenerate);
 
         if (invite == null) {
             return res.status(500).json({
@@ -331,33 +330,33 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
             });
         }
 
-        let channel_overwrites = await database.getChannelPermissionOverwrites(channel.id);
+        let channel_overwrites = await globalUtils.database.getChannelPermissionOverwrites(channel.id);
         let overwrites = channel_overwrites;
         let overwriteIndex = channel_overwrites.findIndex(x => x.id == id);
         let allow = 0;
         let deny = 0;
 
         let permissionValuesObject = {
-            CREATE_INSTANT_INVITE: permissions.CREATE_INSTANT_INVITE,
-            KICK_MEMBERS: permissions.KICK_MEMBERS,
-            BAN_MEMBERS: permissions.BAN_MEMBERS,
-            MANAGE_ROLES: permissions.MANAGE_ROLES,
-            MANAGE_CHANNELS: permissions.MANAGE_CHANNELS,
-            MANAGE_GUILD: permissions.MANAGE_SERVER,
-            READ_MESSAGES: permissions.READ_MESSAGES,
-            SEND_MESSAGES: permissions.SEND_MESSAGES,
-            SEND_TTS_MESSAGES: permissions.SEND_TTS_MESSAGES,
-            MANAGE_MESSAGES: permissions.MANAGE_MESSAGES,
-            EMBED_LINKS: permissions.EMBED_LINKS,
-            ATTACH_FILES: permissions.ATTACH_FILES,
-            READ_MESSAGE_HISTORY: permissions.READ_MESSAGE_HISTORY,
-            MENTION_EVERYONE: permissions.MENTION_EVERYONE,
-            CONNECT: permissions.CONNECT,
-            SPEAK: permissions.SPEAK,
-            MUTE_MEMBERS: permissions.MUTE_MEMBERS,
-            DEAFEN_MEMBERS: permissions.DEAFEN_MEMBERS,
-            MOVE_MEMBERS: permissions.MOVE_MEMBERS,
-            USE_VAD: permissions.USE_VOICE_ACTIVITY,
+            CREATE_INSTANT_INVITE: globalUtils.permissions.CREATE_INSTANT_INVITE,
+            KICK_MEMBERS: globalUtils.permissions.KICK_MEMBERS,
+            BAN_MEMBERS: globalUtils.permissions.BAN_MEMBERS,
+            MANAGE_ROLES: globalUtils.permissions.MANAGE_ROLES,
+            MANAGE_CHANNELS: globalUtils.permissions.MANAGE_CHANNELS,
+            MANAGE_GUILD: globalUtils.permissions.MANAGE_SERVER,
+            READ_MESSAGES: globalUtils.permissions.READ_MESSAGES,
+            SEND_MESSAGES: globalUtils.permissions.SEND_MESSAGES,
+            SEND_TTS_MESSAGES: globalUtils.permissions.SEND_TTS_MESSAGES,
+            MANAGE_MESSAGES: globalUtils.permissions.MANAGE_MESSAGES,
+            EMBED_LINKS: globalUtils.permissions.EMBED_LINKS,
+            ATTACH_FILES: globalUtils.permissions.ATTACH_FILES,
+            READ_MESSAGE_HISTORY: globalUtils.permissions.READ_MESSAGE_HISTORY,
+            MENTION_EVERYONE: globalUtils.permissions.MENTION_EVERYONE,
+            CONNECT: globalUtils.permissions.CONNECT,
+            SPEAK: globalUtils.permissions.SPEAK,
+            MUTE_MEMBERS: globalUtils.permissions.MUTE_MEMBERS,
+            DEAFEN_MEMBERS: globalUtils.permissions.DEAFEN_MEMBERS,
+            MOVE_MEMBERS: globalUtils.permissions.MOVE_MEMBERS,
+            USE_VAD: globalUtils.permissions.USE_VOICE_ACTIVITY,
         };
         let permissionKeys = Object.keys(permissionValuesObject);
         let keys = permissionKeys.map((key) => permissionValuesObject[key]);
@@ -389,7 +388,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
         }
 
         if (type == 'member') {
-            let member = await database.getGuildMemberById(channel.guild_id, id);
+            let member = await globalUtils.database.getGuildMemberById(channel.guild_id, id);
 
             if (member == null) {
                 return res.status(404).json({
@@ -398,7 +397,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
                 });
             }
         } else {
-            let role = await database.getRoleById(id);
+            let role = await globalUtils.database.getRoleById(id);
 
             if (role == null) {
                 return res.status(404).json({
@@ -408,9 +407,9 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
             }
         }
 
-        await database.updateChannelPermissionOverwrites(channel.id, overwrites);
+        await globalUtils.database.updateChannelPermissionOverwrites(channel.id, overwrites);
 
-        channel = await database.getChannelById(channel_id);
+        channel = await globalUtils.database.getChannelById(channel_id);
 
         if (!channel?.guild_id) {
             return res.status(500).json({
@@ -423,14 +422,14 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 
-        dispatcher.dispatchEventToAllPerms(channel?.guild_id, channel?.id, "MANAGE_ROLES", {
-            type: channel?.type,
-            id: channel?.id,
-            guild_id: channel?.guild_id,
-            topic: channel?.topic,
-            last_message_id: channel?.last_message_id,
-            name: channel?.name,
-            permission_overwrites: channel?.permission_overwrites
+        await dispatcher.dispatchEventInChannel(channel.id, "CHANNEL_UPDATE", {
+            type: channel.type,
+            id: channel.id,
+            guild_id: channel.guild_id,
+            topic: channel.topic,
+            last_message_id: channel.last_message_id,
+            name: channel.name,
+            permission_overwrites: channel.permission_overwrites
         });
 
         return res.status(204).send();
@@ -467,7 +466,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
             });
         }
 
-        let channel_overwrites = await database.getChannelPermissionOverwrites(channel.id);
+        let channel_overwrites = await globalUtils.database.getChannelPermissionOverwrites(channel.id);
         let overwriteIndex = channel_overwrites.findIndex(x => x.id == id);
 
         if (!globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
@@ -475,22 +474,22 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
         }
 
         if (overwriteIndex === -1) {
-            dispatcher.dispatchEventToAllPerms(channel?.guild_id, channel?.id, "MANAGE_ROLES", {
-                type: channel?.type,
-                id: channel?.id,
-                guild_id: channel?.guild_id,
-                topic: channel?.topic,
-                last_message_id: channel?.last_message_id,
-                name: channel?.name,
-                permission_overwrites: channel?.permission_overwrites
+            await dispatcher.dispatchEventInChannel(channel.id, "CHANNEL_UPDATE", {
+                type: channel.type,
+                id: channel.id,
+                guild_id: channel.guild_id,
+                topic: channel.topic,
+                last_message_id: channel.last_message_id,
+                name: channel.name,
+                permission_overwrites: channel.permission_overwrites
             });
 
             return res.status(204).send();
         }
 
-        await database.deleteChannelPermissionOverwrite(channel_id, channel_overwrites[overwriteIndex]);
+        await globalUtils.database.deleteChannelPermissionOverwrite(channel_id, channel_overwrites[overwriteIndex]);
 
-        channel = await database.getChannelById(channel_id);
+        channel = await globalUtils.database.getChannelById(channel_id);
 
         if (!channel?.guild_id) {
             return res.status(500).json({
@@ -503,14 +502,14 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 
-        dispatcher.dispatchEventToAllPerms(channel?.guild_id, channel?.id, "MANAGE_ROLES", {
-            type: channel?.type,
-            id: channel?.id,
-            guild_id: channel?.guild_id,
-            topic: channel?.topic,
-            last_message_id: channel?.last_message_id,
-            name: channel?.name,
-            permission_overwrites: channel?.permission_overwrites
+        await dispatcher.dispatchEventInChannel(channel.id, "CHANNEL_UPDATE", {
+            type: channel.type,
+            id: channel.id,
+            guild_id: channel.guild_id,
+            topic: channel.topic,
+            last_message_id: channel.last_message_id,
+            name: channel.name,
+            permission_overwrites: channel.permission_overwrites
         });
 
         return res.status(204).send();
@@ -549,10 +548,10 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
         }
 
         if (!channel.guild_id) {
-            let alreadyClosed = await database.isDMClosed(channel.id);
+            let alreadyClosed = await globalUtils.database.isDMClosed(channel.id);
 
             if (!alreadyClosed) {
-                let tryClose = await database.closeDMChannel(channel.id);
+                let tryClose = await globalUtils.database.closeDMChannel(channel.id);
 
                 if (!tryClose) {
                     return res.status(500).json({
@@ -567,7 +566,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
                 guild_id: null
             });
             
-            let recipient = await database.getAccountByUserId(channel.recipient.id);
+            let recipient = await globalUtils.database.getAccountByUserId(channel.recipient.id);
 
             if (recipient != null && recipient.token) {
                 dispatcher.dispatchEventTo(recipient.token, {
@@ -590,7 +589,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
                 guild_id: channel.guild_id
             });
     
-            if (!await database.deleteChannel(channel.id)) {
+            if (!await globalUtils.database.deleteChannel(channel.id)) {
                 return res.status(500).json({
                     code: 500,
                     message: "Internal Server Error"

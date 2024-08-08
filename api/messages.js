@@ -1,5 +1,5 @@
 const express = require('express');
-const database = require('../helpers/database');
+const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { channelPermissionsMiddleware, rateLimitMiddleware } = require('../helpers/middlewares');
 const dispatcher = require('../helpers/dispatcher');
@@ -11,7 +11,7 @@ const permissions = require('../helpers/permissions');
 const router = express.Router({ mergeParams: true });
 
 router.param('messageid', async (req, res, next, messageid) => {
-    req.message = await database.getMessageById(messageid);
+    req.message = await globalUtils.database.getMessageById(messageid);
 
     next();
 });
@@ -53,7 +53,7 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
 
         let messages = [];
 
-        messages = await database.getChannelMessages(channel.id, limit, req.query.before, req.query.after);
+        messages = await globalUtils.database.getChannelMessages(channel.id, limit, req.query.before, req.query.after);
 
         if (messages == null || messages.length == 0) {
             return res.status(200).json([]);
@@ -96,7 +96,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             const mentions= req.body.mentions;
             
             for(let mention of mentions) {
-                const user = await database.getAccountByUserId(mention);
+                const user = await globalUtils.database.getAccountByUserId(mention);
 
                 if (user != null) {
                     finalContent = finalContent.replace(`@${user.username}`, `<@${user.id}>`);
@@ -107,7 +107,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         }
 
         if (finalContent && finalContent.includes("@everyone")) {
-            let pCheck = await permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "MENTION_EVERYONE");
+            let pCheck = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "MENTION_EVERYONE");
 
             if (!pCheck) {
                 finalContent = finalContent.replace(/@everyone/g, "");
@@ -117,7 +117,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         }
 
         if (channel.recipient != null) {
-            const recipient = await database.getAccountByUserId(channel.recipient.id);
+            const recipient = await globalUtils.database.getAccountByUserId(channel.recipient.id);
 
             if (recipient == null || !recipient.token) {
                 return res.status(404).json({
@@ -159,7 +159,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                         extension: extension
                     };
     
-                    const createMessage = await database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, false);
+                    const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, false);
 
                     if (createMessage == null) {
                         return res.status(500).json({
@@ -173,7 +173,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     return res.status(200).json(createMessage);
                 });
             } else {
-                const createMessage = await database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
+                const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
     
                 if (createMessage == null) {
                     return res.status(500).json({
@@ -195,7 +195,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             }
 
             if (req.body.tts == true) {
-                let canTts = await permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
+                let canTts = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
 
                 if (!canTts) {
                     req.body.tts = canTts;
@@ -226,7 +226,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 fs.writeFileSync(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`, req.file.buffer);
                 
                 if (req.body.tts == "true") {
-                    let canTts = await permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
+                    let canTts = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
     
                     if (!canTts) {
                         req.body.tts = "false";
@@ -243,7 +243,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                         extension: extension
                     };
     
-                    const createMessage = await database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, req.body.tts == "false" ? false : true);
+                    const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, req.body.tts == "false" ? false : true);
 
                     if (createMessage == null) {
                         return res.status(500).json({
@@ -257,11 +257,9 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     return res.status(200).json(createMessage);
                 });
             } else {
-                const createMessage = await database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
+                const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
     
                 if (createMessage == null) {
-                    console.log("create msg null");
-                    
                     return res.status(500).json({
                         code: 500,
                         message: "Internal Server Error"
@@ -322,7 +320,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
                 });
             }
     
-            const del = await database.deleteMessage(req.params.messageid);
+            const del = await globalUtils.database.deleteMessage(req.params.messageid);
     
             if (!del) {
                 return res.status(500).json({
@@ -346,7 +344,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
                 });
             }
     
-            const del = await database.deleteMessage(req.params.messageid);
+            const del = await globalUtils.database.deleteMessage(req.params.messageid);
     
             if (!del) {
                 return res.status(500).json({
@@ -424,7 +422,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 const mentions = req.body.mentions;
                 
                 for(let mention of mentions) {
-                    const user = await database.getAccountByUserId(mention);
+                    const user = await globalUtils.database.getAccountByUserId(mention);
 
                     if (user != null) {
                         finalContent = finalContent.replace(`@${user.username}`, `<@${user.id}>`);
@@ -435,7 +433,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
             }
 
             if (finalContent && finalContent.includes("@everyone")) {
-                let pCheck = await permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
+                let pCheck = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
 
                 if (!pCheck) {
                     finalContent = finalContent.replace(/@everyone/g, "");
@@ -444,7 +442,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 req.body.content = finalContent;
             }
 
-            const update = await database.updateMessage(message.id, req.body.content);
+            const update = await globalUtils.database.updateMessage(message.id, req.body.content);
 
             if (!update) {
                 return res.status(500).json({
@@ -453,7 +451,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            message = await database.getMessageById(req.params.messageid);
+            message = await globalUtils.database.getMessageById(req.params.messageid);
 
             if (message == null) {
                 return res.status(404).json({
@@ -495,7 +493,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 const mentions= req.body.mentions;
                 
                 for(let mention of mentions) {
-                    const user = await database.getAccountByUserId(mention);
+                    const user = await globalUtils.database.getAccountByUserId(mention);
 
                     if (user != null) {
                         finalContent = finalContent.replace(`@${user.username}`, `<@${user.id}>`);
@@ -506,7 +504,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
             }
 
             if (finalContent && finalContent.includes("@everyone")) {
-                let pCheck = await permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
+                let pCheck = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
 
                 if (!pCheck) {
                     finalContent = finalContent.replace(/@everyone/g, "");
@@ -515,7 +513,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 req.body.content = finalContent;
             }
 
-            const update = await database.updateMessage(message.id, req.body.content);
+            const update = await globalUtils.database.updateMessage(message.id, req.body.content);
 
             if (!update) {
                 return res.status(500).json({
@@ -524,7 +522,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            message = await database.getMessageById(req.params.messageid);
+            message = await globalUtils.database.getMessageById(req.params.messageid);
 
             if (message == null) {
                 return res.status(404).json({
@@ -576,7 +574,7 @@ router.post("/:messageid/ack", rateLimitMiddleware(5, 1000 * 10), rateLimitMiddl
             });
         }
 
-        let tryAck = await database.acknowledgeMessage(guy.id, channel.id, message.id, 0);
+        let tryAck = await globalUtils.database.acknowledgeMessage(guy.id, channel.id, message.id, 0);
 
         if (!tryAck) {
             return res.status(500).json({

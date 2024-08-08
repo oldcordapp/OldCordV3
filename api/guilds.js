@@ -1,6 +1,5 @@
 const express = require('express');
-const gateway = require('../gateway');
-const database = require('../helpers/database');
+const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const roles = require('./roles');
 const members = require('./members');
@@ -12,7 +11,7 @@ const { requiresIntsForChannelTypes } = require('../helpers/globalutils');
 const router = express.Router();
 
 router.param('guildid', async (req, _, next, guildid) => {
-    req.guild = await database.getGuildById(guildid);
+    req.guild = await globalUtils.database.getGuildById(guildid);
 
     next();
 });
@@ -34,8 +33,6 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50
         const creator = req.account;
 
         if (!creator) {
-            console.log("no creator");
-
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -43,30 +40,21 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50
         }
 
         if (!req.body.region) {
-            req.body.region = (!req.url.includes("/v") ? "2015" : "2016");
+            return res.status(400).json({
+                region: "A valid server region is required."
+            });
         }
 
-        const guild = await database.createGuild(creator.id, req.body.icon, req.body.name, req.body.region);
+        const guild = await globalUtils.database.createGuild(creator.id, req.body.icon, req.body.name, req.body.region);
 
         if (guild == null) {
-            console.log("here");
-
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
             });
         } else {
-            console.log(creator.token);
-            console.log(JSON.stringify(gateway.clients));
-            const client = gateway.clients.filter(x => x.token == creator.token)[0];
-
-            if (client == null) {
-                console.log("no client");
-
-                return res.status(500).json({
-                    code: 500,
-                    message: "Internal Server Error"
-                });
+            if (!globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
+                guild.channels[0].type = "text";
             }
 
             dispatcher.dispatchEventTo(creator.token, "GUILD_CREATE", guild);
@@ -115,7 +103,7 @@ router.post("/:guildid/delete", guildMiddleware, rateLimitMiddleware(50, 1000 * 
             id: req.params.guildid
         });
         
-        const del = await database.deleteGuild(guild.id);
+        const del = await globalUtils.database.deleteGuild(guild.id);
 
         if (!del) {
             return res.status(500).json({
@@ -160,7 +148,7 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
                 id: req.params.guildid
             });
             
-            const del = await database.deleteGuild(guild.id);
+            const del = await globalUtils.database.deleteGuild(guild.id);
 
             if (!del) {
                 return res.status(500).json({
@@ -171,16 +159,7 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
 
             return res.status(204).send();
         } else {
-            const client = gateway.clients.filter(x => x.token == user.token)[0];
-
-            if (client == null) {
-                return res.status(500).json({
-                    code: 500,
-                    message: "Internal Server Error"
-                });
-            }
-
-            const leave = await database.leaveGuild(user.id, guild.id);
+            const leave = await globalUtils.database.leaveGuild(user.id, guild.id);
 
             if (!leave) {
                 return res.status(500).json({
@@ -243,7 +222,13 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             }); 
         }
 
-        const update = await database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.name, req.body.region);
+        if (req.body.region && req.body.region != what.region) {
+            return res.status(400).json({
+                region: "Cannot change the oldcord year region for this server at this time. Try again later."
+            });
+        }
+
+        const update = await globalUtils.database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.name, req.body.region);
 
         if (!update) {
             return res.status(500).json({
@@ -252,7 +237,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             });
         }
 
-        what = await database.getGuildById(req.params.guildid);
+        what = await globalUtils.database.getGuildById(req.params.guildid);
 
         if (what == null) {
             return res.status(500).json({
@@ -293,7 +278,7 @@ router.get("/:guildid/embed", guildMiddleware, async (req, res) => {
             });
         }
 
-        const widget = await database.getGuildWidget(req.params.guildid);
+        const widget = await globalUtils.database.getGuildWidget(req.params.guildid);
 
         if (widget == null) {
             return res.status(500).json({
@@ -324,7 +309,7 @@ router.patch("/:guildid/embed", guildMiddleware, guildPermissionsMiddleware("MAN
             });
         }
 
-        const update = await database.updateGuildWidget(req.params.guildid, req.body.channel_id, req.body.enabled);
+        const update = await globalUtils.database.updateGuildWidget(req.params.guildid, req.body.channel_id, req.body.enabled);
 
         if (!update) {
             return res.status(500).json({
@@ -333,7 +318,7 @@ router.patch("/:guildid/embed", guildMiddleware, guildPermissionsMiddleware("MAN
             });
         }
 
-        const widget = await database.getGuildWidget(req.params.guildid);
+        const widget = await globalUtils.database.getGuildWidget(req.params.guildid);
 
         if (widget == null) {
             return res.status(500).json({
@@ -364,7 +349,7 @@ router.get("/:guildid/invites", guildMiddleware, guildPermissionsMiddleware("MAN
             });
         }
 
-        const invites = await database.getGuildInvites(req.params.guildid);
+        const invites = await globalUtils.database.getGuildInvites(req.params.guildid);
 
         return res.status(200).json(invites);
       } catch (error) {
@@ -388,7 +373,7 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
             });
         }
 
-        const member = await database.getGuildMemberById(req.params.guildid, sender.id);
+        const member = await globalUtils.database.getGuildMemberById(req.params.guildid, sender.id);
 
         if (member == null) {
             return res.status(404).json({
@@ -403,7 +388,7 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
             number_type = req.body.type == "text" ? 0 : 1;
         } else number_type = req.body.type;
 
-        const channel = await database.createChannel(req.params.guildid, req.body.name, number_type);
+        const channel = await globalUtils.database.createChannel(req.params.guildid, req.body.name, number_type);
 
         if (channel == null) {
             return res.status(500).json({
@@ -444,7 +429,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
             var channel_id = shit.id;
             var position = shit.position;
 
-            const channel = await database.getChannelById(channel_id)
+            const channel = await globalUtils.database.getChannelById(channel_id)
 
             if (channel == null) {
                 return res.status(500).json({
@@ -455,7 +440,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
 
             channel.position = position;
 
-            const outcome = await database.updateChannel(channel_id, channel);
+            const outcome = await globalUtils.database.updateChannel(channel_id, channel);
 
             if (!outcome) {
                 return res.status(500).json({
@@ -470,7 +455,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
 
             ret.push(channel);
 
-            await dispatcher.dispatchEventInChannel(channel_id, "CHANNEL_UPDATE", channel);
+            await dispatcher.dispatchEventToAllPerms(channel.guild_id, channel.id, "READ_MESSAGE_HISTORY", "CHANNEL_UPDATE", channel);
         }
 
         return res.status(200).json(ret);
@@ -487,5 +472,9 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
 router.use("/:guildid/roles", roles);
 router.use("/:guildid/members", members);
 router.use("/:guildid/bans", bans);
+
+router.get("/:guildid/regions", (_, res) => {
+    return res.status(200).json(globalUtils.getRegions());
+});
 
 module.exports = router;

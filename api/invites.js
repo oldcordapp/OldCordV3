@@ -1,6 +1,5 @@
 const express = require('express');
-const gateway = require('../gateway');
-const database = require('../helpers/database');
+const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { instanceMiddleware, rateLimitMiddleware, channelPermissionsMiddleware } = require('../helpers/middlewares');
 const dispatcher = require('../helpers/dispatcher');
@@ -18,7 +17,7 @@ router.get("/:code", async (req, res) => {
             });
         }
 
-        const invite = await database.getInvite(req.params.code);
+        const invite = await globalUtils.database.getInvite(req.params.code);
 
         if (invite == null) {
             return res.status(404).json({
@@ -45,7 +44,7 @@ router.get("/:code", async (req, res) => {
     }
 });
 
-router.delete("/:code", channelPermissionsMiddleware("MANAGE_CHANNEL"), rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -56,7 +55,7 @@ router.delete("/:code", channelPermissionsMiddleware("MANAGE_CHANNEL"), rateLimi
             });
         }
 
-        const invite = await database.getInvite(req.params.code);
+        const invite = await globalUtils.database.getInvite(req.params.code);
 
         if (invite == null) {
             return res.status(404).json({
@@ -65,7 +64,9 @@ router.delete("/:code", channelPermissionsMiddleware("MANAGE_CHANNEL"), rateLimi
             });
         }
 
-        const channel = await database.getChannelById(invite.channel.id);
+        console.log(invite);
+
+        const channel = await globalUtils.database.getChannelById(invite.channel.id);
 
         if (channel == null) {
             return res.status(404).json({
@@ -74,7 +75,25 @@ router.delete("/:code", channelPermissionsMiddleware("MANAGE_CHANNEL"), rateLimi
             });
         }
 
-        const tryDelete = await database.deleteInvite(req.params.code);
+        const guild = await globalUtils.database.getGuildById(channel.guild_id);
+
+        if (guild == null) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            }); 
+        }
+
+        const hasPermission = await globalUtils.permissions.hasChannelPermissionTo(channel, guild, sender.id, "MANAGE_CHANNELS");
+
+        if (!hasPermission) {
+            return res.status(403).json({
+                code: 403,
+                message: "Missing Permissions"
+            }); 
+        }
+
+        const tryDelete = await globalUtils.database.deleteInvite(req.params.code);
 
         if (!tryDelete) {
             return res.status(500).json({
@@ -105,7 +124,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
             });
         }
 
-        const invite = await database.getInvite(req.params.code);
+        const invite = await globalUtils.database.getInvite(req.params.code);
 
         if (invite == null) {
             return res.status(404).json({
@@ -114,7 +133,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
             });
         }
 
-        const guild = await database.getGuildById(invite.guild.id);
+        const guild = await globalUtils.database.getGuildById(invite.guild.id);
 
         if (guild == null) {
             return res.status(404).json({
@@ -130,16 +149,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
         delete invite.max_age;
         delete invite.xkcdpass;
 
-        const client = gateway.clients.filter(x => x.token == sender.token)[0];
-
-        if (client == null) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
-            });
-        }
-
-        const joinAttempt = await database.useInvite(req.params.code, sender.id);
+        const joinAttempt = await globalUtils.database.useInvite(req.params.code, sender.id);
 
         if (!joinAttempt) {
             return res.status(404).json({

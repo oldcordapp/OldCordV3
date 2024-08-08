@@ -1,4 +1,3 @@
-const database = require('./helpers/database');
 const { logText } = require('./helpers/logger');
 const globalUtils = require('./helpers/globalutils');
 const WebSocket = require('ws').WebSocket;
@@ -63,9 +62,8 @@ const gateway = {
                     await dispatcher.dispatchPresenceUpdate(client.user, "offline", null);
                 }
 
-                if (!socket.cookieStore['release_date'].includes("2015")) {
-                    client.socket = null; //only used for resuming
-                } else gateway.clients = gateway.clients.filter(client => client.socket !== socket);
+                
+                gateway.clients = gateway.clients.filter(client => client.socket !== socket);
 
                 if (socket.hb.timeout) {
                     clearTimeout(socket.hb.timeout);
@@ -84,7 +82,7 @@ const gateway = {
                     if (packet.op == 2) {
                         logText("New client connection", "GATEWAY");
 
-                        let user = await database.getAccountByToken(packet.d.token);
+                        let user = await globalUtils.database.getAccountByToken(packet.d.token);
 
                         if (user == null) {
                             return socket.close(4004, "Authentication failed");
@@ -96,18 +94,17 @@ const gateway = {
 
                         const existingConnection = gateway.clients.find(x => x.user.id == user.id);
 
-                        if (existingConnection && existingConnection.socket != null) {
+                        if (existingConnection && existingConnection.socket) {
                             //resuming stuff
+
                             existingConnection.socket.close(4015, 'New connection has been established. This one is no longer needed.');
-
+                            
                             gateway.clients = gateway.clients.filter(client => client.socket !== existingConnection.socket);
-
+                            
                             logText(`Client ${user.id} reconnected -> Continuing on this socket`, "GATEWAY");
                         }
 
                         socket.session_id = globalUtils.generateString(16);
-
-                        console.log(socket.session_id);
 
                         gateway.clients.push({
                             session_id: socket.session_id,
@@ -126,12 +123,12 @@ const gateway = {
                             }
                         });
 
-                        let guilds = await database.getUsersGuilds(user.id);
+                        let guilds = await globalUtils.database.getUsersGuilds(user.id);
                         let presences = [];
                         let read_states = [];
 
                         for(var guild of guilds) {
-                            let guild_presences = await database.getGuildPresences(guild.id);
+                            let guild_presences = await globalUtils.database.getGuildPresences(guild.id);
 
                             if (guild_presences.length == 0) continue;
 
@@ -154,17 +151,25 @@ const gateway = {
                                     channel.type = channel.type == 2 ? "voice" : "text";
                                 }
 
-                                let getLatestAcknowledgement = await database.getLatestAcknowledgement(user.id, channel.id);
+                                let can_see = await globalUtils.permissions.hasChannelPermissionTo(channel, guild, user.id, "READ_MESSAGE_HISTORY");
+
+                                if (!can_see) {
+                                    guild.channels = guild.channels.filter(x => x.id !== channel.id);
+
+                                    continue;
+                                }
+
+                                let getLatestAcknowledgement = await globalUtils.database.getLatestAcknowledgement(user.id, channel.id);
     
                                 if (getLatestAcknowledgement) read_states.push(getLatestAcknowledgement);
                             }
                         }
 
-                        let dms = await database.getDMChannels(user.id);
+                        let dms = await globalUtils.database.getDMChannels(user.id);
                         let dm_list = [];
 
                         for (var dm of dms) {
-                            let closed = await database.isDMClosed(dm.id);
+                            let closed = await globalUtils.database.isDMClosed(dm.id);
 
                             if (closed) {
                                 dms = dms.filter(x => x.id !== dm.id);
@@ -187,7 +192,7 @@ const gateway = {
                             });
                         }
 
-                        let tutorial = await database.getTutorial(user.id);
+                        let tutorial = await globalUtils.database.getTutorial(user.id);
 
                         if (tutorial == null) {
                             tutorial = {
@@ -198,21 +203,17 @@ const gateway = {
 
                         socket.hb = {
                             timeout: setTimeout(async () => {
-                                if (socket.user) {
-                                    await dispatcher.dispatchPresenceUpdate(socket.user.id, "offline", null);
-                                }
+                                await dispatcher.dispatchPresenceUpdate(socket.user.id, "offline", null);
 
                                 socket.close(4009, 'Session timed out');
                             }, (45 * 1000) + (20 * 1000)),
                             reset: () => {
-                                if (this.timeout != null) {
-                                    clearInterval(this.timeout);
+                                if (socket.hb.timeout != null) {
+                                    clearInterval(socket.hb.timeout);
                                 }
 
-                                this.timeout = new setTimeout(async () => {
-                                    if (socket.user) {
-                                        await dispatcher.dispatchPresenceUpdate(socket.user.id, "offline", null);
-                                    }
+                                socket.hb.timeout = new setTimeout(async () => {
+                                    await dispatcher.dispatchPresenceUpdate(socket.user.id, "offline", null);
 
                                     socket.close(4009, 'Session timed out');
                                 }, (45 * 1000) + 20 * 1000);
@@ -277,7 +278,7 @@ const gateway = {
                         if (!client) return;
 
                         if (socket.cookieStore['release_date'].includes("2015")) {
-                            if (packet.d.idle_since == null && packet.d.game_id == null) {
+                            if (packet.d.idle_since == null && packet.d.game_id == null && socket.user.settings.status == 'idle') {
                                 await dispatcher.dispatchPresenceUpdate(socket.user.id, "online", null);
     
                                 client.presence = {
@@ -293,17 +294,15 @@ const gateway = {
                             } else if (packet.d.idle_since != null && packet.d.status == 'idle') {
                                 await dispatcher.dispatchPresenceUpdate(socket.user.id, "idle", null);
                             }
-
-                            return;
-                        }
-
-                        if (socket.cookieStore['release_date'].includes("2016")) {
+                        } else if (socket.cookieStore['release_date'].includes("2016")) {
                             if (packet.d.since != 0 && packet.d.afk == true) {
                                 await dispatcher.dispatchPresenceUpdate(socket.user.id, "idle", null);
 
+                                let pUser = socket.user;
+
                                 client.presence = {
                                     game: null,
-                                    status: 'online',
+                                    status: 'idle',
                                     user: {
                                         avatar: pUser.avatar,
                                         discriminator: pUser.discriminator,
@@ -324,6 +323,8 @@ const gateway = {
                                 }
 
                                 await dispatcher.dispatchPresenceUpdate(socket.user.id, packet.d.status.toLowerCase(), null);
+
+                                let pUser = socket.user;
 
                                 client.presence = {
                                     game: packet.d.game,
@@ -354,7 +355,7 @@ const gateway = {
 
                         client.socket = socket;
 
-                        let user = await database.getAccountByToken(token);
+                        let user = await globalUtils.database.getAccountByToken(token);
 
                         if (user == null) {
                             gateway.send(socket, {

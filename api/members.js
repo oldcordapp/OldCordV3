@@ -1,5 +1,5 @@
 const express = require('express');
-const database = require('../helpers/database');
+const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { rateLimitMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
 const dispatcher = require('../helpers/dispatcher');
@@ -7,7 +7,7 @@ const dispatcher = require('../helpers/dispatcher');
 const router = express.Router({ mergeParams: true });
 
 router.param('memberid', async (req, res, next, memberid) => {
-    req.member = await database.getGuildMemberById(req.params.guildid, memberid);
+    req.member = await globalUtils.database.getGuildMemberById(req.params.guildid, memberid);
 
     next();
 });
@@ -32,7 +32,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
             });
         }
 
-        const attempt = await database.leaveGuild(member.id, req.params.guildid);
+        const attempt = await globalUtils.database.leaveGuild(member.id, req.params.guildid);
 
         if (!attempt) {
             return res.status(500).json({
@@ -97,7 +97,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimit
         const roles = [];
 
         if (req.body.roles.length == 0) {
-            const tryClearRoles = await database.clearRoles(req.params.guildid, member.id);
+            const tryClearRoles = await globalUtils.database.clearRoles(req.params.guildid, member.id);
 
             if (!tryClearRoles) {
                 return res.status(500).json({
@@ -121,7 +121,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimit
             }
 
             for(var role_id of roles) {
-                const attempt = await database.addRole(req.params.guildid, role_id, member.id);
+                const attempt = await globalUtils.database.addRole(req.params.guildid, role_id, member.id);
     
                 if (!attempt) {
                     return res.status(500).json({

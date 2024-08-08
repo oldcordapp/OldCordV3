@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const globalUtils = require('../helpers/globalutils');
-const database = require('../helpers/database');
 const dispatcher = require('../helpers/dispatcher');
 const instanceMiddleware = require('../helpers/middlewares').instanceMiddleware;
 const rateLimitMiddleware = require("../helpers/middlewares").rateLimitMiddleware;
@@ -49,7 +48,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             });
         }
 
-        const registrationAttempt = await database.createAccount(req.body.username, req.body.email, req.body.password);
+        const registrationAttempt = await globalUtils.database.createAccount(req.body.username, req.body.email, req.body.password);
 
         if ('reason' in registrationAttempt) {
             return res.status(400).json({
@@ -63,10 +62,10 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
         if (autoJoinGuild.length > 0) {
             let guildId = autoJoinGuild[0].split(':')[1];
 
-            let guild = await database.getGuildById(guildId);
+            let guild = await globalUtils.database.getGuildById(guildId);
 
             if (guild != null) {
-                let account = await database.getAccountByToken(registrationAttempt.token);
+                let account = await globalUtils.database.getAccountByToken(registrationAttempt.token);
 
                 if (account == null) {
                     return res.status(500).json({
@@ -75,7 +74,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                     });
                 }
 
-                await database.joinGuild(account.id, guildId);
+                await globalUtils.database.joinGuild(account.id, guildId);
 
                 dispatcher.dispatchEventTo(registrationAttempt.token, "GUILD_CREATE", guild);
 
@@ -134,7 +133,7 @@ router.post("/login", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) 
             });
         }
     
-        const loginAttempt = await database.checkAccount(req.body.email, req.body.password);
+        const loginAttempt = await globalUtils.database.checkAccount(req.body.email, req.body.password);
     
         if ('reason' in loginAttempt) {
             return res.status(400).json({

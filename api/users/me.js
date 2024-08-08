@@ -1,5 +1,5 @@
 const express = require('express');
-const database = require('../../helpers/database');
+const globalUtils = require('../../helpers/globalutils');
 const dispatcher = require('../../helpers/dispatcher');
 const { rateLimitMiddleware } = require('../../helpers/middlewares');
 const { logText } = require('../../helpers/logger');
@@ -71,10 +71,10 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
     if (update_object.email == account.email && update_object.new_password == null && update_object.password == null && update_object.username == account.username) {
        //avatar change
 
-      const attemptToUpdateAvi = await database.updateAccount(update_object.avatar, account.email, account.username, null, null, null);
+      const attemptToUpdateAvi = await globalUtils.database.updateAccount(update_object.avatar, account.email, account.username, null, null, null);
 
       if (attemptToUpdateAvi) {
-        let account2 = await database.getAccountByEmail(account.email);
+        let account2 = await globalUtils.database.getAccountByEmail(account.email);
 
         if (account2 != null && account2.token) {
           delete account2.password;
@@ -134,7 +134,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
         });
       }
 
-      const correctPassword = await database.doesThisMatchPassword(update_object.password, account.password);
+      const correctPassword = await globalUtils.database.doesThisMatchPassword(update_object.password, account.password);
 
         if (!correctPassword) {
           return res.status(400).json({
@@ -144,7 +144,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
         }
 
       if ((update_object.email != account.email || update_object.username != account.username) || (update_object.email != account.email && update_object.username != account.username)) {
-        const correctPassword = await database.doesThisMatchPassword(update_object.password, account.password);
+        const correctPassword = await globalUtils.database.doesThisMatchPassword(update_object.password, account.password);
 
         if (!correctPassword) {
           return res.status(400).json({
@@ -153,10 +153,10 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           })
         }
 
-        const update = await database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
+        const update = await globalUtils.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
 
         if (update) {
-          let account2 = await database.getAccountByEmail(update_object.email);
+          let account2 = await globalUtils.database.getAccountByEmail(update_object.email);
   
           if (account2 != null && account2.token) {
             delete account2.settings;
@@ -171,7 +171,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           }
         }
       } else if (update_object.new_password != null) {
-        const correctPassword = await database.doesThisMatchPassword(update_object.password, account.password);
+        const correctPassword = await globalUtils.database.doesThisMatchPassword(update_object.password, account.password);
 
         if (!correctPassword) {
           return res.status(400).json({
@@ -180,10 +180,10 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           })
         }
 
-        const update = await database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
+        const update = await globalUtils.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
 
         if (update) {
-          let account2 = await database.getAccountByEmail(update_object.email);
+          let account2 = await globalUtils.database.getAccountByEmail(update_object.email);
   
           if (account2 != null && account2.token) {
             delete account2.settings;
@@ -254,7 +254,7 @@ router.patch("/settings", async (req, res) => {
       });
     }
 
-    const attempt = await database.updateSettings(account.id, new_settings);
+    const attempt = await globalUtils.database.updateSettings(account.id, new_settings);
 
     if (attempt) {
       const settings = new_settings;

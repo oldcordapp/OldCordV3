@@ -14,11 +14,57 @@ const { assetsMiddleware, clientMiddleware } = require('./helpers/middlewares');
 const router = require('./api/index');
 const Jimp = require('jimp');
 const dispatcher = require('./helpers/dispatcher');
+const permissions = require('./helpers/permissions');
 const config = globalUtils.config;
 const cache = new NodeCache({ stdTTL: 600, checkPeriod: 120 });
 const app = express();
 
 app.set('trust proxy', 1);
+
+if (config.use_same_port) {
+    if (config.use_wss && config.key_path != "" && config.cert_path != "") {
+        let server = https.createServer({
+            cert: fs.readFileSync(config.cert_path),
+            key: fs.readFileSync(config.key_path)
+        });
+
+        gateway.setDispatcher(dispatcher);
+        gateway.ready(server);
+
+        database.setupDatabase();
+        globalUtils.setupShit(database, permissions);
+
+        server.listen(config.port, () => {
+            console.log("[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online!");
+        });
+    
+        server.on('request', app);
+    } else {
+        let server = createServer();
+
+        gateway.setDispatcher(dispatcher);
+        gateway.ready(server);
+
+        database.setupDatabase();
+        globalUtils.setupShit(database, permissions);
+
+        server.listen(config.port, () => {
+            console.log("[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online!");
+        })
+    
+        server.on('request', app);
+    }
+} else {
+    gateway.setDispatcher(dispatcher);
+    gateway.regularReady(config.ws_port);
+
+    database.setupDatabase();
+    globalUtils.setupShit(database, permissions);
+
+    app.listen(config.port, () => {
+        console.log(`[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online! Gateway port: ${config.ws_port} - HTTP port: ${config.port}`);
+    });
+}
 
 app.use(express.json({
     limit: '10mb',
@@ -189,45 +235,3 @@ app.get("*", (req, res) => {
 });
 
 app.use(clientMiddleware);
-
-if (config.use_same_port) {
-    if (config.use_wss && config.key_path != "" && config.cert_path != "") {
-        let server = https.createServer({
-            cert: fs.readFileSync(config.cert_path),
-            key: fs.readFileSync(config.key_path)
-        });
-
-        gateway.setDispatcher(dispatcher);
-        gateway.ready(server);
-
-        server.listen(config.port, () => {
-            database.setupDatabase();
-
-            console.log("[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online!");
-        })
-    
-        server.on('request', app);
-    } else {
-        let server = createServer();
-
-        gateway.setDispatcher(dispatcher);
-        gateway.ready(server);
-
-        server.listen(config.port, () => {
-            database.setupDatabase();
-
-            console.log("[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online!");
-        })
-    
-        server.on('request', app);
-    }
-} else {
-    gateway.setDispatcher(dispatcher);
-    gateway.regularReady(config.ws_port);
-
-    app.listen(config.port, () => {
-        database.setupDatabase();
-
-        console.log(`[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online! Gateway port: ${config.ws_port} - HTTP port: ${config.port}`);
-    });
-}
