@@ -2,9 +2,9 @@
 Current code for OldCord (Rewritten) as typescript sucks for this kinda project.
 
 # Credits
-ziad - token generation, permissions, and some middleware references
-noia - everything else
-discord.js - snowflake
+ziad - token generation, permissions, and some middleware references <br>
+noia - everything else <br>
+discord.js - snowflake <br>
 
 # Setup
 Download and setup a postgreSQL server with the database name of your choice.
