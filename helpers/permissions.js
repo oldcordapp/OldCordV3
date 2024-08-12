@@ -16,6 +16,7 @@ const permissions = {
     READ_MESSAGE_HISTORY: 1 << 16,
     MENTION_EVERYONE: 1 << 17,
     CONNECT: 1 << 20,
+    ADD_REACTIONS: 1 << 6,
     SPEAK: 1 << 21,
     MUTE_MEMBERS: 1 << 22,
     DEAFEN_MEMBERS: 1 << 23,

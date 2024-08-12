@@ -1,6 +1,7 @@
 const { logText } = require('./helpers/logger');
 const globalUtils = require('./helpers/globalutils');
 const WebSocket = require('ws').WebSocket;
+const zlib = require('zlib');
 
 let dispatcher;
 
@@ -16,10 +17,23 @@ const gateway = {
     setDispatcher: function (disp) {
         dispatcher = disp; //fucking javascript
     },
-    send: function (socket, data) {
+    send: function (socket, data, supportCompression = false) {
         logText(`Outgoing -> ${JSON.stringify(data)}`, "GATEWAY");
 
         socket.sequence++;
+
+        if (supportCompression) {
+            let method = socket.compression;
+
+            if (method == "zlib-stream") {
+                let buffer = Buffer.from(JSON.stringify(data));
+                let compressed = zlib.deflateSync(buffer);
+
+                socket.send(compressed);
+            } else socket.send(JSON.stringify(data));
+            
+            return;
+        }
 
         socket.send(JSON.stringify(data));
     },
@@ -32,6 +46,21 @@ const gateway = {
 
         server.on("connection", (socket, req) => {
             const cookies = req.headers.cookie;
+            const url = req.url;
+            
+            let encoding = "";
+            let version = "";
+            let compression = "";
+
+            if (url.split('=').length > 3) {
+                encoding = url.split('=')[1];
+                version = url.split('=')[2];
+                compression = url.split('=')[3];
+            }
+
+            if (compression != "") {
+                socket.compression = compression;
+            }
 
             if (!cookies) {
                 socket.close(4000, 'Cookies are required to use the Oldcord gateway.');
@@ -219,25 +248,28 @@ const gateway = {
                                 }, (45 * 1000) + 20 * 1000);
                             },
                             acknowledge: (d) => {
-                                socket.send(JSON.stringify({
+                                gateway.send(socket, {
                                     op: 11,
                                     d: d
-                                }));
+                                }, true);
 
                                 logText(`Acknowledged client heartbeat from ${socket.user.id} (${socket.user.username}#${socket.user.discriminator})`, "GATEWAY");
                             }
                         };
+
+                        let connectedAccounts = await globalUtils.database.getConnectedAccounts(socket.user.id);
+                        let guildSettings = await globalUtils.database.getUsersGuildSettings(socket.user.id);
 
                         gateway.send(socket, {
                             op: 0,
                             s: socket.sequence,
                             t: "READY",
                             d: {
-                                guilds: guilds,
-                                presences: presences,
-                                private_channels: dm_list,
+                                guilds: guilds ?? [],
+                                presences: presences ?? [],
+                                private_channels: dm_list ?? [],
                                 relationships: [],
-                                read_state: read_states,
+                                read_state: read_states ?? [],
                                 tutorial: tutorial,
                                 user: user,
                                 user_settings: socket.user.settings,
@@ -247,13 +279,13 @@ const gateway = {
                                 notes: [],
                                 analytics_token: globalUtils.generateString(20),
                                 experiments: [],
-                                connected_accounts: [],
+                                connected_accounts: connectedAccounts ?? [],
                                 guild_experiments: [],
-                                user_guild_settings: [],
+                                user_guild_settings: guildSettings ?? [],
                                 heartbeat_interval: 45 * 1000,
                                 _trace: ["oldcord-v3"]
                             }
-                        });
+                        }, true);
 
                         gateway.send(socket, {
                             op: 10,
@@ -262,7 +294,7 @@ const gateway = {
                                 heartbeat_interval: 45 * 1000,
                                 _trace: ["oldcord-v3"]
                             }
-                        });
+                        }, true);
 
                         await dispatcher.dispatchPresenceUpdate(user.id, "online", null);
                     } else if (packet.op == 1) {
@@ -348,7 +380,7 @@ const gateway = {
                             gateway.send(socket, {
                                 op: 9,
                                 d: false
-                            }); //Cannot resume
+                            }, true); //Cannot resume
 
                             return;
                         }
@@ -361,7 +393,7 @@ const gateway = {
                             gateway.send(socket, {
                                 op: 9,
                                 d: false
-                            }); //Cannot resume as authentication is invalid
+                            }, true); //Cannot resume as authentication is invalid
 
                             return;
                         }
@@ -373,7 +405,7 @@ const gateway = {
                         gateway.send(socket, {
                             op: 9,
                             d: true
-                        });
+                        }, true);
 
                         let queuedEvents = dispatcher.queuedEvents[session_id];
 
@@ -387,7 +419,7 @@ const gateway = {
                     }
                 }
                 catch(error) {
-                    logText(error.toString(), "error");
+                    logText(error, "error");
 
                     socket.close(4001, 'Invalid payload');
                 }

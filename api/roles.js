@@ -12,14 +12,18 @@ router.param('roleid', async (req, res, next, roleid) => {
     next();
 });
 
+router.get("/:roleid", async (req, res) => {
+    return res.status(200).json(req.role);
+});
+
 router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
     try {
         const sender = req.account;
 
-        if (sender == null || !sender.token) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+        if (sender == null) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -71,7 +75,7 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
             });
         }
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -116,7 +120,7 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
 
         return res.status(204).send();
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -157,7 +161,7 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
 
         return res.status(200).json(role);
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,

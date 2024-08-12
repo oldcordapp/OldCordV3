@@ -9,6 +9,7 @@ const multer = require('multer');
 const sizeOf = require('image-size');
 const permissions = require('../helpers/permissions');
 const Snowflake = require('../helpers/snowflake');
+const reactions = require('./reactions');
 
 const upload = multer();
 const router = express.Router({ mergeParams: true });
@@ -33,9 +34,9 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
         const creator = req.account;
 
         if (creator == null) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -64,7 +65,7 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
 
         return res.status(200).json(messages);
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
 
         return res.status(500).json({
             code: 500,
@@ -78,9 +79,9 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         const creator = req.account;
 
         if (creator == null) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -255,7 +256,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 if (!req.body.tts) {
                     req.body.tts = false;
                 }
-                
+
                 const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
     
                 if (createMessage == null) {
@@ -271,9 +272,9 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             }
         }
       } catch (error) {
-        console.log(error.toString());
+        console.log(error);
 
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -305,9 +306,9 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
         const channel = req.channel;
 
         if (channel == null) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
             });
         }
 
@@ -362,7 +363,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
         }
         
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -383,9 +384,9 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
         const guy = req.account;
 
         if (guy == null) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -526,7 +527,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
             return res.status(204).send();
         }
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -582,7 +583,7 @@ router.post("/:messageid/ack", rateLimitMiddleware(5, 1000 * 10), rateLimitMiddl
             token: globalUtils.generateToken(guy.id, globalUtils.generateString(20))
         })
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -590,5 +591,7 @@ router.post("/:messageid/ack", rateLimitMiddleware(5, 1000 * 10), rateLimitMiddl
         });
     }
 });
+
+router.put("/:messageid/reactions", reactions);
 
 module.exports = router;

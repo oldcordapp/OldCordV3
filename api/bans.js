@@ -27,7 +27,7 @@ router.get("/", guildPermissionsMiddleware("BAN_MEMBERS"), async (req, res) => {
 
         return res.status(200).json(bans);
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -146,7 +146,7 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
 
         return res.status(204).send();
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -201,7 +201,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimit
 
         return res.status(204).send();
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,

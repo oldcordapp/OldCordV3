@@ -26,16 +26,9 @@ router.get("/:code", async (req, res) => {
             });
         }
 
-        delete invite.temporary;
-        delete invite.revoked;
-        delete invite.uses;
-        delete invite.max_uses;
-        delete invite.max_age;
-        delete invite.xkcdpass;
-
         return res.status(200).json(invite);
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
 
         return res.status(500).json({
             code: 500,
@@ -49,9 +42,9 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
         const sender = req.account;
 
         if (!sender) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -63,8 +56,6 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
                 message: "Unknown Invite"
             });
         }
-
-        console.log(invite);
 
         const channel = await globalUtils.database.getChannelById(invite.channel.id);
 
@@ -104,7 +95,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
 
         return res.status(204).send();
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
 
         return res.status(500).json({
             code: 500,
@@ -141,14 +132,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
                 message: "Unknown Invite"
             });
         }
-
-        delete invite.temporary;
-        delete invite.revoked;
-        delete invite.uses;
-        delete invite.max_uses;
-        delete invite.max_age;
-        delete invite.xkcdpass;
-
+        
         const joinAttempt = await globalUtils.database.useInvite(req.params.code, sender.id);
 
         if (!joinAttempt) {
@@ -185,7 +169,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
 
         return res.status(200).send(invite);
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
 
         return res.status(500).json({
             code: 500,

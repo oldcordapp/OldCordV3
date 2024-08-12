@@ -1,12 +1,17 @@
 const express = require('express');
 const globalUtils = require('../../helpers/globalutils');
 const dispatcher = require('../../helpers/dispatcher');
-const { rateLimitMiddleware } = require('../../helpers/middlewares');
+const { rateLimitMiddleware, guildMiddleware } = require('../../helpers/middlewares');
 const { logText } = require('../../helpers/logger');
 const router = express.Router();
+const relationships = require('./relationships');
 
-router.get("/relationships", async (req, res) => {
-  return res.status(200).json([]);
+router.use("/relationships", relationships);
+
+router.param('guildid', async (req, _, next, guildid) => {
+    req.guild = await globalUtils.database.getGuildById(guildid);
+
+    next();
 });
 
 router.get("/", async (req, res) => {
@@ -14,10 +19,10 @@ router.get("/", async (req, res) => {
     let account = req.account;
 
     if (!account) {
-      return res.status(500).json({
-        code: 500,
-        message: "Internal Server Error"
-      });
+        return res.status(401).json({
+            code: 401,
+            message: "Unauthorized"
+        });
     }
 
     delete account.settings;
@@ -27,7 +32,7 @@ router.get("/", async (req, res) => {
     return res.status(200).json(account);
   }
   catch (error) {
-    logText(error.toString(), "error");
+    logText(error, "error");
 
     return res.status(500).json({
       code: 500,
@@ -41,10 +46,10 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
     let account = req.account;
 
     if (!account) {
-      return res.status(500).json({
-        code: 500,
-        message: "Internal Server Error"
-      });
+        return res.status(401).json({
+            code: 401,
+            message: "Unauthorized"
+        });
     }
 
     delete account.settings;
@@ -208,9 +213,9 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
 
     return res.status(200).json(account);
   } catch (error) {
-    logText(error.toString(), "error");
+    logText(error, "error");
 
-    console.log(error.toString());
+    console.log(error);
 
     return res.status(500).json({
       code: 500,
@@ -224,10 +229,10 @@ router.patch("/settings", async (req, res) => {
     let account = req.account;
 
     if (!account) {
-      return res.status(500).json({
-        code: 500,
-        message: "Internal Server Error"
-      }); 
+        return res.status(401).json({
+            code: 401,
+            message: "Unauthorized"
+        });
     }
 
     let new_settings = account.settings;
@@ -239,19 +244,12 @@ router.patch("/settings", async (req, res) => {
       });
     }
 
-    for (var key in req.body) {
-      var value = req.body[key];
+    //"show_current_game":false,"inline_attachment_media":false,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"offline"
 
-      if (new_settings[key]) {
-        new_settings[key] = value;
-      }
-    }
-
-    if (JSON.stringify(new_settings).length > 1000) {
-      return res.status(500).json({
-        code: 500,
-        message: "Internal Server Error"
-      });
+    for (let key in req.body) {
+        if (new_settings.hasOwnProperty(key)) {
+          new_settings[key] = req.body[key];
+        }
     }
 
     const attempt = await globalUtils.database.updateSettings(account.id, new_settings);
@@ -269,13 +267,299 @@ router.patch("/settings", async (req, res) => {
       })
     }
   } catch (error) {
-    logText(error.toString(), "error");
+    logText(error, "error");
 
     return res.status(500).json({
       code: 500,
       message: "Internal Server Error"
     })
   }
+});
+
+router.get("/connections", async (req, res) => {
+    try {
+        let account = req.account;
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        let connectedAccounts = await globalUtils.database.getConnectedAccounts(account.id);
+
+        return res.status(200).json(connectedAccounts);
+    }
+    catch(error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        })
+    }
+});
+
+router.delete("/connections/:platform/:connectionid", async (req, res) => {
+    try {
+        let account = req.account;
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        let platform = req.params.platform;
+        let connectionid = req.params.connectionid;
+
+        let config = globalUtils.config.integration_config.find(x => x.platform == platform);
+
+        if (!config) {
+            return res.status(400).json({
+                code: 400,
+                message: "This platform is not currently supported by Oldcord. Try again later."
+            });
+        }
+
+        let connection = await globalUtils.database.getConnectionById(connectionid);
+
+        if (connection == null) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Connection"
+            });
+        }
+
+        let tryRemove = await globalUtils.database.removeConnectedAccount(connection.id);
+
+        if (!tryRemove) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+
+        await dispatcher.dispatchEventTo(account.token, "USER_CONNECTIONS_UPDATE", {});
+
+        let connectedAccounts = await globalUtils.database.getConnectedAccounts(account.id);
+
+        return res.status(200).json(connectedAccounts);
+    }
+    catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        })
+    }
+});
+
+router.patch("/connections/:platform/:connectionid", async (req, res) => {
+    try {
+        let account = req.account;
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        let platform = req.params.platform;
+        let connectionid = req.params.connectionid;
+
+        let config = globalUtils.config.integration_config.find(x => x.platform == platform);
+
+        if (!config) {
+            return res.status(400).json({
+                code: 400,
+                message: "This platform is not currently supported by Oldcord. Try again later."
+            });
+        }
+
+        let connection = await globalUtils.database.getConnectionById(connectionid);
+
+        if (connection == null) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Connection"
+            });
+        }
+
+        let tryUpdate = await globalUtils.database.updateConnectedAccount(connection.id, req.body.visibility == 1 ? true : false);
+
+        if (!tryUpdate) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+
+        await dispatcher.dispatchEventTo(account.token, "USER_CONNECTIONS_UPDATE", {});
+
+        let connectedAccounts = await globalUtils.database.getConnectedAccounts(account.id);
+
+        return res.status(200).json(connectedAccounts);
+    }
+    catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        })
+    }
+});
+
+//Leaving guilds in late 2016
+router.delete("/guilds/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+    try {
+        try {
+            const user = req.account;
+    
+            if (!user) {
+                return res.status(401).json({
+                    code: 401,
+                    message: "Unauthorized"
+                });
+            }
+    
+            const guild = req.guild;
+    
+            if (!guild) {
+                return res.status(404).json({
+                    code: 404,
+                    message: "Unknown Guild"
+                });
+            }
+    
+            if (guild.owner_id == user.id) {
+                await dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
+                    id: req.params.guildid
+                });
+                
+                const del = await globalUtils.database.deleteGuild(guild.id);
+    
+                if (!del) {
+                    return res.status(500).json({
+                        code: 500,
+                        message: "Internal Server Error"
+                    });
+                }
+    
+                return res.status(204).send();
+            } else {
+                const leave = await globalUtils.database.leaveGuild(user.id, guild.id);
+    
+                if (!leave) {
+                    return res.status(500).json({
+                        code: 500,
+                        message: "Internal Server Error"
+                    });
+                }
+    
+                dispatcher.dispatchEventTo(user.token, "GUILD_DELETE", {
+                    id: req.params.guildid
+                });
+    
+                await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
+                    type: "leave",
+                    roles: [],
+                    user: {
+                        username: user.username,
+                        discriminator: user.discriminator,
+                        id: user.id,
+                        avatar: user.avatar
+                    },
+                    guild_id: req.params.guildid
+                })
+    
+                return res.status(204).send();
+            }
+        } catch(error) {
+            logText(error, "error");
+        
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+    } catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        })
+    }
+});
+
+router.patch("/guilds/:guildid/settings", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+    try {
+        const user = req.account;
+    
+        if (!user) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        const guild = req.guild;
+
+        if (!guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });
+        }
+
+        let usersGuildSettings = await globalUtils.database.getUsersGuildSettings(user.id);
+        let guildSettings = usersGuildSettings.find(x => x.guild_id == guild.id);
+
+        if (!guildSettings) {
+            usersGuildSettings.push({
+                guild_id: guild.id,
+                muted: false,
+                message_notifications: 2, //2 = Nothing, 1 = Only @mentions, 3 = All Messages
+                suppress_everyone: false,
+                mobile_push: false,
+                channel_overrides: {} //channelid: message_notifications: 0 - (0 = all, 1 = mentions, 2 = nothing), muted: false (or true)
+            });
+        }
+
+        guildSettings = usersGuildSettings.find(x => x.guild_id == guild.id);
+
+        for (let key in req.body) {
+            let value = req.body[key];
+
+            if (guildSettings.hasOwnProperty(key)) {
+                guildSettings[key] = value;
+            }
+        }
+
+        let updateSettings = await globalUtils.database.setUsersGuildSettings(user.id, usersGuildSettings);
+
+        if (!updateSettings) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+
+        return res.status(204).send();
+    } catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        })
+    }
 });
 
 module.exports = router;

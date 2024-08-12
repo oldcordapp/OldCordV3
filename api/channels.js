@@ -74,10 +74,10 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
     try {
         const typer = req.account;
 
-        if (!typer || !typer.token) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+        if (!typer) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -130,7 +130,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
             return res.status(204).send();
         }
       } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -143,10 +143,10 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
     try {
         const sender = req.account;
 
-        if (!sender || !sender || !sender.token) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+        if (!sender) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -200,7 +200,7 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
 
         return res.status(200).json(channel);
       } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -213,10 +213,10 @@ router.get("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewar
     try {
         const sender = req.account;
 
-        if (!sender || !sender || !sender.token) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+        if (!sender) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -224,7 +224,7 @@ router.get("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewar
 
         return res.status(200).json(invites);
       } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -237,10 +237,10 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
     try {
         const sender = req.account;
 
-        if (!sender || !sender.token) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+        if (!sender) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -288,7 +288,7 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
 
         return res.status(200).json(invite);
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -303,10 +303,10 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
     try {
         const sender = req.account;
 
-        if (!sender || !sender.token) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+        if (!sender) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
     
@@ -438,7 +438,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
 
         return res.status(204).send();
     } catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -452,9 +452,9 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
         const sender = req.account;
 
         if (!sender || !sender.token) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -518,7 +518,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
 
         return res.status(204).send();
     } catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -531,10 +531,10 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
     try {
         const sender = req.account;
 
-        if (!sender || !sender.token) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+        if (!sender) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -603,7 +603,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
             return res.status(204).send();
         }
     } catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,

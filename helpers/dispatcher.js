@@ -47,13 +47,13 @@ const dispatcher = {
 
         socket.sequence++;
 
-        socket.send(JSON.stringify({
+        gateway.send(socket, {
             op: 0,
             t: type,
             s: socket.sequence,
             d: payload
-        }));
-
+        }, true);
+        
         return true;
     },
     dispatchPresenceUpdate: async (user_id, new_status, game_id) => {
@@ -208,7 +208,7 @@ const dispatcher = {
                 t: type,
                 s: socket.sequence,
                 d: payload
-            });
+            }, true);
         }
 
         logText(`[DISPATCHER] (Event to all perms) -> ${type}`, 'debug');

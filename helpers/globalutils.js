@@ -78,7 +78,7 @@ const globalUtils = {
             return year.includes("2015") ? false : date.getMonth() >= 6;
         }
         catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return true;
         }
@@ -106,23 +106,23 @@ const globalUtils = {
     getRegions: () => {
         return [{
             id: "sydney",
-            name: "2015"
+            name: "Up to 2016"
         }, {
             id: "london",
-            name: "2016"
+            name: "Up to 2017"
         }, {
             id: "tokyo",
-            name: "2017"
+            name: "Up to 2018"
+        }, {
+            id: "singapore",
+            name: "Up to 2019"
         }, {
             id: "amsterdam",
-            name: "2018"
-        }, {
-            id: "frankfurt",
-            name: "2019"
+            name: "Everything"
         }];
     },
     serverRegionToYear: (region) => {
-        return globalUtils.getRegions().find(x => x.id.toLowerCase() == region) ? globalUtils.getRegions().find(x => x.id.toLowerCase() == region).name : "2016"
+        return globalUtils.getRegions().find(x => x.id.toLowerCase() == region) ? globalUtils.getRegions().find(x => x.id.toLowerCase() == region).name : "amsterdam"
     },
     generateToken: (user_id, password_hash) => {
         //sorry ziad but im stealing this from hummus source, love you

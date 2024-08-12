@@ -57,7 +57,7 @@ const embedder = {
                 }
             };
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }

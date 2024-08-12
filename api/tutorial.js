@@ -7,9 +7,9 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     if (!req.account) {
-        return res.status(500).json({
-            code: 500,
-            message: "Internal Server Error"
+        return res.status(401).json({
+            code: 401,
+            message: "Unauthorized"
         });
     }
     
@@ -24,7 +24,7 @@ router.get("/", async (req, res) => {
 
     return res.status(200).json(tutorial);
   } catch (error) {
-    logText(error.toString(), "error");
+    logText(error, "error");
 
     return res.status(500).json({
       code: 500,
@@ -36,9 +36,9 @@ router.get("/", async (req, res) => {
 router.post("/indicators/suppress", async (req, res) => {
     try {
         if (!req.account) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -71,7 +71,7 @@ router.post("/indicators/suppress", async (req, res) => {
             indicators_confirmed: confirmed
         });
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,
@@ -83,9 +83,9 @@ router.post("/indicators/suppress", async (req, res) => {
 router.put("/indicators/:indicator", async (req, res) => {
     try {
         if (!req.account) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -140,7 +140,7 @@ router.put("/indicators/:indicator", async (req, res) => {
             indicators_confirmed: confirmed
         });
     } catch (error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
           code: 500,

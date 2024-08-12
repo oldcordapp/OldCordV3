@@ -80,7 +80,7 @@ const database = {
     
             return rows;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
@@ -98,8 +98,24 @@ const database = {
                 verified INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT NULL,
                 avatar TEXT DEFAULT NULL,
-                settings TEXT DEFAULT '{"show_current_game":false,"inline_attachment_media":false,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"offline"}'
-            );`, []); // 4 = Everyone, 3 = Friends of Friends & Server Members, 2 = Friends of Friends, 1 = Server Members, 0 = No one
+                bot INTEGER DEFAULT 0,
+                relationships TEXT DEFAULT '[]',
+                settings TEXT DEFAULT '{"show_current_game":false,"inline_attachment_media":true,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"offline"}',
+                guild_settings TEXT DEFAULT '[]'
+           );`, []); // 4 = Everyone, 3 = Friends of Friends & Server Members, 2 = Friends of Friends, 1 = Server Members, 0 = No one
+
+            await database.runQuery(`
+            CREATE TABLE IF NOT EXISTS connected_accounts (
+                user_id TEXT,
+                account_id TEXT,
+                username TEXT,
+                visibility INTEGER DEFAULT 0,
+                friendSync INTEGER DEFAULT 1,
+                integrations TEXT DEFAULT '[]',
+                revoked INTEGER DEFAULT 0,
+                connected_at TEXT DEFAULT NULL,
+                platform TEXT DEFAULT NULL
+           );`, []);
 
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS channels (
@@ -111,14 +127,7 @@ const database = {
                 permission_overwrites TEXT,
                 name TEXT,
                 position INTEGER DEFAULT 0
-            );`, []); //type 0, aka "text", 1 for "dm", 2 for "voice" - and so on and so forth
-
-            await database.runQuery(`
-            CREATE TABLE IF NOT EXISTS relationships (
-                user_id TEXT,
-                relationship_id TEXT,
-                type INTEGER DEFAULT 0
-            );`, []); //type 0 for none, 1 for friend, 2 for blocked, 3 for pending incoming, 4 for pending outgoing
+           );`, []); //type 0, aka "text", 1 for "dm", 2 for "voice" - and so on and so forth
 
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS dm_channels (
@@ -127,13 +136,13 @@ const database = {
                 author_of_channel_id TEXT,
                 receiver_of_channel_id TEXT,
                 is_closed INTEGER DEFAULT 0
-            );`, []);
+           );`, []);
 
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS permissions (
                 channel_id TEXT,
                 overwrite TEXT DEFAULT NULL
-            );`, []);
+           );`, []);
 
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS guilds (
@@ -144,8 +153,9 @@ const database = {
                 owner_id TEXT,
                 afk_channel_id TEXT,
                 afk_timeout INTEGER DEFAULT 300,
-                creation_date TEXT
-            );`, []);
+                creation_date TEXT,
+                exclusions TEXT DEFAULT '[]'
+           );`, []);
 
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS roles (
@@ -157,7 +167,7 @@ const database = {
                 mentionable INTEGER DEFAULT 0,
                 permissions INTEGER DEFAULT 104193089,
                 position INTEGER DEFAULT 0
-            );`, []);
+           );`, []);
 
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS members (
@@ -168,7 +178,7 @@ const database = {
                 joined_at TEXT DEFAULT NULL,
                 deaf INTEGER DEFAULT 0,
                 mute INTEGER DEFAULT 0
-            );`, []);
+           );`, []);
 
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS invites (
@@ -183,7 +193,7 @@ const database = {
                 maxAge INTEGER DEFAULT 0,
                 xkcdpass INTEGER DEFAULT 0,
                 createdAt TEXT
-            );`, []);
+           );`, []);
 
             await database.runQuery(`CREATE TABLE IF NOT EXISTS messages (
                 guild_id TEXT,
@@ -196,8 +206,16 @@ const database = {
                 nonce TEXT,
                 timestamp TEXT,
                 tts INTEGER DEFAULT 0,
-                embeds_obj TEXT DEFAULT NULL
-            );`, []);
+                embeds_obj TEXT DEFAULT NULL,
+                reactions TEXT DEFAULT '[]'
+           );`, []);
+
+            await database.runQuery(`CREATE TABLE IF NOT EXISTS reactions (
+                message_id TEXT,
+                user_id TEXT,
+                emoji_id TEXT,
+                emoji_name TEXT
+           );`, []);
 
             await database.runQuery(`CREATE TABLE IF NOT EXISTS acknowledgements (
                 user_id TEXT,
@@ -205,7 +223,7 @@ const database = {
                 message_id TEXT,
                 timestamp TEXT,
                 mention_count INTEGER DEFAULT 0
-            );`, []);
+           );`, []);
 
             await database.runQuery(`CREATE TABLE IF NOT EXISTS attachments (
                 attachment_id TEXT,
@@ -215,29 +233,29 @@ const database = {
                 width INTEGER,
                 size INTEGER,
                 url TEXT
-            );`, []);
+           );`, []);
 
             await database.runQuery(`CREATE TABLE IF NOT EXISTS widgets (
                 guild_id TEXT,
                 channel_id TEXT DEFAULT NULL,
                 enabled INTEGER DEFAULT 0
-            );`, []);
+           );`, []);
 
             await database.runQuery(`CREATE TABLE IF NOT EXISTS bans (
                 guild_id TEXT,
                 user_id TEXT
-            );`, []);
+           );`, []);
 
             await database.runQuery(`
                 CREATE TABLE IF NOT EXISTS tutorial (
                 user_id TEXT PRIMARY KEY,
                 indicators_suppressed INTEGER DEFAULT 0,
                 indicators_confirmed TEXT DEFAULT NULL
-            );`, []);
+           );`, []);
 
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
@@ -255,7 +273,7 @@ const database = {
             return 0;
         }
         catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return 0;
         }
@@ -273,12 +291,12 @@ const database = {
             return 0;
         }
         catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return 0;
         }
     },
-    getLatestAcknowledgement: async (user_id , channel_id ) => {
+    getLatestAcknowledgement: async (user_id, channel_id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM acknowledgements WHERE user_id = $1 AND channel_id = $2 ORDER BY timestamp DESC LIMIT 1
@@ -295,12 +313,12 @@ const database = {
             };
         }
         catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    acknowledgeMessage: async (user_id , channel_id , message_id , mention_count) => {
+    acknowledgeMessage: async (user_id, channel_id, message_id, mention_count) => {
         try {
             const date = new Date().toISOString();
 
@@ -310,7 +328,7 @@ const database = {
 
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
@@ -328,7 +346,7 @@ const database = {
             return 0;
         }
         catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return 0;
         }
@@ -351,7 +369,7 @@ const database = {
             return 0;
         }
         catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
     
             return 0;
         }
@@ -374,7 +392,7 @@ const database = {
             return 0;
         }
         catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
     
             return 0;
         }
@@ -397,12 +415,40 @@ const database = {
             return 0;
         }
         catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
     
             return 0;
         }
     },
-    getAccountByEmail: async (email ) => {
+    getUsersGuildSettings: async (user_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM users WHERE id = $1
+            `, [user_id]);
+
+            if (rows != null && rows.length > 0) {
+                return JSON.parse(rows[0].guild_settings);
+            } else {
+                return null;
+            }
+        } catch (error) {  
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    setUsersGuildSettings: async (user_id, new_settings) => {
+        try {
+            await database.runQuery(`UPDATE users SET guild_settings = $1 WHERE id = $2`, [JSON.stringify(new_settings), user_id]);
+
+            return true;
+        } catch (error) {  
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    getAccountByEmail: async (email) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM users WHERE email = $1
@@ -418,6 +464,7 @@ const database = {
                     password: rows[0].password,
                     token: rows[0].token,
                     verified: true,
+                    //bot: rows[0].bot == 1 ? true : false,
                     //verified: rows[0].verified == 1 ? true : false,
                     created_at: rows[0].created_at,
                     settings: JSON.parse(rows[0].settings)
@@ -426,7 +473,7 @@ const database = {
                 return null;
             }
         } catch (error) {  
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
@@ -439,7 +486,7 @@ const database = {
 
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
@@ -452,7 +499,7 @@ const database = {
 
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
@@ -473,6 +520,7 @@ const database = {
                     password: rows[0].password,
                     token: rows[0].token,
                     verified: true,
+                    //bot: rows[0].bot == 1 ? true : false,
                     //verified: rows[0].verified == 1 ? true : false,
                     created_at: rows[0].created_at,
                     settings: JSON.parse(rows[0].settings)
@@ -481,12 +529,12 @@ const database = {
                 return null;
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getAccountsByUsername: async (username ) => {
+    getAccountsByUsername: async (username) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM users WHERE username = $1
@@ -505,6 +553,7 @@ const database = {
                         password: row.password,
                         token: row.token,
                         verified: true,
+                        //bot: rows[0].bot == 1 ? true : false,
                         //verified: rows[0].verified == 1 ? true : false,
                         created_at: row.created_at,
                         settings: JSON.parse(row.settings)
@@ -516,12 +565,12 @@ const database = {
                 return [];
             }
         } catch (error) {  
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    getAccountByUserId: async (id ) => {
+    getAccountByUserId: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM users WHERE id = $1
@@ -536,6 +585,7 @@ const database = {
                     password: rows[0].password,
                     token: rows[0].token,
                     verified: true,
+                    //bot: rows[0].bot == 1 ? true : false,
                     //verified: rows[0].verified == 1 ? true : false,
                     created_at: rows[0].created_at,
                     avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
@@ -545,12 +595,116 @@ const database = {
                 return null;
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getGuildChannels: async (id ) => {
+    getConnectedAccounts: async (user_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM connected_accounts WHERE user_id = $1
+            `, [user_id]);
+
+            if (rows != null && rows.length > 0) {
+                const ret = [];
+
+                for(var row of rows) {
+                    ret.push({
+                        id: row.account_id,
+                        type: row.platform,
+                        name: row.username,
+                        revoked: row.revoked,
+                        integrations: JSON.parse(row.integrations) ?? [],
+                        visibility: row.visibility,
+                        friendSync: row.friendSync
+                    })
+                }
+
+                return ret;
+            } else {
+                return [];
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return [];
+        }
+    },
+    getConnectionById: async (account_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM connected_accounts WHERE account_id = $1
+            `, [account_id]);
+
+            if (rows != null && rows.length > 0) {
+                return {
+                    id: rows[0].account_id,
+                    type: rows[0].platform,
+                    name: rows[0].username,
+                    revoked: rows[0].revoked,
+                    integrations: JSON.parse(rows[0].integrations) ?? [],
+                    visibility: rows[0].visibility,
+                    friendSync: rows[0].friendSync
+                };
+            } else {
+                return null;
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    updateConnectedAccount: async (connection_id, visibility, friendSync = true, integrations = [], revoked = false) => {
+        try {
+            const connection = await database.getConnectionById(connection_id);
+
+            if (connection == null) {
+                return false;
+            }
+
+            await database.runQuery(`UPDATE connected_accounts SET visibility = $1, friendSync = $2, integrations = $3, revoked = $4 WHERE account_id = $5`, [visibility == true ? 1 : 0, friendSync == true ? 1 : 0, JSON.stringify(integrations), revoked == true ? 1 : 0, connection_id]);
+
+            return true;
+        } catch(error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    removeConnectedAccount: async (connection_id) => {
+        try {
+            const connection = await database.getConnectionById(connection_id);
+
+            if (connection == null) {
+                return false;
+            }
+
+            await database.runQuery(`DELETE FROM connected_accounts WHERE account_id = $1`, [connection_id]);
+
+            return true;
+        } catch(error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    addConnectedAccount: async (user_id, platform, id, username) => {
+        try {
+            const date = new Date().toISOString();
+
+            await database.runQuery(`INSERT INTO connected_accounts (user_id, account_id, username, connected_at, platform) VALUES ($1, $2, $3, $4, $5)`, [user_id, id, username, date, platform]);
+
+            return true;
+        }
+        catch (error) {
+           logText(error, "error");
+            
+            return false;
+        }
+    },
+    getGuildChannels: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM channels WHERE guild_id = $1
@@ -579,12 +733,12 @@ const database = {
                 return [];
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    getRoleById: async (id ) => {
+    getRoleById: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM roles WHERE role_id = $1
@@ -604,12 +758,40 @@ const database = {
                 return null;
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getGuildBans: async (id ) => {
+    getRelationshipsByUserId: async(user_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM users WHERE user_id = $1
+            `, [user_id]);
+
+            if (rows != null && rows.length > 0) {
+                return JSON.parse(rows[0].relationships) ?? [];
+            } else {
+                return [];
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return [];
+        }
+    },
+    modifyRelationships: async (user_id, relationships) => {
+        try {   
+            await database.runQuery(`UPDATE users SET relationships = $1 WHERE user_id = $2`, [JSON.stringify(relationships), user_id]);
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    getGuildBans: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM bans WHERE guild_id = $1
@@ -638,12 +820,12 @@ const database = {
                 return [];
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
     
             return [];
         }
     },
-    getGuildRoles: async (id ) => {
+    getGuildRoles: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM roles WHERE guild_id = $1
@@ -665,12 +847,12 @@ const database = {
                 return [];
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    getGuildPresences: async (id ) => {
+    getGuildPresences: async (id) => {
         try {
             const guildMembers = await database.getGuildMembers(id);
 
@@ -699,12 +881,50 @@ const database = {
 
             return ret;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    createChannel: async (guild_id , name , type) => {
+    getMessageReactions: async (message_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM reactions WHERE message_id = $1
+            `, [message_id]);
+
+            if (rows != null && rows.length > 0) {
+                const ret = [];
+
+                for(var row of rows) {
+                    ret.push({
+                        user_id: row.user_id,
+                        emoji: {
+                            id: row.emoji_id,
+                            name: row.emoji_name
+                        }
+                    });
+                }
+
+                return ret;
+            } else {
+                return [];
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return [];
+        }
+    },
+    addEmojiReaction: async (message_id, user_id, encoded_emoji) => {
+        try {
+            await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [channel_id, type, guild_id, 'NULL', '0', 'NULL', name, 0])
+        } catch {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    createChannel: async (guild_id, name, type) => {
         try {
             const channel_id = Snowflake.generate();
 
@@ -718,12 +938,25 @@ const database = {
 
             return channel;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    updateChannel: async (channel_id , channel) => {
+    updateGuildMemberNick: async (guild_id, member_id, new_nick) => {
+        try {
+            let nick = new_nick == null || new_nick.length > 20 ? 'NULL' : new_nick;
+
+            await database.runQuery(`UPDATE members SET nick = $1 WHERE guild_id = $2 AND user_id = $3`, [nick, guild_id, member_id]);
+
+            return true;    
+        } catch(error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    updateChannel: async (channel_id, channel) => {
         try {
             let overwrites  = 'NULL';
 
@@ -739,12 +972,12 @@ const database = {
 
             return true;    
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    getGuildMembers: async (id ) => {
+    getGuildMembers: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM members WHERE guild_id = $1
@@ -777,30 +1010,30 @@ const database = {
                     }
 
                     const user = await database.getAccountByUserId(row.user_id);
-                    
-                    if (user != null) {
-                        delete user.email;
-                        delete user.password;
-                        delete user.token;
-                        delete user.settings;
-                        delete user.verified;
-                        delete user.created_at;
 
-                        let everyoneRole = guild_roles.find(x => x.name == '@everyone');
-
-                        if (everyoneRole != null && !roles.includes(everyoneRole.id)) {
-                            roles.push(everyoneRole.id);
-                        }
-
-                        ret.push({
-                            id: row.user_id,
-                            nick: row.nick == 'NULL' ? null : row.nick,
-                            deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
-                            mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
-                            roles: roles,
-                            user: user
-                        })
+                    if (user == null) {
+                        continue;
                     }
+
+                    let everyoneRole = guild_roles.find(x => x.name == '@everyone');
+
+                    if (everyoneRole != null && !roles.includes(everyoneRole.id)) {
+                        roles.push(everyoneRole.id);
+                    }
+
+                    ret.push({
+                        id: user.id,
+                        nick: row.nick == 'NULL' ? null : row.nick,
+                        deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
+                        mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
+                        roles: roles,
+                        user: {
+                            id: user.id,
+                            username: user.username,
+                            discriminator: user.discriminator,
+                            avatar: user.avatar
+                        }
+                    })
                 }
 
                 return ret;
@@ -808,12 +1041,12 @@ const database = {
                 return [];
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    getDMChannelById: async (id ) => {
+    getDMChannelById: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM dm_channels WHERE id = $1
@@ -831,12 +1064,12 @@ const database = {
                 is_closed: rows[0].is_closed == 1 ? true : false
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    isDMClosed: async (channel_id ) => {
+    isDMClosed: async (channel_id) => {
         try {
             let dmChannel = await database.getDMChannelById(channel_id);
 
@@ -847,18 +1080,18 @@ const database = {
             return dmChannel.is_closed;
         }
         catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    openDMChannel: async (channel_id ) => {
+    openDMChannel: async (channel_id) => {
         try {
             await database.runQuery(`UPDATE dm_channels SET is_closed = $1 WHERE id = $2`, [0, channel_id]);
 
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
@@ -869,12 +1102,12 @@ const database = {
 
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    getGuildMemberById: async (guild_id , id ) => {
+    getGuildMemberById: async (guild_id, id) => {
         try {
             const members = await database.getGuildMembers(guild_id);
 
@@ -888,21 +1121,14 @@ const database = {
                 return null;
             }
 
-            delete member.user.created_at;
-            delete member.user.email;
-            delete member.user.password;
-            delete member.user.settings;
-            delete member.user.token;
-            delete member.user.verified; // just in case
-
             return member;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getUsersMessagesInGuild: async (guild_id , author_id ) => {
+    getUsersMessagesInGuild: async (guild_id, author_id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM messages WHERE author_id = $1 AND guild_id = $2
@@ -924,12 +1150,12 @@ const database = {
 
             return ret;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    getMessageById: async (id ) => {
+    getMessageById: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM messages WHERE message_id = $1
@@ -944,13 +1170,6 @@ const database = {
             if (author == null) {
                 return null;
             }
-
-            delete author.created_at;
-            delete author.settings;
-            delete author.token;
-            delete author.email;
-            delete author.password;
-            delete author.verified;
 
             const mentions = [];
             const mention_ids = [];
@@ -972,14 +1191,12 @@ const database = {
                     const mention = await database.getAccountByUserId(mention_id);
 
                     if (mention != null) {
-                        delete mention.created_at;
-                        delete mention.settings;
-                        delete mention.token;
-                        delete mention.email;
-                        delete mention.password;
-                        delete mention.verified;
-
-                        mentions.push(mention);
+                        mentions.push({
+                            id: mention.id,
+                            username: mention.username,
+                            discriminator: mention.discriminator,
+                            avatar: mention.avatar
+                        });
                     }
                 }
             }
@@ -1008,7 +1225,12 @@ const database = {
                 id: rows[0].message_id,
                 content: rows[0].content,
                 channel_id: rows[0].channel_id,
-                author: author,
+                author: {
+                    id: author.id,
+                    username: author.username,
+                    discriminator: author.discriminator,
+                    avatar: author.avatar
+                },
                 attachments: messageAttachments,
                 embeds: rows[0].embeds_obj == 'NULL' ? [] : JSON.parse(rows[0].embeds_obj),
                 mentions: mentions,
@@ -1020,12 +1242,12 @@ const database = {
                 tts: rows[0].tts == 1 ? true : false
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getDMChannelMessages: async (id , limit, before_id) => {
+    getDMChannelMessages: async (id, limit, before_id) => {
         try {
             let query = `SELECT * FROM messages WHERE channel_id = $1 `;
             const params = [id];
@@ -1059,14 +1281,14 @@ const database = {
 
             return ret;
         } catch (error) {
-            console.log(error.toString());
+            console.log(error);
 
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    getChannelMessages: async (id , limit, before_id, after_id) => {
+    getChannelMessages: async (id, limit, before_id, after_id) => {
         try {
             let query = `SELECT * FROM messages WHERE channel_id = $1 `;
             const params = [id];
@@ -1103,14 +1325,14 @@ const database = {
 
             return ret;
         } catch (error) {
-            console.log(error.toString());
+            console.log(error);
 
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    getChannelById: async (id ) => {
+    getChannelById: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM channels WHERE id = $1
@@ -1160,12 +1382,12 @@ const database = {
                 position: rows[0].position
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getGuildById: async (id ) => {
+    getGuildById: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM guilds WHERE id = $1
@@ -1223,18 +1445,19 @@ const database = {
                 afk_channel_id: rows[0].afk_channel_id == 'NULL' ? null : rows[0].afk_channel_id,
                 afk_timeout: rows[0].afk_timeout,
                 channels: channels,
+                exclusions: rows[0].exclusions ? JSON.parse(rows[0].exclusions) : [],
                 members: members,
                 roles: roles,
                 presences: presences,
                 voice_states: []
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getUsersGuilds: async (id ) => {
+    getUsersGuilds: async (id) => {
         try {
             const guilds = [];
             const members = await database.runQuery(`
@@ -1263,12 +1486,12 @@ const database = {
                 return [];
             }
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    updateGuildWidget: async (guild_id , channel_id  , enabled) => {
+    updateGuildWidget: async (guild_id, channel_id , enabled) => {
         try {
             if (channel_id == null) {
                 channel_id = 'NULL'
@@ -1278,12 +1501,12 @@ const database = {
 
             return true;    
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    getGuildWidget: async (guild_id ) => {
+    getGuildWidget: async (guild_id) => {
         try {
             const rows = await database.runQuery(`SELECT * FROM widgets WHERE guild_id = $1`, [guild_id]);
 
@@ -1296,12 +1519,12 @@ const database = {
                 enabled: rows[0].enabled == 1 ? true : false,
             }
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getChannelPermissionOverwrites: async (channel_id ) => {
+    getChannelPermissionOverwrites: async (channel_id) => {
         try {
             const channel = await database.getChannelById(channel_id);
 
@@ -1315,12 +1538,12 @@ const database = {
 
             return channel.permission_overwrites;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    getInvite: async (code ) => {
+    getInvite: async (code) => {
         try {
             const rows = await database.runQuery(`SELECT * FROM invites WHERE code = $1`, [code]);
 
@@ -1346,48 +1569,43 @@ const database = {
                 return null;
             }
 
-            delete guy.created_at;
-            delete guy.email;
-            delete guy.password;
-            delete guy.token;
-            delete guy.settings;
-            delete guy.verified;
-            delete guild.afk_channel_id;
-            delete guild.afk_timeout;
-            delete guild.channels;
-            delete guild.joined_at;
-            delete guild.members;
-            delete guild.presences;
-            delete guild.region;
-            delete guild.roles;
-            delete guild.voice_states;
-            delete channel.last_message_id;
-            delete channel.permission_overwrites;
-            delete channel.position;
-            delete channel.topic;
-
             return {
                 code: rows[0].code,
                 temporary: rows[0].temporary == 1 ? true : false,
                 revoked: rows[0].revoked == 1 ? true : false,
-                inviter: guy,
+                inviter: {
+                    id: guy.id,
+                    username: guy.username,
+                    discriminator: guy.discriminator,
+                    avatar: guy.avatar
+                },
                 max_age: rows[0].maxage,
                 max_uses: rows[0].maxuses,
                 uses: rows[0].uses,
-                guild: guild,
-                channel: channel
-            } //                xkcdpass: rows[0].xkcdpass == 1 ? true : false, - bugs stuff
+                guild: {
+                    id: guild.id,
+                    name: guild.name,
+                    icon: guild.icon,
+                    owner_id: guild.owner_id
+                },
+                channel: {
+                    id: channel.id,
+                    name: channel.name,
+                    guild_id: channel.guild_id,
+                    type: channel.type
+                }
+            } 
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    isBannedFromGuild: async (guild_id , user_id ) => {
+    isBannedFromGuild: async (guild_id, user_id) => {
         try {
             const rows = await database.runQuery(`
-                SELECT * FROM bans WHERE user_id = $1
-            `, [user_id]);
+                SELECT * FROM bans WHERE user_id = $1 AND guild_id = $2
+            `, [user_id, guild_id]);
 
             if (rows == null || rows.length == 0) {
                 return false;
@@ -1395,12 +1613,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    useInvite: async(code , user_id ) => {
+    useInvite: async(code, user_id) => {
         try {
             const invite = await database.getInvite(code);
 
@@ -1444,12 +1662,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    clearRoles: async (guild_id , user_id ) => {
+    clearRoles: async (guild_id, user_id) => {
         try {
             const member = await database.getGuildMemberById(guild_id, user_id);
 
@@ -1465,12 +1683,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    addRole: async (guild_id , role_id , user_id ) => {
+    addRole: async (guild_id, role_id, user_id) => {
         try {
             const role = await database.getRoleById(role_id);
 
@@ -1523,12 +1741,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    joinGuild: async (user_id , guild_id ) => {
+    joinGuild: async (user_id, guild_id) => {
         try {
             const guild = await database.getGuildById(guild_id);
 
@@ -1566,12 +1784,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    getChannelInvites: async (channel_id ) => {
+    getChannelInvites: async (channel_id) => {
         try {
             const rows = await database.runQuery(`SELECT * FROM invites WHERE channel_id = $1`, [channel_id]);
 
@@ -1591,12 +1809,12 @@ const database = {
 
             return ret;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
   
             return [];
         }
     },
-    deleteInvite: async (code ) => {
+    deleteInvite: async (code) => {
         try {
             const invite = await database.getInvite(code);
 
@@ -1608,12 +1826,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    getGuildInvites: async (guild_id ) => {
+    getGuildInvites: async (guild_id) => {
         try {
             const rows = await database.runQuery(`SELECT * FROM invites WHERE guild_id = $1`, [guild_id]);
 
@@ -1633,12 +1851,12 @@ const database = {
 
             return ret;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return [];
         }
     },
-    createInvite: async (guild_id , channel_id , inviter_id , temporary, maxUses, maxAge, xkcdpass, force_regenerate) => {
+    createInvite: async (guild_id, channel_id, inviter_id, temporary, maxUses, maxAge, xkcdpass, force_regenerate) => {
         try {
             const guild = await database.getGuildById(guild_id);
 
@@ -1683,6 +1901,12 @@ const database = {
                     return invite;
                 }
             }
+
+            if (maxAge != 0) {
+                setTimeout(async () => {
+                    await database.deleteInvite(code);
+                }, maxAge * 1000); //maxAge = seconds * 1000 = milliseconds
+            }
             
             await database.runQuery(`INSERT INTO invites (guild_id, channel_id, code, temporary, revoked, inviter_id, uses, maxuses, maxage, xkcdpass, createdat) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [guild_id, channel_id, code, temporary == true ? 1 : 0, 0, inviter_id, 0, maxUses, maxAge, xkcdpass == true ? 1 : 0, date]);
 
@@ -1694,12 +1918,12 @@ const database = {
     
             return invite;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getTutorial: async (user_id ) => {
+    getTutorial: async (user_id) => {
         try {
             const tut = await database.runQuery(`SELECT * FROM tutorial WHERE user_id = $1`, [user_id]);
 
@@ -1720,12 +1944,12 @@ const database = {
                 return null;
             }
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    getDMChannels: async (user_id ) => {
+    getDMChannels: async (user_id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM dm_channels WHERE author_of_channel_id = $1 OR receiver_of_channel_id = $2
@@ -1749,11 +1973,11 @@ const database = {
                 return [];
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
             return [];
         }
     },
-    updateSettings: async (user_id , new_settings ) => {
+    updateSettings: async (user_id, new_settings) => {
         try {
             await database.runQuery(`
                 UPDATE users SET settings = $1 WHERE id = $2
@@ -1761,23 +1985,23 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    deleteRole: async (role_id ) => {
+    deleteRole: async (role_id) => {
         try {
             await database.runQuery(`DELETE FROM roles WHERE role_id = $1`, [role_id]);
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    createDMChannel: async (sender_id , recipient_id ) => {
+    createDMChannel: async (sender_id, recipient_id) => {
         try {
             const channel_id = Snowflake.generate();
 
@@ -1787,12 +2011,12 @@ const database = {
 
             return channel;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    createRole: async (guild_id , name , permissions, position) => {
+    createRole: async (guild_id, name, permissions, position) => {
         try {
             const role_id = Snowflake.generate();
 
@@ -1807,12 +2031,12 @@ const database = {
 
             return role;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    updateRole: async (role_id , name , permissions, position ) => {
+    updateRole: async (role_id, name, permissions, position) => {
         try {
             if (position != null) {
                 await database.runQuery(`UPDATE roles SET name = $1, permissions = $2, position = $3 WHERE role_id = $4`, [name, permissions, position, role_id]);
@@ -1822,12 +2046,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    updateTutorial: async (user_id , indicators_suppressed, indicators_confirmed) => {
+    updateTutorial: async (user_id, indicators_suppressed, indicators_confirmed) => {
         try {
             let indicator_confirm = "";
 
@@ -1845,12 +2069,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    deleteChannelPermissionOverwrite: async (channel_id , overwrite) => {
+    deleteChannelPermissionOverwrite: async (channel_id, overwrite) => {
         try {
             let current_overwrites = await database.getChannelPermissionOverwrites(channel_id);
 
@@ -1870,12 +2094,12 @@ const database = {
 
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    updateChannelPermissionOverwrites: async (channel_id , overwrites) => {
+    updateChannelPermissionOverwrites: async (channel_id, overwrites) => {
         try {
             let current_overwrites = await database.getChannelPermissionOverwrites(channel_id);
 
@@ -1898,23 +2122,23 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    leaveGuild: async (user_id , guild_id ) => {
+    leaveGuild: async (user_id, guild_id) => {
         try {
             await database.runQuery(`DELETE FROM members WHERE guild_id = $1 AND user_id = $2`, [guild_id, user_id]);
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    deleteChannel: async (channel_id ) => {
+    deleteChannel: async (channel_id) => {
         try {
             await database.runQuery(`DELETE FROM invites WHERE channel_id = $1`, [channel_id]);
             await database.runQuery(`DELETE FROM messages WHERE channel_id = $1`, [channel_id]);
@@ -1923,12 +2147,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    deleteMessage: async (message_id ) => {
+    deleteMessage: async (message_id) => {
         try {
             const message = await database.getMessageById(message_id);
 
@@ -1956,12 +2180,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    deleteGuild: async (guild_id ) => {
+    deleteGuild: async (guild_id) => {
         try {
             await database.runQuery(`DELETE FROM guilds WHERE id = $1`, [guild_id]);
 
@@ -1975,12 +2199,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    createMessage: async (guild_id  , channel_id , author_id , content , nonce , attachment, tts) => {
+    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts) => {
         try {
             const id = Snowflake.generate();
             const date = new Date().toISOString();
@@ -2035,14 +2259,14 @@ const database = {
 
             return message;
         } catch(error) {
-            console.log(error.toString());
+            console.log(error);
 
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    updateGuild: async (guild_id , afk_channel_id  , afk_timeout, icon  , name , region ) => {
+    updateGuild: async (guild_id, afk_channel_id , afk_timeout, icon , name, region) => {
         try {
             let send_icon  = 'NULL';
 
@@ -2079,12 +2303,12 @@ const database = {
 
             return true;
         } catch(error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    createGuild: async (owner_id , icon  , name , region  ) => {
+    createGuild: async (owner_id, icon , name, region, exclusions) => {
         try {
             const id = Snowflake.generate();
             const date = new Date().toISOString();
@@ -2125,7 +2349,7 @@ const database = {
                 }
             }
 
-            await database.runQuery(`INSERT INTO guilds (id, name, icon, region, owner_id, afk_channel_id, afk_timeout, creation_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, name, (icon == null ? 'NULL' : icon), region, owner_id, 'NULL', 300, date])
+            await database.runQuery(`INSERT INTO guilds (id, name, icon, region, owner_id, afk_channel_id, afk_timeout, creation_date, exclusions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [id, name, (icon == null ? 'NULL' : icon), region, owner_id, 'NULL', 300, date, JSON.stringify(exclusions)])
             await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, 0, id, 'NULL', '0', 'NULL', 'general', 0]);
             await database.runQuery(`INSERT INTO roles (guild_id, role_id, name, permissions, position) VALUES ($1, $2, $3, $4, $5)`, [id, id, '@everyone', 104193089, 0]); 
             await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [id, owner_id, 'NULL', id, date, 0, 0]);
@@ -2152,7 +2376,12 @@ const database = {
                     id: owner_id,
                     joined_at: date,
                     roles: [],
-                    user: owner
+                    user: {
+                        id: owner.id,
+                        username: owner.username,
+                        discriminator: owner.discriminator,
+                        avatar: owner.avatar
+                    }
                 }],
                 presences: [{
                     game: null,
@@ -2172,12 +2401,12 @@ const database = {
                 }]
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return null;
         }
     },
-    createAccount: async (username , email , password ) => {
+    createAccount: async (username, email, password) => {
         try {
             let user = await database.getAccountByEmail(email);
 
@@ -2216,7 +2445,7 @@ const database = {
                 token: token
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return {
                 success: false,
@@ -2224,7 +2453,7 @@ const database = {
             }
         }
     },
-    doesThisMatchPassword: async (password_raw , password_hash ) => {
+    doesThisMatchPassword: async (password_raw, password_hash) => {
         try {
             let comparison = compareSync(password_raw, password_hash);
 
@@ -2234,12 +2463,12 @@ const database = {
 
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    updateMessage: async (message_id , new_content ) => {
+    updateMessage: async (message_id, new_content) => {
         try {
             let embeds = await embedder.generateMsgEmbeds(new_content);
 
@@ -2249,12 +2478,12 @@ const database = {
 
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    updateAccount: async (avatar  , email  , username  , password  , new_password  , new_email  ) => {
+    updateAccount: async (avatar , email , username , password , new_password , new_email ) => {
         try {
             if (email == null) {
                 return false;
@@ -2333,12 +2562,12 @@ const database = {
             
             return true;
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return false;
         }
     },
-    checkAccount: async (email , password ) => {
+    checkAccount: async (email, password) => {
         try {
             let user = await database.getAccountByEmail(email);
 
@@ -2363,7 +2592,7 @@ const database = {
                 token: user.token
             }
         } catch (error) {
-            logText(error.toString(), "error");
+            logText(error, "error");
 
             return {
                 success: false,

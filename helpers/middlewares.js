@@ -10,19 +10,10 @@ const config = globalUtils.config;
 
 let cached404s = {};
 
-//Credit to hummus, why does this shit work with typescript but not with js? - Without this function???
-function handle(handler) {
-	return async function (req, res, next) {
-		try {
-			return await handler(req, res, next);
-		} catch (err) {
-			return next(err);
-		}
-	}
-}
-
 async function clientMiddleware(req, res, next) {
     try {
+        if (req.url.includes("/selector") || req.url.includes("/launch")) return next();
+
         let cookies = req.cookies;
 
         if (!cookies) {
@@ -51,7 +42,7 @@ async function clientMiddleware(req, res, next) {
         return next();
     }
     catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
         
         return res.status(500).json({
             code: 500,
@@ -98,8 +89,6 @@ async function assetsMiddleware(req, res) {
         cached404s[req.params.asset] = 1;
 
         return res.status(404).send("File not found");
-
-        //aint no way you're getting those lol
     }
 
     if (!fs.existsSync(`${__dirname}/assets/${req.params.asset}`) && !fs.existsSync(`${__dirname}/assets/${req.params.asset}`)) {
@@ -108,10 +97,10 @@ async function assetsMiddleware(req, res) {
         let timestamps = await wayback.getTimestamps(`https://discordapp.com/assets/${req.params.asset}`);
         let isOldBucket = false;
 
-        if (timestamps == null || timestamps.first_ts.includes("1999")) {
+        if (timestamps == null || timestamps.first_ts.includes("1999") || timestamps.first_ts.includes("2000")) {
             timestamps = await wayback.getTimestamps(`https://d3dsisomax34re.cloudfront.net/assets/${req.params.asset}`);
 
-            if (timestamps == null || timestamps.first_ts.includes("1999")) {
+            if (timestamps == null || timestamps.first_ts.includes("1999") || timestamps.first_ts.includes("2000")) {
                 cached404s[req.params.asset] = 1;
 
                 return res.status(404).send("File not found");
@@ -140,11 +129,12 @@ async function assetsMiddleware(req, res) {
                 let str = Buffer.from(body).toString("utf-8");
 
                 if (release.includes("2015")) {
+                    str = globalUtils.replaceAll(str, ".presence.", ".presences.");
                     str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 }
 
                 str = globalUtils.replaceAll(str, /cdn.discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
-                str = globalUtils.replaceAll(str, /discord.gg/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url) + "/invites");
+                str = globalUtils.replaceAll(str, /discord.gg/g, (config.custom_invite_url == "" ? (config.local_deploy ? config.base_url + ":" + config.port : config.base_url) + "/invite" : config.custom_invite_url));
                 
                 str = globalUtils.replaceAll(str, /discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 
@@ -200,7 +190,7 @@ async function authMiddleware(req, res, next) {
         next();
     }
     catch(err) {
-        logText(err.toString(), "error");
+        logText(err, "error");
 
         return res.status(500).json({
             code: 500,
@@ -241,9 +231,9 @@ async function guildMiddleware(req, res, next) {
     const sender = req.account;
 
     if (sender == null) {
-        return res.status(500).json({
-            code: 500,
-            message: "Internal Server Error"
+        return res.status(401).json({
+            code: 401,
+            message: "Unauthorized"
         });
     }
 
@@ -253,6 +243,46 @@ async function guildMiddleware(req, res, next) {
         return res.status(404).json({
             code: 404,
             message: "Unknown Guild"
+        });
+    }
+
+    next();
+}
+
+async function userMiddleware(req, res, next) {
+    let account = req.account;
+
+    if (!account) {
+        return res.status(401).json({
+            code: 401,
+            message: "Unauthorized"
+        });
+    }
+
+    let user = req.user;
+
+    if (!user) {
+        return res.status(404).json({
+            code: 404,
+            message: "Unknown User"
+        });
+    }
+
+    let guilds = await globalUtils.database.getUsersGuilds(user.id);
+
+    if (guilds.length == 0) {
+        return res.status(404).json({
+            code: 404,
+            message: "Unknown User"
+        });
+    }
+
+    let share = guilds.some(guild => guild.members != null && guild.members.length > 0 && guild.members.some(member => member.id === account.id));
+
+    if (!share) {
+        return res.status(404).json({
+            code: 404,
+            message: "Unknown User"
         });
     }
 
@@ -362,9 +392,9 @@ function channelPermissionsMiddleware(permission) {
         const sender = req.account;
 
         if (sender == null) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
             });
         }
 
@@ -401,30 +431,9 @@ function channelPermissionsMiddleware(permission) {
             }
 
             if (permission == "SEND_MESSAGES") {
-                const theirguilds = await globalUtils.database.getUsersGuilds(channel.recipient.id);
-                const myguilds = await globalUtils.database.getUsersGuilds(sender.id);
+                const guilds = await globalUtils.database.getUsersGuilds(channel.recipient.id);
 
-                let share = false;
-
-                for (var their of theirguilds) {
-                    if (their.members != null && their.members.length > 0) {
-                        const theirmembers = their.members;
-
-                        if (theirmembers.filter(x => x.id == sender.id).length > 0) {
-                            share = true;
-                        }
-                    }
-                }
-
-                for (var mine of myguilds) {
-                    if (mine.members != null && mine.members.length > 0) {
-                        const mymembers = mine.members;
-
-                        if (mymembers.filter(x => x.id == channel.recipient.id).length > 0) {
-                            share = true;
-                        }
-                    }
-                }
+                let share = guilds.some(guild => guild.members != null && guild.members.length > 0 && guild.members.some(member => member.id === sender.id));
 
                 if (!share) {
                     return res.status(403).json({
@@ -455,10 +464,10 @@ module.exports = {
     authMiddleware,
     assetsMiddleware,
     instanceMiddleware,
-    handle,
     rateLimitMiddleware,
     channelMiddleware,
     guildMiddleware,
+    userMiddleware,
     guildPermissionsMiddleware,
     channelPermissionsMiddleware
 };

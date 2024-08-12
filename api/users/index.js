@@ -4,7 +4,7 @@ const { logText } = require('../../helpers/logger');
 const me = require('./me');
 const path = require('path');
 const globalUtils = require('../../helpers/globalutils');
-const { rateLimitMiddleware } = require('../../helpers/middlewares');
+const { rateLimitMiddleware, userMiddleware } = require('../../helpers/middlewares');
 const dispatcher = require('../../helpers/dispatcher');
 
 const router = express.Router();
@@ -17,7 +17,7 @@ router.param('userid', async (req, res, next, userid) => {
 
 router.use("/@me", me);
 
-router.get("/:userid", async (req, res) => {
+router.get("/:userid", userMiddleware, async (req, res) => {
     let return_user = req.user;
 
     delete return_user.email;
@@ -47,7 +47,7 @@ router.get("/:userid/avatars/:file", async (req, res) => {
         return res.status(200).sendFile(filePath);
     }
     catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
             code: 500,
@@ -61,10 +61,10 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
         const account = req.account;
 
         if (!account) {
-          return res.status(500).json({
-            code: 500,
-            message: "Internal Server Error"
-          });
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
         }
 
         const user = await globalUtils.database.getAccountByUserId(req.body.recipient_id);
@@ -218,12 +218,153 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
         });
     }
     catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
             code: 500,
             message: "Internal Server Error"
         });
+    }
+});
+
+router.get("/:userid/profile", userMiddleware, async (req, res) => {
+    try {
+        let account = req.account;
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        let user = req.user;
+
+        if (!user) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown User"
+            });
+        }
+
+        let return_user = user;
+
+        delete return_user.email;
+        delete return_user.password;
+        delete return_user.token;
+        delete return_user.settings;
+        delete return_user.verified;
+
+        let ret = {};
+
+        let guilds = await globalUtils.database.getUsersGuilds(user.id);
+
+        let sharedGuilds = guilds.filter(guild => guild.members != null && guild.members.length > 0 && guild.members.some(member => member.id === account.id));
+        let mutualGuilds = [];
+
+        for(var sharedGuild of sharedGuilds) {
+            let id = sharedGuild.id;
+            let member = sharedGuild.members.find(y => y.id == user.id);
+
+            if (!member) continue;
+
+            let nick = member.nick;
+
+            mutualGuilds.push({
+                id: id,
+                nick: nick
+            });
+        }
+
+        ret.mutual_guilds = mutualGuilds; 
+
+        let ourFriends = await globalUtils.database.getRelationshipsByUserId(account.id);
+        let theirFriends = await globalUtils.database.getRelationshipsByUserId(user.id);
+
+        let sharedFriends = [];
+        
+        if (ourFriends.length > 0 && theirFriends.length > 0) {
+            let theirFriendsSet = new Set(theirFriends.map(friend => friend.user.id && friend.type == 1));
+        
+            for (let ourFriend of ourFriends) {
+                if (theirFriendsSet.has(ourFriend.user.id) && ourFriend.type == 1) {
+                    sharedFriends.push(ourFriend.user);
+                }
+            }
+        }
+
+        ret.mutual_friends = sharedFriends.length > 0 ? sharedFriends : [];
+
+        let connectedAccounts = await globalUtils.database.getConnectedAccounts(user.id);
+
+        connectedAccounts = connectedAccounts.filter(x => x.visibility == 1);
+
+        for(var connected of connectedAccounts) {
+            delete connected.integrations;
+            delete connected.revoked;
+            delete connected.visibility;
+        }
+
+        ret.user = user;
+        ret.connected_accounts = connectedAccounts;
+        ret.premium_since = new Date();
+
+        return res.status(200).json(ret);
+    }
+    catch(error) {
+        logText(error, "error");
+    
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        }); 
+    }
+});
+
+router.get("/:userid/relationships", userMiddleware, async (req, res) => {
+    try {
+        let account = req.account;
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        let user = req.user;
+
+        if (!user) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown User"
+            });
+        }
+
+        let ourFriends = await globalUtils.database.getRelationshipsByUserId(account.id);
+        let theirFriends = await globalUtils.database.getRelationshipsByUserId(user.id);
+
+        let sharedFriends = [];
+        
+        if (ourFriends.length > 0 && theirFriends.length > 0) {
+            let theirFriendsSet = new Set(theirFriends.map(friend => friend.user.id && friend.type == 1));
+        
+            for (let ourFriend of ourFriends) {
+                if (theirFriendsSet.has(ourFriend.user.id) && ourFriend.type == 1) {
+                    sharedFriends.push(ourFriend.user);
+                }
+            }
+        }
+
+        return res.status(200).json(sharedFriends);
+    }
+    catch(error) {
+        logText(error, "error");
+    
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        }); 
     }
 });
 

@@ -75,14 +75,14 @@ app.use(cookieParser());
 app.use(cors());
 
 app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
-    const path2 = path.join(__dirname, 'user_assets', 'attachments', req.params.guildid, req.params.channelid, req.params.filename);
+    const baseFilePath = path.join(__dirname, 'user_assets', 'attachments', req.params.guildid, req.params.channelid, req.params.filename);
     
     try {
         let { width, height } = req.query;
         const url = req.url;
-        
+
         if (!url || !width || !height || url.includes(".gif")) {
-            return res.status(200).sendFile(path2);
+            return res.status(200).sendFile(baseFilePath);
         }
 
         if (parseInt(width) > 800) {
@@ -93,16 +93,16 @@ app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
             height = '800';
         }
 
-        const cacheKey = `${url}-${width}-${height}`;
-        const cachedImage = cache.get<Buffer>(cacheKey);
-        
         const mime = req.params.filename.endsWith(".jpg") ? 'image/jpeg' : 'image/png';
-      
-        if (cachedImage) {
-            return res.status(200).type(mime).send(cachedImage);
+
+        const resizedFileName = `${req.params.filename.split('.').slice(0, -1).join('.')}_${width}_${height}.${mime.split('/')[1]}`;
+        const resizedFilePath = path.join(__dirname, 'user_assets', 'attachments', req.params.guildid, req.params.channelid, resizedFileName);
+
+        if (fs.existsSync(resizedFilePath)) {
+            return res.status(200).type(mime).sendFile(resizedFilePath);
         }
 
-        const imageBuffer = fs.readFileSync(path2);
+        const imageBuffer = fs.readFileSync(baseFilePath);
 
         const image = await Jimp.read(imageBuffer);
 
@@ -110,14 +110,13 @@ app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
 
         const resizedImage = await image.getBufferAsync(mime);
 
-        cache.set(cacheKey, resizedImage);
+        fs.writeFileSync(resizedFilePath, resizedImage);
 
-        return res.status(200).type(mime).send(resizedImage);
+        return res.status(200).type(mime).sendFile(resizedFilePath);
     }
     catch(err) {
-        logText(err.toString(), "error");
-    
-        return res.status(200).sendFile(path2);
+        logText(err, "error");
+        return res.status(200).sendFile(baseFilePath);
     }
 });
 
@@ -140,7 +139,7 @@ app.get('/icons/:serverid/:file', async (req, res) => {
 
         return res.status(200).sendFile(filePath);
     } catch (error) {
-        logText(err.toString(), "error");
+        logText(error, "error");
 
         return res.status(500).json({
             code: 500,
@@ -169,7 +168,7 @@ app.get('/avatars/:userid/:file', async (req, res) => {
         return res.status(200).sendFile(filePath);
     }
     catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
     
         return res.status(500).json({
             code: 500,
@@ -181,6 +180,8 @@ app.get('/avatars/:userid/:file', async (req, res) => {
 app.use('/assets', express.static(__dirname + '/clients/assets'));
 
 app.use("/assets/:asset", assetsMiddleware);
+
+app.use(clientMiddleware);
 
 app.use("/api/v6/", router);
 
@@ -215,6 +216,58 @@ app.get("/channels/:guildid/:channelid", (_, res) => {
     return res.redirect("/");
 });
 
+/*
+app.get("/widget", (req, res) => {
+    try {
+        if (!req.cookies['release_date']) {
+            return res.redirect("/selector");
+        }
+
+        if (!fs.existsSync(`./clients/assets/${req.cookies['release_date']}`)) {
+            return res.redirect("/selector");
+        }
+
+        res.send(fs.readFileSync(`./clients/assets/${req.cookies['release_date']}/widget.html`, 'utf8'));
+    }
+    catch(error) {
+        logText(error, "error");
+
+        return res.redirect("/selector");
+    }
+});
+*/
+
+/*
+app.get('/developers/*', (req, res) => {
+	try {
+        if (!req.cookies['release_date']) {
+            return res.redirect("/selector");
+        }
+
+        if (!fs.existsSync(`./clients/assets/${req.cookies['release_date']}`)) {
+            return res.redirect("/selector");
+        }
+
+        let year = req.cookies['release_date'].split('_')[2];
+
+        if (year.includes("2015")) {
+            return res.redirect("https://www.youtube.com/watch?v=jeg_TJvkSjg"); //wtf r u doing lol
+        }
+
+        res.send(fs.readFileSync(`./clients/assets/developer_${year}/app.html`, 'utf8'));
+    }
+    catch(error) {
+        logText(error, "error");
+
+        return res.redirect("/selector");
+    }
+});
+
+app.get('/developers', (req, res) => {
+	res.redirect('/developers/');
+});
+*/
+
 app.get("*", (req, res) => {
     try {
         if (!req.cookies['release_date']) {
@@ -228,10 +281,8 @@ app.get("*", (req, res) => {
         res.send(fs.readFileSync(`./clients/assets/${req.cookies['release_date']}/app.html`, 'utf8'));
     }
     catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
 
         return res.redirect("/selector");
     }
 });
-
-app.use(clientMiddleware);

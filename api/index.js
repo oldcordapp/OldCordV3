@@ -10,8 +10,10 @@ const voice = require('./voice');
 const guilds = require('./guilds');
 const invites = require('./invites');
 const channels = require('./channels');
+const connections = require('./connections');
 
 app.use("/auth", auth);
+app.use("/connections", connections);
 
 app.use(authMiddleware);
 

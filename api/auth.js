@@ -69,9 +69,9 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                 let account = await globalUtils.database.getAccountByToken(registrationAttempt.token);
 
                 if (account == null) {
-                    return res.status(500).json({
-                        code: 500,
-                        message: "Internal Server Error"
+                    return res.status(401).json({
+                        code: 401,
+                        message: "Unauthorized"
                     });
                 }
 
@@ -119,9 +119,9 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                 let account = await globalUtils.database.getAccountByToken(registrationAttempt.token);
 
                 if (account == null) {
-                    return res.status(500).json({
-                        code: 500,
-                        message: "Internal Server Error"
+                    return res.status(401).json({
+                        code: 401,
+                        message: "Unauthorized"
                     });
                 }
 
@@ -159,7 +159,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
         });
     }
     catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
 
         return res.status(500).json({
           code: 500,
@@ -198,7 +198,7 @@ router.post("/login", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) 
             token: loginAttempt.token,
         }); 
     } catch(error) {
-        logText(error.toString(), "error");
+        logText(error, "error");
 
         return res.status(500).json({
           code: 500,
