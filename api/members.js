@@ -147,7 +147,8 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimit
             }
         }
 
-        let reset = req.body.nick && req.body.nick == "";
+        let reset = req.body.nick == "";
+
         let nick = req.body.nick;
 
         if (nick && nick.length < 2 && !reset) {
@@ -164,7 +165,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimit
             });
         }
 
-        if (nick) {
+        if (nick || reset) {
             let tryUpdateNick = await globalUtils.database.updateGuildMemberNick(req.params.guildid, member.user.id, nick);
 
             if (!tryUpdateNick) {
