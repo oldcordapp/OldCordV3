@@ -54,7 +54,8 @@ custom_invite_url is used for invites in the app, so, putting "oldcord.us" will 
 integration_config is for the in-app connections under user settings, currently only twitch is supported, and you need to make a twitch application which gives you a client_secret to use this.
 
 Example integration configuration:
-```"integration_config" : [{
+```
+"integration_config" : [{
         "platform" : "twitch",
         "client_id" : "client_id",
         "client_secret" : "client_secret",
