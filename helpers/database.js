@@ -2502,6 +2502,7 @@ const database = {
             let new_avatar = avatar;
             let new_email2 = email;
             let new_username = username;
+            let new_discriminator = account.discriminator;
 
             if (new_email != null) {
                 new_email2 = new_email;
@@ -2530,6 +2531,20 @@ const database = {
                 await database.runQuery(`UPDATE users SET avatar = $1 WHERE id = $2`, ['NULL', account.id]);
             }
 
+            let accounts = await database.getAccountsByUsername(new_username);
+
+            if (accounts.length >= 9998 && account.username != new_username) {
+                return false;
+            }
+            
+            if (accounts.find(x => x.discriminator == new_discriminator && x.username == new_username)) {
+                new_discriminator = Math.round(Math.random() * 9999);
+
+                while (new_discriminator < 1000) {
+                    new_discriminator = Math.round(Math.random() * 9999);
+                }
+            }
+
             if (new_password != null) {
                 const checkPassword = await database.doesThisMatchPassword(new_password, account.password);
 
@@ -2541,7 +2556,7 @@ const database = {
                 let newPwHash = await hash(new_password, salt);
                 let token = globalUtils.generateToken(account.id, newPwHash);
 
-                await database.runQuery(`UPDATE users SET username = $1, email = $2, password = $3, token = $4 WHERE id = $5`, [new_username, new_email2, newPwHash, token, account.id]);
+                await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3, password = $4, token = $5 WHERE id = $6`, [new_username, new_discriminator, new_email2, newPwHash, token, account.id]);
 
                 return true;
             }
@@ -2557,7 +2572,7 @@ const database = {
                     return false;
                 }
 
-                await database.runQuery(`UPDATE users SET username = $1, email = $2 WHERE id = $3`, [new_username, new_email2, account.id]);
+                await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3 WHERE id = $4`, [new_username, new_discriminator, new_email2, account.id]);
             }
             
             return true;
