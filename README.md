@@ -66,9 +66,9 @@ Example integration configuration:
 trusted_users bypass short term rate-limits, use this to add specific users like bots from being blocked by the wacky rate-limits scattered across the project. <br>
 instance_flags are kinda limited at the moment, but you can lock down an instance with these entries:
 
-NO_REGISTRATION - Block all future users from creating an account on your instance.
-NO_GUILD_CREATION - Block future guilds from being created.
-NO_INVITE_USE - Block invites from being used.
+NO_REGISTRATION - Block all future users from creating an account on your instance. <br>
+NO_GUILD_CREATION - Block future guilds from being created. <br>
+NO_INVITE_USE - Block invites from being used. <br>
 
 More are to come with instance flags in the future. 
 
