@@ -572,7 +572,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
                 }
             }
 
-            dispatcher.dispatchEventTo(sender.token, {
+            dispatcher.dispatchEventTo(sender.token, "CHANNEL_DELETE", {
                 id: channel.id,
                 guild_id: null
             });
@@ -580,7 +580,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
             let recipient = await globalUtils.database.getAccountByUserId(channel.recipient.id);
 
             if (recipient != null && recipient.token) {
-                dispatcher.dispatchEventTo(recipient.token, {
+                dispatcher.dispatchEventTo(recipient.token, "CHANNEL_DELETE", {
                     id: channel.id,
                     guild_id: null
                 });
