@@ -177,6 +177,35 @@ app.get('/avatars/:userid/:file', async (req, res) => {
     }
 });
 
+app.get("/emojis/:file", async (req, res) => {
+    try {
+        const directoryPath = path.join(__dirname, 'user_assets', 'emojis');
+
+        if (!fs.existsSync(directoryPath)) {
+            return res.status(404).send("File not found");
+        }
+
+        const files = fs.readdirSync(directoryPath);
+        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
+
+        if (!matchedFile) {
+            return res.status(404).send("File not found");
+        }
+
+        const filePath = path.join(directoryPath, matchedFile);
+
+        return res.status(200).sendFile(filePath);
+    }
+    catch(error) {
+        logText(error, "error");
+    
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
 app.use('/assets', express.static(__dirname + '/clients/assets'));
 
 app.use("/assets/:asset", assetsMiddleware);

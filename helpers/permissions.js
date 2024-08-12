@@ -22,6 +22,7 @@ const permissions = {
     DEAFEN_MEMBERS: 1 << 23,
     MOVE_MEMBERS: 1 << 24,
     USE_VOICE_ACTIVITY: 1 << 25,
+    MANAGE_EMOJIS: 1 << 30,
     database: null,
 	has(compare, key) {
         try {

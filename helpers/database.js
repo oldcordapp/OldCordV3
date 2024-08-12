@@ -154,7 +154,8 @@ const database = {
                 afk_channel_id TEXT,
                 afk_timeout INTEGER DEFAULT 300,
                 creation_date TEXT,
-                exclusions TEXT DEFAULT '[]'
+                exclusions TEXT DEFAULT '[]',
+                custom_emojis TEXT DEFAULT '[]'
            );`, []);
 
             await database.runQuery(`
@@ -206,15 +207,8 @@ const database = {
                 nonce TEXT,
                 timestamp TEXT,
                 tts INTEGER DEFAULT 0,
-                embeds_obj TEXT DEFAULT NULL,
+                embeds TEXT DEFAULT '[]',
                 reactions TEXT DEFAULT '[]'
-           );`, []);
-
-            await database.runQuery(`CREATE TABLE IF NOT EXISTS reactions (
-                message_id TEXT,
-                user_id TEXT,
-                emoji_id TEXT,
-                emoji_name TEXT
            );`, []);
 
             await database.runQuery(`CREATE TABLE IF NOT EXISTS acknowledgements (
@@ -483,6 +477,110 @@ const database = {
             await database.runQuery(`
                 INSERT INTO bans (guild_id, user_id) VALUES ($1, $2)
             `, [guild_id, user_id]);
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    getGuildCustomEmojis: async (guild_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM guilds WHERE id = $1
+            `, [guild_id]);
+
+            if (rows != null && rows.length > 0) {
+                return JSON.parse(rows[0].custom_emojis) ?? [];
+            } else {
+                return [];
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return [];
+        }
+    },
+    getGuildCustomEmojiById: async (guild_id, emoji_id) => {
+        try {
+            let guild_emojis = await database.getGuildCustomEmojis(guild_id);
+
+            if (guild_emojis.length == 0) {
+                return null;
+            }
+
+            let tryFind = guild_emojis.find(x => x.id == emoji_id);
+
+            if (!tryFind) {
+                return null;
+            }
+
+            return tryFind;
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    createCustomEmoji: async (guild_id, user_id, emoji_id, emoji_name) => {
+        try {
+            let user = await database.getAccountByUserId(user_id);
+
+            if (user == null) {
+                return false;
+            }
+
+            let custom_emojis = await database.getGuildCustomEmojis(guild_id);
+
+            custom_emojis.push({
+                id: emoji_id,
+                name: emoji_name,
+                user: {
+                    username: user.username,
+                    id: user.id,
+                    discriminator: user.discriminator,
+                    avatar: user.avatar
+                }
+            });
+
+            await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild_id]);
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    updateCustomEmoji: async (guild_id, emoji_id, new_name) => {
+        try {
+            let custom_emojis = await database.getGuildCustomEmojis(guild_id);
+
+            let customEmoji = custom_emojis.find(x => x.id == emoji_id);
+
+            if (!customEmoji) {
+                return false;
+            }
+
+            customEmoji.name = new_name;
+
+            await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild_id]);
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    deleteCustomEmoji: async (guild_id, emoji_id) => {
+        try {
+            let custom_emojis = await database.getGuildCustomEmojis(guild_id);
+
+            custom_emojis = custom_emojis.filter(x => x.id != emoji_id);
+
+            await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild_id]);
 
             return true;
         } catch (error) {
@@ -889,19 +987,17 @@ const database = {
     getMessageReactions: async (message_id) => {
         try {
             const rows = await database.runQuery(`
-                SELECT * FROM reactions WHERE message_id = $1
+                SELECT * FROM messages WHERE message_id = $1
             `, [message_id]);
 
             if (rows != null && rows.length > 0) {
                 const ret = [];
+                const msgReactions = JSON.parse(rows[0].reactions);
 
-                for(var row of rows) {
+                for(var row of msgReactions) {
                     ret.push({
                         user_id: row.user_id,
-                        emoji: {
-                            id: row.emoji_id,
-                            name: row.emoji_name
-                        }
+                        emoji: row.emoji
                     });
                 }
 
@@ -915,9 +1011,44 @@ const database = {
             return [];
         }
     },
-    addEmojiReaction: async (message_id, user_id, encoded_emoji) => {
+    addMessageReaction: async (message_id, user_id, emoji_id, emoji_name) => {
         try {
-            await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [channel_id, type, guild_id, 'NULL', '0', 'NULL', name, 0])
+            let reactions = await database.getMessageReactions(message_id);
+
+            if (reactions.find(x => x.user_id == user_id && x.emoji.id == emoji_id && x.emoji.name == emoji_name)) {
+                reactions = reactions.filter(x => 
+                    !(x.user_id == user_id && x.emoji.id === emoji_id && x.emoji.name === emoji_name)
+                );
+            }
+
+            reactions.push({
+                user_id: user_id,
+                emoji: {
+                    id: emoji_id,
+                    name: emoji_name
+                }
+            });
+
+            await database.runQuery(`UPDATE messages SET reactions = $1 WHERE message_id = $2`, [JSON.stringify(reactions), message_id]);
+
+            return true;
+        } catch {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    removeMessageReaction: async (message_id, user_id, emoji_id, emoji_name) => {
+        try {
+            let reactions = await database.getMessageReactions(message_id);
+
+            reactions = reactions.filter(x => 
+                !(x.user_id == user_id && x.emoji.id === emoji_id && x.emoji.name === emoji_name)
+            );
+
+            await database.runQuery(`UPDATE messages SET reactions = $1 WHERE message_id = $2`, [JSON.stringify(reactions), message_id]);
+
+            return true;
         } catch {
             logText(error, "error");
 
@@ -1232,7 +1363,7 @@ const database = {
                     avatar: author.avatar
                 },
                 attachments: messageAttachments,
-                embeds: rows[0].embeds_obj == 'NULL' ? [] : JSON.parse(rows[0].embeds_obj),
+                embeds: rows[0].embeds == 'NULL' ? [] : JSON.parse(rows[0].embeds),
                 mentions: mentions,
                 mention_everyone: rows[0].content.includes("@everyone"),
                 nonce: rows[0].nonce,
@@ -1288,7 +1419,7 @@ const database = {
             return [];
         }
     },
-    getChannelMessages: async (id, limit, before_id, after_id) => {
+    getChannelMessages: async (id, limit, before_id, after_id, includeReactions) => {
         try {
             let query = `SELECT * FROM messages WHERE channel_id = $1 `;
             const params = [id];
@@ -1317,6 +1448,40 @@ const database = {
 
             for (const row of rows) {
                 const message = await database.getMessageById(row.message_id);
+                
+                if (includeReactions) {
+                    const reactions = await database.getMessageReactions(row.message_id);
+                    const fixedReactions = [];
+
+                    const reactionMap = reactions.reduce((acc, reaction) => {
+                        const { id, name } = reaction.emoji;
+                        const key = id;
+                    
+                        if (!acc[key]) {
+                            acc[key] = { 
+                                emoji: { id, name },
+                                count: 0,
+                                user_ids: new Set()
+                            };
+                        }
+                    
+                        acc[key].count++;
+                        acc[key].user_ids.add(reaction.user_id);
+                    
+                        return acc;
+                    }, {});
+          
+                    for (const key in reactionMap) {
+                        fixedReactions.push({
+                            emoji: reactionMap[key].emoji,
+                            count: reactionMap[key].count,
+                            user_ids: Array.from(reactionMap[key].user_ids),
+                            me: false
+                        });
+                    }
+
+                    message.reactions = fixedReactions;
+                }
 
                 if (message != null) {
                     ret.push(message);
@@ -1415,6 +1580,15 @@ const database = {
                 return null;
             }
 
+            let emojis = await database.getGuildCustomEmojis(id);
+
+            for (var emoji of emojis) {
+                emoji.roles = [];
+                emoji.require_colons = true;
+                emoji.managed = false;
+                emoji.allNamesString = `:${emoji.name}:`
+            }
+
             //let presences[] = [];
             let presences = await database.getGuildPresences(id);
 
@@ -1448,6 +1622,7 @@ const database = {
                 exclusions: rows[0].exclusions ? JSON.parse(rows[0].exclusions) : [],
                 members: members,
                 roles: roles,
+                emojis: emojis,
                 presences: presences,
                 voice_states: []
             }
@@ -2223,7 +2398,7 @@ const database = {
 
             let embeds = await embedder.generateMsgEmbeds(content);
 
-            await database.runQuery(`INSERT INTO messages (guild_id, message_id, channel_id, author_id, content, edited_timestamp, mention_everyone, nonce, timestamp, tts, embeds_obj) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [
+            await database.runQuery(`INSERT INTO messages (guild_id, message_id, channel_id, author_id, content, edited_timestamp, mention_everyone, nonce, timestamp, tts, embeds) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [
                 guild_id == null ? 'NULL' : guild_id,
                 id,
                 channel_id,
@@ -2234,7 +2409,7 @@ const database = {
                 nonce,
                 date,
                 (tts ? 1 : 0),
-                embeds.length > 0 ? JSON.stringify(embeds) : 'NULL'
+                JSON.stringify(embeds)
             ]);
 
             await database.runQuery(`UPDATE channels SET last_message_id = $1 WHERE id = $2`, [id, channel_id]);
@@ -2474,7 +2649,7 @@ const database = {
 
             let date = new Date().toISOString();
 
-            await database.runQuery(`UPDATE messages SET content = $1, edited_timestamp = $2, embeds_obj = $3 WHERE message_id = $4`, [new_content, date, embeds.length > 0 ? JSON.stringify(embeds) : 'NULL', message_id]);
+            await database.runQuery(`UPDATE messages SET content = $1, edited_timestamp = $2, embeds = $3 WHERE message_id = $4`, [new_content, date, embeds.length > 0 ? JSON.stringify(embeds) : 'NULL', message_id]);
 
             return true;
         } catch (error) {

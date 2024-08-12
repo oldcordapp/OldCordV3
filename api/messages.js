@@ -55,12 +55,18 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
             limit = 200;
         }
 
-        let messages = [];
+        let includeReactions = req.guild && !req.guild.exclusions.includes("reactions");
 
-        messages = await globalUtils.database.getChannelMessages(channel.id, limit, req.query.before, req.query.after);
+        let messages = await globalUtils.database.getChannelMessages(channel.id, limit, req.query.before, req.query.after, includeReactions);
 
-        if (messages == null || messages.length == 0) {
-            return res.status(200).json([]);
+        for(var msg of messages) {
+            if (msg.reactions) {
+                for(var reaction of msg.reactions) {
+                    reaction.me = reaction.user_ids.includes(creator.id);
+                        
+                    delete reaction.user_ids;
+                }
+            }
         }
 
         return res.status(200).json(messages);
@@ -189,6 +195,19 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 return res.status(404).json({
                     code: 404,
                     message: "Unknown Channel"
+                });
+            }
+
+            let canUseEmojis = !req.guild.exclusions.includes("custom_emoji");
+
+            const emojiPattern = /<:[\w-]+:\d+>/g;
+
+            const hasEmojiFormat = emojiPattern.test(req.body.content);
+
+            if (hasEmojiFormat && !canUseEmojis) {
+                return res.status(400).json({
+                    code: 400,
+                    message: "Custom emojis are disabled in this server due to its maximum support"
                 });
             }
 
@@ -592,6 +611,6 @@ router.post("/:messageid/ack", rateLimitMiddleware(5, 1000 * 10), rateLimitMiddl
     }
 });
 
-router.put("/:messageid/reactions", reactions);
+router.use("/:messageid/reactions", reactions);
 
 module.exports = router;

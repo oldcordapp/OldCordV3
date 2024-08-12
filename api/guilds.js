@@ -4,6 +4,7 @@ const { logText } = require('../helpers/logger');
 const roles = require('./roles');
 const members = require('./members');
 const bans = require('./bans');
+const emojis = require('./emojis');
 const { instanceMiddleware, rateLimitMiddleware, guildMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
 const dispatcher = require('../helpers/dispatcher');
 const { requiresIntsForChannelTypes } = require('../helpers/globalutils');
@@ -502,6 +503,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
 router.use("/:guildid/roles", roles);
 router.use("/:guildid/members", members);
 router.use("/:guildid/bans", bans);
+router.use("/:guildid/emojis", emojis);
 
 router.get("/:guildid/regions", (_, res) => {
     return res.status(200).json(globalUtils.getRegions());

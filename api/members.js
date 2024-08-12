@@ -36,7 +36,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
             });
         }
         
-        let member_acc = await globalUtils.database.getAccountById(member.id);
+        let member_acc = await globalUtils.database.getAccountByUserId(member.id);
 
         if (!member_acc) {
             return res.status(404).json({
@@ -163,6 +163,11 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimit
                 code: 400,
                 nick: "Nickname must be between 2 and 30 characters."
             });
+        }
+
+        if (nick == member.user.username) {
+            reset = true;
+            nick = null;
         }
 
         if (nick || reset) {
