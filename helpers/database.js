@@ -766,7 +766,7 @@ const database = {
     getRelationshipsByUserId: async(user_id) => {
         try {
             const rows = await database.runQuery(`
-                SELECT * FROM users WHERE user_id = $1
+                SELECT * FROM users WHERE id = $1
             `, [user_id]);
 
             if (rows != null && rows.length > 0) {
@@ -782,7 +782,7 @@ const database = {
     },
     modifyRelationships: async (user_id, relationships) => {
         try {   
-            await database.runQuery(`UPDATE users SET relationships = $1 WHERE user_id = $2`, [JSON.stringify(relationships), user_id]);
+            await database.runQuery(`UPDATE users SET relationships = $1 WHERE id = $2`, [JSON.stringify(relationships), user_id]);
 
             return true;
         } catch (error) {
