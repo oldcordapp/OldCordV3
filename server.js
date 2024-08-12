@@ -15,6 +15,9 @@ const router = require('./api/index');
 const Jimp = require('jimp');
 const dispatcher = require('./helpers/dispatcher');
 const permissions = require('./helpers/permissions');
+const modules = require('./api/modules');
+const download = require('./api/download');
+const updates = require('./api/updates');
 const config = globalUtils.config;
 const cache = new NodeCache({ stdTTL: 600, checkPeriod: 120 });
 const app = express();
@@ -209,6 +212,20 @@ app.get("/emojis/:file", async (req, res) => {
 app.use('/assets', express.static(__dirname + '/clients/assets'));
 
 app.use("/assets/:asset", assetsMiddleware);
+
+/* Modern Desktop Client Stuff - START 
+ - Credits to deskehs for their work on this
+*/
+
+app.use("/api/updates", updates);
+
+app.use("/api/modules", modules);
+
+app.use("/download", download);
+
+app.use("/api/download", download);
+
+/* Modern Desktop Client Stuff - END */
 
 app.use(clientMiddleware);
 
