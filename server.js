@@ -212,6 +212,26 @@ app.use("/assets/:asset", assetsMiddleware);
 
 app.use(clientMiddleware);
 
+app.get("/api/users/:userid/avatars/:file", async (req, res) => {
+    try {
+        const filePath = path.join(__dirname, 'user_assets', 'avatars', req.params.userid, req.params.file);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).send("File not found");
+        }
+
+        return res.status(200).sendFile(filePath);
+    }
+    catch(error) {
+        logText(error, "error");
+    
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
 app.use("/api/v6/", router);
 
 app.use("/api/v2/", router);

@@ -29,33 +29,6 @@ router.get("/:userid", userMiddleware, async (req, res) => {
     return res.status(200).json(req.user);
 });
 
-router.get("/:userid/avatars/:file", async (req, res) => {
-    try {
-        if (req.user == null) {
-            return res.status(404).json({
-                code: 404,
-                message: "Unknown User"
-            });
-        }
-
-        const filePath = path.join(process.cwd(), 'user_assets', 'avatars', req.params.userid, req.params.file);
-
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).send("File not found");
-        }
-
-        return res.status(200).sendFile(filePath);
-    }
-    catch(error) {
-        logText(error, "error");
-    
-        return res.status(500).json({
-            code: 500,
-            message: "Internal Server Error"
-        });
-    }
-});
-
 router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
     try {
         const account = req.account;
