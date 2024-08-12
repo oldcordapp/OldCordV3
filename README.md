@@ -59,7 +59,8 @@ Example integration configuration:
         "client_id" : "client_id",
         "client_secret" : "client_secret",
         "redirect_uri" : "https://staging.oldcordapp.com/api/connections/twitch/callback"
-}]```
+}]
+```
 
 trusted_users bypass short term rate-limits, use these to add specific users like bots from being blocked by the wacky rate-limits scattered across the project.
 instance_flags are kinda limited at the moment, but you can lock down an instance with these entries:
