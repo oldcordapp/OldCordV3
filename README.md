@@ -38,17 +38,31 @@ Create a config.json file in the root directory, with the example contents:
         "user": "postgres_username",
         "password": "postgres_password"
     },
+    "custom_invite_url" : "",
+    "integration_config" : [],
     "trusted_users" : [
         "1270287666822275072"
-    ]
+    ],
 }
 ```
 Run npm install and then node server.js to start Oldcord.
 
 Since V3 is hosted on my own server at home, I use cloudflared to bypass CG-NAT and have enabled cloudflare's free SSL so the SSL stuff in the earlier configuration is kinda deprecated.
 
-Trusted_users bypass short term rate-limits, use these to add specific users like bots from being blocked by the wacky rate-limits scattered across the project.
-Instance_flags are kinda limited at the moment, but you can lock down an instance with these entries:
+custom_invite_url is used for invites in the app, so, putting "oldcord.us" will make it so every invite made has the prefix oldcord.us - much like discord.gg, etc.
+
+integration_config is for the in-app connections under user settings, currently only twitch is supported, and you need to make a twitch application which gives you a client_secret to use this.
+
+Example integration configuration:
+```"integration_config" : [{
+        "platform" : "twitch",
+        "client_id" : "client_id",
+        "client_secret" : "client_secret",
+        "redirect_uri" : "https://staging.oldcordapp.com/api/connections/twitch/callback"
+}]```
+
+trusted_users bypass short term rate-limits, use these to add specific users like bots from being blocked by the wacky rate-limits scattered across the project.
+instance_flags are kinda limited at the moment, but you can lock down an instance with these entries:
 
 NO_REGISTRATION - Block all future users from creating an account on your instance.
 NO_GUILD_CREATION - Block future guilds from being created.
