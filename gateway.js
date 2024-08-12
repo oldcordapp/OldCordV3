@@ -206,13 +206,23 @@ const gateway = {
                                 continue;
                             }
 
+                            let correct_id = dm.author_of_channel_id == user.id ? dm.receiver_of_channel_id : dm.author_of_channel_id;
+                            let user2 = await globalUtils.database.getAccountByUserId(correct_id);
+
+                            if (user2 == null) {
+                                continue;
+                            }
+
                             dm_list.push({
                                 id: dm.id,
                                 name: "",
                                 topic: "",
                                 position: 0,
                                 recipient: {
-                                    id: dm.author_of_channel_id == user.id ? dm.receiver_of_channel_id : dm.author_of_channel_id
+                                    id: user2.id,
+                                    username: user2.username,
+                                    discriminator: user2.discriminator,
+                                    avatar: user2.avatar
                                 },
                                 type: globalUtils.requiresIntsForChannelTypes(release_date) ? 1 : "text",
                                 guild_id: null,

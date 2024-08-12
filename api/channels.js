@@ -27,7 +27,10 @@ router.param('channelid', async (req, res, next, channelid) => {
                         topic: "",
                         position: 0,
                         recipient: {
-                            id: dmChannel.receiver_of_channel_id
+                            id: user.id,
+                            username: user.username,
+                            discriminator: user.discriminator,
+                            avatar: user.avatar
                         },
                         type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
                         guild_id: null,
@@ -41,7 +44,10 @@ router.param('channelid', async (req, res, next, channelid) => {
                         topic: "",
                         position: 0,
                         recipient: {
-                            id: dmChannel.author_of_channel_id
+                            id: user.id,
+                            username: user.username,
+                            discriminator: user.discriminator,
+                            avatar: user.avatar
                         },
                         type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
                         guild_id: null,
@@ -351,6 +357,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
             SEND_MESSAGES: globalUtils.permissions.SEND_MESSAGES,
             SEND_TTS_MESSAGES: globalUtils.permissions.SEND_TTS_MESSAGES,
             MANAGE_MESSAGES: globalUtils.permissions.MANAGE_MESSAGES,
+            ADD_REACTIONS: globalUtils.permissions.ADD_REACTIONS,
             EMBED_LINKS: globalUtils.permissions.EMBED_LINKS,
             ATTACH_FILES: globalUtils.permissions.ATTACH_FILES,
             READ_MESSAGE_HISTORY: globalUtils.permissions.READ_MESSAGE_HISTORY,

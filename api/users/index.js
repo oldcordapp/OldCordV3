@@ -96,7 +96,10 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
                     topic: "",
                     position: 0,
                     recipient: {
-                        id: user.id
+                        id: user.id,
+                        username: user.username,
+                        discriminator: user.discriminator,
+                        avatar: user.avatar
                     },
                     type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
                     guild_id: null,
@@ -110,7 +113,10 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
                     topic: "",
                     position: 0,
                     recipient: {
-                        id: account.id
+                        id: account.id,
+                        username: account.username,
+                        discriminator: account.discriminator,
+                        avatar: account.avatar
                     },
                     type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
                     guild_id: null,
@@ -125,7 +131,10 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
                 topic: "",
                 position: 0,
                 recipient: {
-                    id: user.id
+                    id: user.id,
+                    username: user.username,
+                    discriminator: user.discriminator,
+                    avatar: user.avatar
                 },
                 type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
                 guild_id: null,
@@ -181,7 +190,10 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             topic: "",
             position: 0,
             recipient: {
-                id: user.id
+                id: user.id,
+                username: user.username,
+                discriminator: user.discriminator,
+                avatar: user.avatar
             },
             type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
             guild_id: null,
@@ -195,7 +207,10 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             topic: "",
             position: 0,
             recipient: {
-                id: account.id
+                id: account.id,
+                username: account.username,
+                discriminator: account.discriminator,
+                avatar: account.avatar
             },
             type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
             guild_id: null,
