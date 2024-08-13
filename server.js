@@ -346,9 +346,11 @@ app.get("*", (req, res) => {
 
         let appFile = fs.readFileSync(`./clients/assets/${req.cookies['release_date']}/app.html`, 'utf8');
 
-        let patcherFile = fs.readFileSync(`./clients/assets/patcher/patcher.js`, "utf8");
+        if (config.patcher_location !== "") {
+            let patcherFile = fs.readFileSync(`./clients/assets/patcher/patcher.js`, "utf8");
 
-        appFile += `\n<script>${patcherFile}</script>`;
+            appFile += `\n<script>${patcherFile}</script>`;
+        }
 
         res.send(appFile);
     }
