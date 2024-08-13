@@ -8,6 +8,8 @@ class Twitch {
         this.code = code;
     }
     async getAccessToken () {
+        if (!twitchConfig) return null;
+        
         const options = {
             method: 'POST',
             url: 'https://id.twitch.tv/oauth2/token',
