@@ -1,9 +1,8 @@
-if (!webpackJsonp) {
+if (!webpackJsonp)
 	throw Error("Monkey patcher ran too early.");
-}
 
-let require = webpackJsonp([], [(module, exports, require) => { module.exports = require }])
-let modules = require.c
+const wpRequire = webpackJsonp([], [(module, exports, require) => { module.exports = require }]);
+const modules = wpRequire.c;
 
 function propsFilter(props, module) {
 	return props.every ? props.every((p) => module[p] !== undefined) : module[props] !== undefined;
@@ -14,7 +13,7 @@ function findByProps(props) {
 	for (const mod in modules) {
 		if (!modules.hasOwnProperty(mod))
 			continue;
-		
+
 		const module = modules[mod].exports;
 
 		if (!module)
@@ -27,14 +26,14 @@ function findByProps(props) {
 			return module;
 	}
 }
-	
+
 function findByPropsAll(props) {
 	let foundModules = [];
 
 	for (const mod in modules) {
 		if (!modules.hasOwnProperty(mod))
 			continue;
-		
+
 		const module = modules[mod].exports;
 
 		if (!module)
@@ -46,18 +45,18 @@ function findByPropsAll(props) {
 		if (propsFilter(props, module))
 			foundModules.push(module);
 	}
+
 	return foundModules;
 }
 
-function getCookie(name) {
-	const parts = `; ${document.cookie}`.split(`; ${name}=`);
+const release_date = (function() {
+	const parts = `; ${document.cookie}`.split("; release_date=");
 	if (parts.length === 2)
 		return parts.pop().split(';').shift();
-}
+})();
+
 
 //Patches
-const release_date = getCookie("release_date");
-
 (function() {
 	const mod = findByProps("track");
 	if (mod && mod.track) {
@@ -68,7 +67,7 @@ const release_date = getCookie("release_date");
 
 (function() {
 	console.log("Applying server region text patch");
-	
+
 	findByPropsAll('Messages').forEach(e => {
 		e.Messages.FORM_LABEL_SERVER_REGION = 'Server Era';
 		e.Messages.REGION_SELECT_HEADER = 'Select a server era';
@@ -78,23 +77,11 @@ const release_date = getCookie("release_date");
 })();
 
 (function() {
-	//Known builds which do not require this patch
-	const exclude = [
-		"june_12_2015",
-		"july_10_2015",
-		"august_10_2015",
-		"september_2_2015",
-		"november_6_2015",
-		"december_23_2015",
-	].includes(release_date);
-	
-	if (exclude) {
-		//Patch not needed; this build does not have region flags.
-		return;
-	}
-	
+	if (release_date.endsWith("_2015"))
+		return; //Patch not needed; 2015 builds do not have region flags.
+
 	console.log("Applying region flag patch");
-	
+
 	//Known builds
 	let modId = {
 		"january_22_2016": 1973,
@@ -117,7 +104,7 @@ const release_date = getCookie("release_date");
 		"november_22_2016": 3399,
 		"december_22_2016": 3457,
 	}[release_date];
-	
+
 	if (!modId) {
 		//Unknown build. Fallback: Search for the module.
 		function bruteFindFlagsResolver(min, max) {
@@ -129,7 +116,7 @@ const release_date = getCookie("release_date");
 					if (!mod || !mod.loaded) {
 						//Load unloaded modules, goddammit, tear the whole place up.
 						unload = true;
-						mod = require(i);
+						mod = wpRequire(i);
 					}
 					if (mod && mod.id && mod.keys && mod.resolve) {
 						let keys = mod.keys();
@@ -144,23 +131,24 @@ const release_date = getCookie("release_date");
 					delete modules[i]; //Unload anything which we had to load
 			}
 		}
-		
+
 		let result = bruteFindFlagsResolver(1900, 4000);
 		if (result)
 			modId = result.id;
 	}
-	
-	if (modId > 0) {
-		//Apply patch
-		modules[modId] = {
-			exports: (file) => require.p + file.substring(2),
-			id: modId,
-			loaded: true
-		}
-	} else {
+
+	if (!modId) {
 		//Failed
 		console.error("Failed to monkey patch flag lookup; couldn't find the module.");
+		return;
 	}
+
+	//Apply patch
+	modules[modId] = {
+		exports: (file) => wpRequire.p + file.substring(2),
+		id: modId,
+		loaded: true
+	};
 })();
 
 (function() {
