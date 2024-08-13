@@ -105,6 +105,16 @@ const gateway = {
                     const packet = JSON.parse(msg);
                     const cookieStore = socket.cookieStore;
                     const release_date = cookieStore['release_date'];
+                    const build = release_date;
+                    const parts = build.split('_');
+                    const month2 = parts[0];
+                    const day = parts[1];
+                    const year2 = parts[2];
+                    const date = new Date(`${month2} ${day} ${year2}`);
+                    const client_date = date;
+
+                    let month = client_date.getMonth();
+                    let year = client_date.getFullYear();
 
                     logText(`Incoming -> ${msg}`, "GATEWAY");
 
@@ -213,11 +223,8 @@ const gateway = {
                                 continue;
                             }
 
-                            dm_list.push({
+                            let dmChannelObj = {
                                 id: dm.id,
-                                name: "",
-                                topic: "",
-                                position: 0,
                                 recipient: {
                                     id: user2.id,
                                     username: user2.username,
@@ -227,8 +234,19 @@ const gateway = {
                                 type: globalUtils.requiresIntsForChannelTypes(release_date) ? 1 : "text",
                                 guild_id: null,
                                 is_private: true,
-                                permission_overwrites: []
-                            });
+                                last_message_id: dm.last_message_id
+                            }
+
+                            if ((month >= 6 && year == 2016) || year >= 2017) {
+                                dmChannelObj.recipients = [
+                                    dmChannelObj.recipient
+                                ];
+
+                                delete dmChannelObj.recipient;
+                                delete dmChannelObj.is_private;
+                            }
+
+                            dm_list.push(dmChannelObj);
                         }
 
                         let tutorial = await globalUtils.database.getTutorial(user.id);
