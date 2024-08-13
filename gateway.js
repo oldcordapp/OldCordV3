@@ -360,6 +360,10 @@ const gateway = {
                                     "invisible"
                                 ];
 
+                                if (!packet.d.status && packet.d.idle_since && packet.d.idle_since > 0) {
+                                    packet.d.status = "idle";
+                                }
+
                                 if (!accepted_presences.includes(packet.d.status.toLowerCase())) {
                                     return socket.close(4001, 'Invalid payload');
                                 }
