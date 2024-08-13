@@ -347,7 +347,7 @@ app.get("*", (req, res) => {
         let appFile = fs.readFileSync(`./clients/assets/${req.cookies['release_date']}/app.html`, 'utf8');
 
         if (config.patcher_location !== "") {
-            let patcherFile = fs.readFileSync(`./clients/assets/patcher/patcher.js`, "utf8");
+            let patcherFile = fs.readFileSync(config.patcher_location, "utf8");
 
             appFile += `\n<script>${patcherFile}</script>`;
         }
