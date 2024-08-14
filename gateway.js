@@ -73,12 +73,7 @@ const gateway = {
                         let sesh = new session(globalUtils.generateString(16), socket, user, packet.d.token, false, {
                             game: null,
                             status: socket.user.settings.status,
-                            user: {
-                                avatar: socket.user.avatar,
-                                discriminator: socket.user.discriminator,
-                                id: socket.user.id,
-                                username: socket.user.username
-                            }
+                            user: globalUtils.miniUserObject(socket.user)
                         });
 
                         socket.session = sesh;        
@@ -184,12 +179,7 @@ const gateway = {
                             let sesh = new session(globalUtils.generateString(16), socket, socket.user, packet.d.token, false, {
                                 game: null,
                                 status: socket.user.settings.status,
-                                user: {
-                                    avatar: socket.user.avatar,
-                                    discriminator: socket.user.discriminator,
-                                    id: socket.user.id,
-                                    username: socket.user.username
-                                }
+                                user: globalUtils.miniUserObject(socket.user)
                             });
 
                             sesh.seq = packet.d.seq;

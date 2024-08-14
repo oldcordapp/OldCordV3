@@ -459,7 +459,7 @@ const database = {
                     password: rows[0].password,
                     token: rows[0].token,
                     verified: true,
-                    //bot: rows[0].bot == 1 ? true : false,
+                    bot: rows[0].bot == 1 ? true : false,
                     //verified: rows[0].verified == 1 ? true : false,
                     created_at: rows[0].created_at,
                     settings: JSON.parse(rows[0].settings)
@@ -537,12 +537,7 @@ const database = {
             custom_emojis.push({
                 id: emoji_id,
                 name: emoji_name,
-                user: {
-                    username: user.username,
-                    id: user.id,
-                    discriminator: user.discriminator,
-                    avatar: user.avatar
-                }
+                user: globalUtils.miniUserObject(user)
             });
 
             await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild_id]);
@@ -619,7 +614,7 @@ const database = {
                     password: rows[0].password,
                     token: rows[0].token,
                     verified: true,
-                    //bot: rows[0].bot == 1 ? true : false,
+                    bot: rows[0].bot == 1 ? true : false,
                     //verified: rows[0].verified == 1 ? true : false,
                     created_at: rows[0].created_at,
                     settings: JSON.parse(rows[0].settings)
@@ -684,7 +679,7 @@ const database = {
                     password: rows[0].password,
                     token: rows[0].token,
                     verified: true,
-                    //bot: rows[0].bot == 1 ? true : false,
+                    bot: rows[0].bot == 1 ? true : false,
                     //verified: rows[0].verified == 1 ? true : false,
                     created_at: rows[0].created_at,
                     avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
@@ -904,12 +899,7 @@ const database = {
 
                     if (user != null) {
                         ret.push({
-                            user: {
-                                username: user.username,
-                                avatar: user.avatar,
-                                id: user.id,
-                                discriminator: user.discriminator
-                            }
+                            user: globalUtils.miniUserObject(user)
                         });
                     }
                 }
@@ -968,12 +958,7 @@ const database = {
                     ret.push({                             
                         game: null,
                         status: 'offline',
-                        user: {
-                            avatar: member.user.avatar,
-                            discriminator: member.user.discriminator,
-                            id: member.user.id,
-                            username: member.user.username
-                        }
+                        user: globalUtils.miniUserObject(member.user)
                     });
                 } else {
                     let session = sessions[sessions.length - 1]
@@ -982,12 +967,7 @@ const database = {
                         ret.push({                             
                             game: null,
                             status: 'offline',
-                            user: {
-                                avatar: member.user.avatar,
-                                discriminator: member.user.discriminator,
-                                id: member.user.id,
-                                username: member.user.username
-                            }
+                            user: globalUtils.miniUserObject(member.user)
                         });
                     } else ret.push(session.presence);
                 }
@@ -1174,12 +1154,7 @@ const database = {
                         deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                         mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
                         roles: roles,
-                        user: {
-                            id: user.id,
-                            username: user.username,
-                            discriminator: user.discriminator,
-                            avatar: user.avatar
-                        }
+                        user: globalUtils.miniUserObject(user)
                     })
                 }
 
@@ -1338,12 +1313,7 @@ const database = {
                     const mention = await database.getAccountByUserId(mention_id);
 
                     if (mention != null) {
-                        mentions.push({
-                            id: mention.id,
-                            username: mention.username,
-                            discriminator: mention.discriminator,
-                            avatar: mention.avatar
-                        });
+                        mentions.push(globalUtils.miniUserObject(mention));
                     }
                 }
             }
@@ -1372,12 +1342,7 @@ const database = {
                 id: rows[0].message_id,
                 content: rows[0].content,
                 channel_id: rows[0].channel_id,
-                author: {
-                    id: author.id,
-                    username: author.username,
-                    discriminator: author.discriminator,
-                    avatar: author.avatar
-                },
+                author: globalUtils.miniUserObject(author),
                 attachments: messageAttachments,
                 embeds: rows[0].embeds == 'NULL' ? [] : JSON.parse(rows[0].embeds),
                 mentions: mentions,
@@ -1615,12 +1580,7 @@ const database = {
                     fixed_presences.push({
                         guild_id: id,
                         game_id: pren.game != null ? pren.game : null,
-                        user: {
-                            avatar: pren.user.avatar,
-                            discriminator: pren.user.discriminator,
-                            id: pren.user.id,
-                            username: pren.user.username
-                        },
+                        user: globalUtils.miniUserObject(pren.user),
                         status: pren.status
                     })
                 }
@@ -1777,12 +1737,7 @@ const database = {
                 code: rows[0].code,
                 temporary: rows[0].temporary == 1 ? true : false,
                 revoked: rows[0].revoked == 1 ? true : false,
-                inviter: {
-                    id: guy.id,
-                    username: guy.username,
-                    discriminator: guy.discriminator,
-                    avatar: guy.avatar
-                },
+                inviter: globalUtils.miniUserObject(guy),
                 max_age: rows[0].maxage,
                 max_uses: rows[0].maxuses,
                 uses: rows[0].uses,
@@ -2580,12 +2535,7 @@ const database = {
                     id: owner_id,
                     joined_at: date,
                     roles: [],
-                    user: {
-                        id: owner.id,
-                        username: owner.username,
-                        discriminator: owner.discriminator,
-                        avatar: owner.avatar
-                    }
+                    user: globalUtils.miniUserObject(owner)
                 }],
                 presences: [{
                     game: null,
