@@ -32,7 +32,7 @@ const permissions = {
     },
     async hasGuildPermissionTo(guild, user_id, key, for_build) {
         try {
-            const member = await globalUtils.database.getGuildMemberById(guild.id, user_id);
+            const member = await global.database.getGuildMemberById(guild.id, user_id);
 
             if (guild == null) return false;
     
@@ -46,7 +46,7 @@ const permissions = {
             const gatheredRoles = []
     
             for(var role2 of roles) {
-                var role = await globalUtils.database.getRoleById(role2)
+                var role = await global.database.getRoleById(role2)
     
                 if (role != null) {
                     gatheredRoles.push(role);
@@ -69,7 +69,7 @@ const permissions = {
 
             if (guild == null) return false;
     
-            const member = await globalUtils.database.getGuildMemberById(guild.id, user_id);
+            const member = await global.database.getGuildMemberById(guild.id, user_id);
     
             if (member == null) return false;
     
@@ -80,7 +80,7 @@ const permissions = {
             let memberRoles = [];
     
             for(var role2 of member.roles) {
-                var role = await globalUtils.database.getRoleById(role2)
+                var role = await global.database.getRoleById(role2)
     
                 if (role != null) {
                     memberRoles.push(role);

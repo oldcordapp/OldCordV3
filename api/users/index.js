@@ -5,12 +5,12 @@ const me = require('./me');
 const path = require('path');
 const globalUtils = require('../../helpers/globalutils');
 const { rateLimitMiddleware, userMiddleware } = require('../../helpers/middlewares');
-const dispatcher = require('../../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 
 const router = express.Router();
 
 router.param('userid', async (req, res, next, userid) => {
-    req.user = await globalUtils.database.getAccountByUserId(userid);
+    req.user = await global.database.getAccountByUserId(userid);
 
     next();
 });
@@ -40,7 +40,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        const user = await globalUtils.database.getAccountByUserId(req.body.recipient_id);
+        const user = await global.database.getAccountByUserId(req.body.recipient_id);
 
         if (user == null) {
             return res.status(404).json({
@@ -56,14 +56,14 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        const dm_channels = await globalUtils.database.getDMChannels(account.id);
+        const dm_channels = await global.database.getDMChannels(account.id);
         const openedAlready = dm_channels.find(x => x.receiver_of_channel_id == user.id || x.author_of_channel_id == user.id);
 
         if (openedAlready) {
             if (openedAlready.is_closed) {
-                await globalUtils.database.openDMChannel(openedAlready.id);
+                await global.database.openDMChannel(openedAlready.id);
 
-                dispatcher.dispatchEventTo(account.token, "CHANNEL_CREATE", {
+                await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
                     id: openedAlready.id,
                     name: "",
                     topic: "",
@@ -80,7 +80,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
                     permission_overwrites: []
                 });
         
-                dispatcher.dispatchEventTo(user.token, "CHANNEL_CREATE", {
+                await global.dispatcher.dispatchEventTo(user.id, "CHANNEL_CREATE", {
                     id: openedAlready.id,
                     name: "",
                     topic: "",
@@ -116,8 +116,8 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        const theirguilds = await globalUtils.database.getUsersGuilds(user.id);
-        const myguilds = await globalUtils.database.getUsersGuilds(account.id);
+        const theirguilds = await global.database.getUsersGuilds(user.id);
+        const myguilds = await global.database.getUsersGuilds(account.id);
 
         let share = false;
 
@@ -148,7 +148,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        const channel = await globalUtils.database.createDMChannel(account.id, user.id);
+        const channel = await global.database.createDMChannel(account.id, user.id);
 
         if (channel == null) {
             return res.status(500).json({
@@ -157,7 +157,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        dispatcher.dispatchEventTo(account.token, "CHANNEL_CREATE", {
+        await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
             id: channel.id,
             name: "",
             topic: "",
@@ -174,7 +174,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             permission_overwrites: []
         });
 
-        dispatcher.dispatchEventTo(user.token, "CHANNEL_CREATE", {
+        await global.dispatcher.dispatchEventTo(user.id, "CHANNEL_CREATE", {
             id: channel.id,
             name: "",
             topic: "",
@@ -245,7 +245,7 @@ router.get("/:userid/profile", userMiddleware, async (req, res) => {
 
         let ret = {};
 
-        let guilds = await globalUtils.database.getUsersGuilds(user.id);
+        let guilds = await global.database.getUsersGuilds(user.id);
 
         let sharedGuilds = guilds.filter(guild => guild.members != null && guild.members.length > 0 && guild.members.some(member => member.id === account.id));
         let mutualGuilds = [];
@@ -266,8 +266,8 @@ router.get("/:userid/profile", userMiddleware, async (req, res) => {
 
         ret.mutual_guilds = mutualGuilds; 
 
-        let ourFriends = await globalUtils.database.getRelationshipsByUserId(account.id);
-        let theirFriends = await globalUtils.database.getRelationshipsByUserId(user.id);
+        let ourFriends = await global.database.getRelationshipsByUserId(account.id);
+        let theirFriends = await global.database.getRelationshipsByUserId(user.id);
 
         let sharedFriends = [];
         
@@ -283,7 +283,7 @@ router.get("/:userid/profile", userMiddleware, async (req, res) => {
 
         ret.mutual_friends = sharedFriends.length > 0 ? sharedFriends : [];
 
-        let connectedAccounts = await globalUtils.database.getConnectedAccounts(user.id);
+        let connectedAccounts = await global.database.getConnectedAccounts(user.id);
 
         connectedAccounts = connectedAccounts.filter(x => x.visibility == 1);
 
@@ -329,8 +329,8 @@ router.get("/:userid/relationships", userMiddleware, async (req, res) => {
             });
         }
 
-        let ourFriends = await globalUtils.database.getRelationshipsByUserId(account.id);
-        let theirFriends = await globalUtils.database.getRelationshipsByUserId(user.id);
+        let ourFriends = await global.database.getRelationshipsByUserId(account.id);
+        let theirFriends = await global.database.getRelationshipsByUserId(user.id);
 
         let sharedFriends = [];
         

@@ -7,7 +7,7 @@ const dispatcher = require('../helpers/dispatcher');
 const router = express.Router({ mergeParams: true });
 
 router.param('roleid', async (req, res, next, roleid) => {
-    req.role = await globalUtils.database.getRoleById(roleid);
+    req.role = await global.database.getRoleById(roleid);
 
     next();
 });
@@ -27,7 +27,7 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
             });
         }
 
-        let roles = await globalUtils.database.getGuildRoles(req.params.guildid);
+        let roles = await global.database.getGuildRoles(req.params.guildid);
 
         if (roles.length == 0) {
             return res.status(404).json({
@@ -52,17 +52,17 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
             });
         }
 
-        const attempt = await globalUtils.database.updateRole(req.params.roleid, req.body.name, req.body.permissions, req.body.position ? req.body.position : null);
+        const attempt = await global.database.updateRole(req.params.roleid, req.body.name, req.body.permissions, req.body.position ? req.body.position : null);
 
         if (attempt) {
-            role = await globalUtils.database.getRoleById(req.params.roleid);
+            role = await global.database.getRoleById(req.params.roleid);
 
-            dispatcher.dispatchEventTo(sender.token, "GUILD_ROLE_UPDATE", {
+            await global.dispatcher.dispatchEventTo(sender.id, "GUILD_ROLE_UPDATE", {
                 guild_id: req.params.guildid,
                 role: role
             });
 
-            await dispatcher.dispatchEventToAllPerms(req.params.guildid, null, "MANAGE_ROLES", "GUILD_ROLE_UPDATE", {
+            await global.dispatcher.dispatchEventToAllPerms(req.params.guildid, null, "MANAGE_ROLES", "GUILD_ROLE_UPDATE", {
                 guild_id: req.params.guildid,
                 role: role
             });
@@ -104,7 +104,7 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
             });
         }
 
-        const attempt = await globalUtils.database.deleteRole(req.params.roleid);
+        const attempt = await global.database.deleteRole(req.params.roleid);
 
         if (!attempt) {
             return res.status(500).json({
@@ -113,7 +113,7 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
             });
         }
 
-        await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_ROLE_DELTE", {
+        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_ROLE_DELTE", {
             guild_id: req.params.guildid,
             role_id: req.params.roleid
         });
@@ -140,7 +140,7 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
             });
         }
         
-        const role = await globalUtils.database.createRole(req.params.guildid, "new role", 0, 1);
+        const role = await global.database.createRole(req.params.guildid, "new role", 0, 1);
 
         if (role == null) {
             return res.status(500).json({
@@ -149,12 +149,12 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
             });
         }
 
-        dispatcher.dispatchEventTo(sender.token, "GUILD_ROLE_CREATE", {
+        await global.dispatcher.dispatchEventTo(sender.id, "GUILD_ROLE_CREATE", {
             guild_id: req.params.guildid,
             role: role
         });
 
-        await dispatcher.dispatchEventToAllPerms(req.params.guildid, null, "MANAGE_ROLES", "GUILD_ROLE_CREATE", {
+        await global.dispatcher.dispatchEventToAllPerms(req.params.guildid, null, "MANAGE_ROLES", "GUILD_ROLE_CREATE", {
             guild_id: req.params.guildid,
             role: role
         });

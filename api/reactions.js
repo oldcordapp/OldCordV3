@@ -2,7 +2,7 @@ const express = require('express');
 const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { channelPermissionsMiddleware, rateLimitMiddleware } = require('../helpers/middlewares');
-const dispatcher = require('../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 const fs = require('fs');
 const mime = require('mime');
 const multer = require('multer');
@@ -13,7 +13,7 @@ const Snowflake = require('../helpers/snowflake');
 const router = express.Router({ mergeParams: true });
 
 router.param('userid', async (req, res, next, userid) => {
-    req.user = await globalUtils.database.getAccountByUserId(userid);
+    req.user = await global.database.getAccountByUserId(userid);
 
     next();
 });
@@ -73,7 +73,7 @@ router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), ra
             dispatch_name = encoded;
         }
 
-        let tryReact = await globalUtils.database.addMessageReaction(message.id, account.id, id, encoded);
+        let tryReact = await global.database.addMessageReaction(message.id, account.id, id, encoded);
 
         if (!tryReact) {
             return res.status(500).json({
@@ -82,7 +82,7 @@ router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), ra
             }); 
         }
 
-        await dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_REACTION_ADD", {
+        await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_REACTION_ADD", {
             channel_id: channel.id,
             message_id: message.id,
             user_id: account.id,
@@ -164,14 +164,14 @@ router.get("/:urlencoded", async (req, res) => {
             limit = 100;
         }
 
-        let reactions = await globalUtils.database.getMessageReactions(message.id);
+        let reactions = await global.database.getMessageReactions(message.id);
 
         let filteredReactions = reactions.filter(x => x.emoji.name == dispatch_name && x.emoji.id == id);
 
         let return_users = [];
 
         for(var filteredReaction of filteredReactions) {
-            let user = await globalUtils.database.getAccountByUserId(filteredReaction.user_id);
+            let user = await global.database.getAccountByUserId(filteredReaction.user_id);
 
             if (user == null) continue;
 
@@ -258,7 +258,7 @@ router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSA
             dispatch_name = encoded;
         }
 
-        let tryUnReact = await globalUtils.database.removeMessageReaction(message.id, user.id, id, dispatch_name);
+        let tryUnReact = await global.database.removeMessageReaction(message.id, user.id, id, dispatch_name);
 
         if (!tryUnReact) {
             return res.status(500).json({
@@ -267,7 +267,7 @@ router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSA
             }); 
         }
 
-        await dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_REACTION_REMOVE", {
+        await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_REACTION_REMOVE", {
             channel_id: channel.id,
             message_id: message.id,
             user_id: user.id,
@@ -343,7 +343,7 @@ router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"),
             dispatch_name = encoded;
         }
 
-        let tryUnReact = await globalUtils.database.removeMessageReaction(message.id, account.id, id, dispatch_name);
+        let tryUnReact = await global.database.removeMessageReaction(message.id, account.id, id, dispatch_name);
 
         if (!tryUnReact) {
             return res.status(500).json({
@@ -352,7 +352,7 @@ router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"),
             }); 
         }
 
-        await dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_REACTION_REMOVE", {
+        await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_REACTION_REMOVE", {
             channel_id: channel.id,
             message_id: message.id,
             user_id: account.id,

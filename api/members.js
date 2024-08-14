@@ -2,12 +2,12 @@ const express = require('express');
 const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { rateLimitMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
-const dispatcher = require('../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 
 const router = express.Router({ mergeParams: true });
 
 router.param('memberid', async (req, res, next, memberid) => {
-    req.member = await globalUtils.database.getGuildMemberById(req.params.guildid, memberid);
+    req.member = await global.database.getGuildMemberById(req.params.guildid, memberid);
 
     next();
 });
@@ -35,17 +35,8 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
                 message: "Unknown Member"
             });
         }
-        
-        let member_acc = await globalUtils.database.getAccountByUserId(member.id);
 
-        if (!member_acc) {
-            return res.status(404).json({
-                code: 404,
-                message: "Unknown Member"
-            });
-        }
-
-        const attempt = await globalUtils.database.leaveGuild(member.id, req.params.guildid);
+        const attempt = await global.database.leaveGuild(member.id, req.params.guildid);
 
         if (!attempt) {
             return res.status(500).json({
@@ -54,11 +45,11 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
             });
         }
 
-        dispatcher.dispatchEventTo(member_acc.token, "GUILD_DELETE", {
+        await global.dispatcher.dispatchEventTo(member.id, "GUILD_DELETE", {
             id: req.params.guildid
         });
 
-        await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
+        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
             type: "kick",
             moderator: {
                 username: sender.username,
@@ -110,7 +101,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimit
         const roles = [];
 
         if (req.body.roles && req.body.roles.length == 0) {
-            const tryClearRoles = await globalUtils.database.clearRoles(req.params.guildid, member.id);
+            const tryClearRoles = await global.database.clearRoles(req.params.guildid, member.id);
 
             if (!tryClearRoles) {
                 return res.status(500).json({
@@ -136,7 +127,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimit
             }
 
             for(var role_id of roles) {
-                const attempt = await globalUtils.database.addRole(req.params.guildid, role_id, member.id);
+                const attempt = await global.database.addRole(req.params.guildid, role_id, member.id);
     
                 if (!attempt) {
                     return res.status(500).json({
@@ -171,7 +162,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimit
         }
 
         if (nick || reset) {
-            let tryUpdateNick = await globalUtils.database.updateGuildMemberNick(req.params.guildid, member.user.id, nick);
+            let tryUpdateNick = await global.database.updateGuildMemberNick(req.params.guildid, member.user.id, nick);
 
             if (!tryUpdateNick) {
                 return res.status(500).json({
@@ -183,7 +174,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimit
             member.nick = nick;
         }
         
-        await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_UPDATE", {
             roles: member.roles,
             user: member.user,
             guild_id: req.params.guildid,
@@ -247,7 +238,7 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
 
         if (reset) nick = null;
 
-        let tryUpdate = await globalUtils.database.updateGuildMemberNick(guild.id, account.id, nick);
+        let tryUpdate = await global.database.updateGuildMemberNick(guild.id, account.id, nick);
 
         if (!tryUpdate) {
             return res.status(500).json({
@@ -256,7 +247,7 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
             });
         }
         
-        let member = await globalUtils.database.getGuildMemberById(guild.id, account.id);
+        let member = await global.database.getGuildMemberById(guild.id, account.id);
 
         if (!member) {
             return res.status(500).json({
@@ -265,7 +256,7 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
             });
         }
 
-        await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_UPDATE", {
             roles: member.roles,
             user: member.user,
             guild_id: req.params.guildid,

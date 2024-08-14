@@ -6,13 +6,13 @@ const members = require('./members');
 const bans = require('./bans');
 const emojis = require('./emojis');
 const { instanceMiddleware, rateLimitMiddleware, guildMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
-const dispatcher = require('../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 const { requiresIntsForChannelTypes } = require('../helpers/globalutils');
 
 const router = express.Router();
 
 router.param('guildid', async (req, _, next, guildid) => {
-    req.guild = await globalUtils.database.getGuildById(guildid);
+    req.guild = await global.database.getGuildById(guildid);
 
     next();
 });
@@ -76,7 +76,7 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50
         //singapore = up to 2019
         //amsterdam = everything
 
-        const guild = await globalUtils.database.createGuild(creator.id, req.body.icon, req.body.name, req.body.region, exclusions);
+        const guild = await global.database.createGuild(creator.id, req.body.icon, req.body.name, req.body.region, exclusions);
 
         if (guild == null) {
             return res.status(500).json({
@@ -88,7 +88,7 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50
                 guild.channels[0].type = "text";
             }
 
-            dispatcher.dispatchEventTo(creator.token, "GUILD_CREATE", guild);
+            await global.dispatcher.dispatchEventTo(creator.id, "GUILD_CREATE", guild);
 
             return res.status(200).json(guild);
         }
@@ -130,11 +130,11 @@ router.post("/:guildid/delete", guildMiddleware, rateLimitMiddleware(50, 1000 * 
             });
         }
 
-        await dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
+        await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
             id: req.params.guildid
         });
         
-        const del = await globalUtils.database.deleteGuild(guild.id);
+        const del = await global.database.deleteGuild(guild.id);
 
         if (!del) {
             return res.status(500).json({
@@ -175,11 +175,11 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
         }
 
         if (guild.owner_id == user.id) {
-            await dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
+            await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
                 id: req.params.guildid
             });
             
-            const del = await globalUtils.database.deleteGuild(guild.id);
+            const del = await global.database.deleteGuild(guild.id);
 
             if (!del) {
                 return res.status(500).json({
@@ -190,7 +190,7 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
 
             return res.status(204).send();
         } else {
-            const leave = await globalUtils.database.leaveGuild(user.id, guild.id);
+            const leave = await global.database.leaveGuild(user.id, guild.id);
 
             if (!leave) {
                 return res.status(500).json({
@@ -199,11 +199,11 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
                 });
             }
 
-            dispatcher.dispatchEventTo(user.token, "GUILD_DELETE", {
+            await global.dispatcher.dispatchEventTo(user.id, "GUILD_DELETE", {
                 id: req.params.guildid
             });
 
-            await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
+            await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
                 type: "leave",
                 roles: [],
                 user: {
@@ -259,7 +259,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             });
         }
 
-        const update = await globalUtils.database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.name, req.body.region);
+        const update = await global.database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.name, req.body.region);
 
         if (!update) {
             return res.status(500).json({
@@ -268,7 +268,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             });
         }
 
-        what = await globalUtils.database.getGuildById(req.params.guildid);
+        what = await global.database.getGuildById(req.params.guildid);
 
         if (what == null) {
             return res.status(500).json({
@@ -277,7 +277,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             }); 
         }
 
-        await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_UPDATE", what);
+        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_UPDATE", what);
 
         return res.status(200).json(what);
       } catch (error) {
@@ -309,7 +309,7 @@ router.get("/:guildid/embed", guildMiddleware, async (req, res) => {
             });
         }
 
-        const widget = await globalUtils.database.getGuildWidget(req.params.guildid);
+        const widget = await global.database.getGuildWidget(req.params.guildid);
 
         if (widget == null) {
             return res.status(500).json({
@@ -340,7 +340,7 @@ router.patch("/:guildid/embed", guildMiddleware, guildPermissionsMiddleware("MAN
             });
         }
 
-        const update = await globalUtils.database.updateGuildWidget(req.params.guildid, req.body.channel_id, req.body.enabled);
+        const update = await global.database.updateGuildWidget(req.params.guildid, req.body.channel_id, req.body.enabled);
 
         if (!update) {
             return res.status(500).json({
@@ -349,7 +349,7 @@ router.patch("/:guildid/embed", guildMiddleware, guildPermissionsMiddleware("MAN
             });
         }
 
-        const widget = await globalUtils.database.getGuildWidget(req.params.guildid);
+        const widget = await global.database.getGuildWidget(req.params.guildid);
 
         if (widget == null) {
             return res.status(500).json({
@@ -380,7 +380,7 @@ router.get("/:guildid/invites", guildMiddleware, guildPermissionsMiddleware("MAN
             });
         }
 
-        const invites = await globalUtils.database.getGuildInvites(req.params.guildid);
+        const invites = await global.database.getGuildInvites(req.params.guildid);
 
         return res.status(200).json(invites);
       } catch (error) {
@@ -404,7 +404,7 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
             });
         }
 
-        const member = await globalUtils.database.getGuildMemberById(req.params.guildid, sender.id);
+        const member = await global.database.getGuildMemberById(req.params.guildid, sender.id);
 
         if (member == null) {
             return res.status(404).json({
@@ -419,7 +419,7 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
             number_type = req.body.type == "text" ? 0 : 1;
         } else number_type = req.body.type;
 
-        const channel = await globalUtils.database.createChannel(req.params.guildid, req.body.name, number_type);
+        const channel = await global.database.createChannel(req.params.guildid, req.body.name, number_type);
 
         if (channel == null) {
             return res.status(500).json({
@@ -430,7 +430,7 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
 
         channel.type = typeof req.body.type === 'string' ? req.body.type : number_type;
 
-        await dispatcher.dispatchEventInGuild(req.params.guildid, "CHANNEL_CREATE", channel);
+        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "CHANNEL_CREATE", channel);
 
         return res.status(200).json(channel);
     } catch(error) {
@@ -460,7 +460,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
             var channel_id = shit.id;
             var position = shit.position;
 
-            const channel = await globalUtils.database.getChannelById(channel_id)
+            const channel = await global.database.getChannelById(channel_id)
 
             if (channel == null) {
                 return res.status(500).json({
@@ -471,7 +471,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
 
             channel.position = position;
 
-            const outcome = await globalUtils.database.updateChannel(channel_id, channel);
+            const outcome = await global.database.updateChannel(channel_id, channel);
 
             if (!outcome) {
                 return res.status(500).json({
@@ -486,7 +486,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
 
             ret.push(channel);
 
-            await dispatcher.dispatchEventToAllPerms(channel.guild_id, channel.id, "READ_MESSAGE_HISTORY", "CHANNEL_UPDATE", channel);
+            await global.dispatcher.dispatchEventToAllPerms(channel.guild_id, channel.id, "READ_MESSAGE_HISTORY", "CHANNEL_UPDATE", channel);
         }
 
         return res.status(200).json(ret);

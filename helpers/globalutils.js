@@ -7,8 +7,6 @@ let config = JSON.parse(fs.readFileSync("./config.json", "utf8"));
 
 const globalUtils = {
     config: config,
-    database: null,
-    permissions: null,
     generateString: (length) => {
         let result = '';
         let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -19,10 +17,6 @@ const globalUtils = {
         }
     
         return result;
-    },
-    setupShit(db, perms) {
-        globalUtils.database = db;
-        globalUtils.permissions = perms;
     },
     generateMemorableInviteCode: () => {
         let code = "";

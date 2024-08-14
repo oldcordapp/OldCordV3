@@ -2,7 +2,7 @@ const express = require('express');
 const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { instanceMiddleware, rateLimitMiddleware, channelPermissionsMiddleware } = require('../helpers/middlewares');
-const dispatcher = require('../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 
 const router = express.Router({ mergeParams: true });
 
@@ -17,7 +17,7 @@ router.get("/:code", async (req, res) => {
             });
         }
 
-        const invite = await globalUtils.database.getInvite(req.params.code);
+        const invite = await global.database.getInvite(req.params.code);
 
         if (invite == null) {
             return res.status(404).json({
@@ -48,7 +48,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
             });
         }
 
-        const invite = await globalUtils.database.getInvite(req.params.code);
+        const invite = await global.database.getInvite(req.params.code);
 
         if (invite == null) {
             return res.status(404).json({
@@ -57,7 +57,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
             });
         }
 
-        const channel = await globalUtils.database.getChannelById(invite.channel.id);
+        const channel = await global.database.getChannelById(invite.channel.id);
 
         if (channel == null) {
             return res.status(404).json({
@@ -66,7 +66,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
             });
         }
 
-        const guild = await globalUtils.database.getGuildById(channel.guild_id);
+        const guild = await global.database.getGuildById(channel.guild_id);
 
         if (guild == null) {
             return res.status(404).json({
@@ -75,7 +75,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
             }); 
         }
 
-        const hasPermission = await globalUtils.permissions.hasChannelPermissionTo(channel, guild, sender.id, "MANAGE_CHANNELS");
+        const hasPermission = await global.permissions.hasChannelPermissionTo(channel, guild, sender.id, "MANAGE_CHANNELS");
 
         if (!hasPermission) {
             return res.status(403).json({
@@ -84,7 +84,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
             }); 
         }
 
-        const tryDelete = await globalUtils.database.deleteInvite(req.params.code);
+        const tryDelete = await global.database.deleteInvite(req.params.code);
 
         if (!tryDelete) {
             return res.status(500).json({
@@ -115,7 +115,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
             });
         }
 
-        const invite = await globalUtils.database.getInvite(req.params.code);
+        const invite = await global.database.getInvite(req.params.code);
 
         if (invite == null) {
             return res.status(404).json({
@@ -124,7 +124,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
             });
         }
 
-        const guild = await globalUtils.database.getGuildById(invite.guild.id);
+        const guild = await global.database.getGuildById(invite.guild.id);
 
         if (guild == null) {
             return res.status(404).json({
@@ -133,7 +133,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
             });
         }
         
-        const joinAttempt = await globalUtils.database.useInvite(req.params.code, sender.id);
+        const joinAttempt = await global.database.useInvite(req.params.code, sender.id);
 
         if (!joinAttempt) {
             return res.status(404).json({
@@ -142,9 +142,9 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
             });
         }
 
-        dispatcher.dispatchEventTo(sender.token, "GUILD_CREATE", guild);
+        await global.dispatcher.dispatchEventTo(sender.id, "GUILD_CREATE", guild);
 
-        await dispatcher.dispatchEventInGuild(invite.guild.id, "GUILD_MEMBER_ADD", {
+        await global.dispatcher.dispatchEventInGuild(invite.guild.id, "GUILD_MEMBER_ADD", {
             roles: [],
             user: {
                 username: sender.username,
@@ -155,7 +155,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
             guild_id: invite.guild.id
         });
 
-        await dispatcher.dispatchEventInGuild(invite.guild.id, "PRESENCE_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(invite.guild.id, "PRESENCE_UPDATE", {
             game_id: null,
             status: "online",
             user: {

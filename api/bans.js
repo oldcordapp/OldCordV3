@@ -2,12 +2,12 @@ const express = require('express');
 const { logText } = require('../helpers/logger');
 const globalUtils = require('../helpers/globalutils');
 const { rateLimitMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
-const dispatcher = require('../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 
 const router = express.Router({ mergeParams: true });
 
 router.param('memberid', async (req, res, next, memberid) => {
-    req.member = await globalUtils.database.getGuildMemberById(req.params.guildid, memberid);
+    req.member = await global.database.getGuildMemberById(req.params.guildid, memberid);
     
     next();
 });
@@ -23,7 +23,7 @@ router.get("/", guildPermissionsMiddleware("BAN_MEMBERS"), async (req, res) => {
             });
         }
 
-        const bans = await globalUtils.database.getGuildBans(req.params.guildid);
+        const bans = await global.database.getGuildBans(req.params.guildid);
 
         return res.status(200).json(bans);
     } catch (error) {
@@ -63,8 +63,8 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
             });
         }
 
-        const attempt = await globalUtils.database.leaveGuild(member.id, req.params.guildid);
-        const tryBan = await globalUtils.database.banMember(req.params.guildid, member.id);
+        const attempt = await global.database.leaveGuild(member.id, req.params.guildid);
+        const tryBan = await global.database.banMember(req.params.guildid, member.id);
 
         if (!attempt || !tryBan) {
             return res.status(500).json({
@@ -73,13 +73,11 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
             });
         }
 
-        const member_account = await globalUtils.database.getAccountByUserId(member.id);
-
-        dispatcher.dispatchEventTo(member_account.token, "GUILD_DELETE", {
+        await global.dispatcher.dispatchEventTo(member.id, "GUILD_DELETE", {
             id: req.params.guildid
         });
 
-        await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
+        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
             type: "ban",
             moderator: {
                 username: sender.username,
@@ -97,7 +95,7 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
             guild_id: req.params.guildid
         })
 
-        dispatcher.dispatchEventTo(sender.token, "GUILD_MEMBER_ADD", {
+        await global.dispatcher.dispatchEventTo(sender.id, "GUILD_MEMBER_ADD", {
             guild_id: req.params.guildid,
             user: {
                 username: member.user.username,
@@ -116,7 +114,7 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
             }
 
             if (deleteMessageDays > 0) {
-                let messages = await globalUtils.database.getUsersMessagesInGuild(req.params.guildid, member.user.id);
+                let messages = await global.database.getUsersMessagesInGuild(req.params.guildid, member.user.id);
 
                 const deletemessagedaysDate = new Date();
                 
@@ -130,10 +128,10 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
 
                 if (messages.length > 0) {
                     for(var message of messages) {
-                        let tryDelete = await globalUtils.database.deleteMessage(message.id);
+                        let tryDelete = await global.database.deleteMessage(message.id);
 
                         if (tryDelete) {
-                            await dispatcher.dispatchEventInChannel(message.channel_id, "MESSAGE_DELETE", {
+                            await global.dispatcher.dispatchEventInChannel(message.channel_id, "MESSAGE_DELETE", {
                                 id: message.id,
                                 guild_id: req.params.guildid,
                                 channel_id: message.channel_id
@@ -173,7 +171,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimit
             });
         }
 
-        const bans = await globalUtils.database.getGuildBans(req.params.guildid);
+        const bans = await global.database.getGuildBans(req.params.guildid);
 
         const ban = bans.find(x => x.user.id == req.params.memberid);
 
@@ -184,7 +182,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimit
             });
         }
 
-        const attempt = await globalUtils.database.unbanMember(req.params.guildid, req.params.memberid);
+        const attempt = await global.database.unbanMember(req.params.guildid, req.params.memberid);
 
         if (!attempt) {
             return res.status(500).json({
@@ -193,7 +191,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimit
             });
         }
 
-        dispatcher.dispatchEventTo(sender.token, "GUILD_BAN_REMOVE", {
+        await global.dispatcher.dispatchEventTo(sender.id, "GUILD_BAN_REMOVE", {
             guild_id: req.params.guildid,
             user: ban.user,
             roles: []

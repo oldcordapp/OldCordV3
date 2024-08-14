@@ -1,6 +1,6 @@
 const express = require('express');
 const globalUtils = require('../../helpers/globalutils');
-const dispatcher = require('../../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 const { rateLimitMiddleware, guildMiddleware } = require('../../helpers/middlewares');
 const { logText } = require('../../helpers/logger');
 const router = express.Router();
@@ -9,7 +9,7 @@ const relationships = require('./relationships');
 router.use("/relationships", relationships);
 
 router.param('guildid', async (req, _, next, guildid) => {
-    req.guild = await globalUtils.database.getGuildById(guildid);
+    req.guild = await global.database.getGuildById(guildid);
 
     next();
 });
@@ -76,19 +76,19 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
     if (update_object.email == account.email && update_object.new_password == null && update_object.password == null && update_object.username == account.username) {
        //avatar change
 
-      const attemptToUpdateAvi = await globalUtils.database.updateAccount(update_object.avatar, account.email, account.username, null, null, null);
+      const attemptToUpdateAvi = await global.database.updateAccount(update_object.avatar, account.email, account.username, null, null, null);
 
       if (attemptToUpdateAvi) {
-        let account2 = await globalUtils.database.getAccountByEmail(account.email);
+        let account2 = await global.database.getAccountByEmail(account.email);
 
         if (account2 != null && account2.token) {
           delete account2.password;
           delete account2.settings;
           delete account2.created_at;
 
-          dispatcher.dispatchEventTo(account2.token, "USER_UPDATE", account2);
+          await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
 
-          await dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id);
+          await global.dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id, account2);
 
           return res.status(200).json(account2);
         }
@@ -139,7 +139,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
         });
       }
 
-      const correctPassword = await globalUtils.database.doesThisMatchPassword(update_object.password, account.password);
+      const correctPassword = await global.database.doesThisMatchPassword(update_object.password, account.password);
 
         if (!correctPassword) {
           return res.status(400).json({
@@ -149,7 +149,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
         }
 
       if ((update_object.email != account.email || update_object.username != account.username) || (update_object.email != account.email && update_object.username != account.username)) {
-        const correctPassword = await globalUtils.database.doesThisMatchPassword(update_object.password, account.password);
+        const correctPassword = await global.database.doesThisMatchPassword(update_object.password, account.password);
 
         if (!correctPassword) {
           return res.status(400).json({
@@ -158,25 +158,25 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           })
         }
 
-        const update = await globalUtils.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
+        const update = await global.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
 
         if (update) {
-          let account2 = await globalUtils.database.getAccountByEmail(update_object.email);
+          let account2 = await global.database.getAccountByEmail(update_object.email);
   
           if (account2 != null && account2.token) {
             delete account2.settings;
             delete account2.password;
             delete account2.created_at;
   
-            dispatcher.dispatchEventTo(account2.token, "USER_UPDATE", account2);
+            await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
 
-            await dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id);
+            await global.dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id, account2);
             
             return res.status(200).json(account2);
           }
         }
       } else if (update_object.new_password != null) {
-        const correctPassword = await globalUtils.database.doesThisMatchPassword(update_object.password, account.password);
+        const correctPassword = await global.database.doesThisMatchPassword(update_object.password, account.password);
 
         if (!correctPassword) {
           return res.status(400).json({
@@ -185,19 +185,21 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           })
         }
 
-        const update = await globalUtils.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
+        const update = await global.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
 
         if (update) {
-          let account2 = await globalUtils.database.getAccountByEmail(update_object.email);
+          let account2 = await global.database.getAccountByEmail(update_object.email);
   
           if (account2 != null && account2.token) {
             delete account2.settings;
             delete account2.password;
             delete account2.created_at;
-  
-            dispatcher.dispatchEventTo(account2.token, "USER_UPDATE", account2);
 
-            await dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id);
+            global.permissions
+  
+            await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
+
+            await global.dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id, account2);
             
             return res.status(200).json(account2);
           }
@@ -252,12 +254,12 @@ router.patch("/settings", async (req, res) => {
         }
     }
 
-    const attempt = await globalUtils.database.updateSettings(account.id, new_settings);
+    const attempt = await global.database.updateSettings(account.id, new_settings);
 
     if (attempt) {
       const settings = new_settings;
 
-      dispatcher.dispatchEventTo(account.token, "USER_SETTINGS_UPDATE", settings);
+      await global.dispatcher.dispatchEventTo(account.id, "USER_SETTINGS_UPDATE", settings);
 
       return res.status(204).send();
     } else {
@@ -287,7 +289,7 @@ router.get("/connections", async (req, res) => {
             });
         }
 
-        let connectedAccounts = await globalUtils.database.getConnectedAccounts(account.id);
+        let connectedAccounts = await global.database.getConnectedAccounts(account.id);
 
         return res.status(200).json(connectedAccounts);
     }
@@ -324,7 +326,7 @@ router.delete("/connections/:platform/:connectionid", async (req, res) => {
             });
         }
 
-        let connection = await globalUtils.database.getConnectionById(connectionid);
+        let connection = await global.database.getConnectionById(connectionid);
 
         if (connection == null) {
             return res.status(404).json({
@@ -333,7 +335,7 @@ router.delete("/connections/:platform/:connectionid", async (req, res) => {
             });
         }
 
-        let tryRemove = await globalUtils.database.removeConnectedAccount(connection.id);
+        let tryRemove = await global.database.removeConnectedAccount(connection.id);
 
         if (!tryRemove) {
             return res.status(500).json({
@@ -342,9 +344,9 @@ router.delete("/connections/:platform/:connectionid", async (req, res) => {
             });
         }
 
-        await dispatcher.dispatchEventTo(account.token, "USER_CONNECTIONS_UPDATE", {});
+        await global.dispatcher.dispatchEventTo(account.id, "USER_CONNECTIONS_UPDATE", {});
 
-        let connectedAccounts = await globalUtils.database.getConnectedAccounts(account.id);
+        let connectedAccounts = await global.database.getConnectedAccounts(account.id);
 
         return res.status(200).json(connectedAccounts);
     }
@@ -381,7 +383,7 @@ router.patch("/connections/:platform/:connectionid", async (req, res) => {
             });
         }
 
-        let connection = await globalUtils.database.getConnectionById(connectionid);
+        let connection = await global.database.getConnectionById(connectionid);
 
         if (connection == null) {
             return res.status(404).json({
@@ -390,7 +392,7 @@ router.patch("/connections/:platform/:connectionid", async (req, res) => {
             });
         }
 
-        let tryUpdate = await globalUtils.database.updateConnectedAccount(connection.id, req.body.visibility == 1 ? true : false);
+        let tryUpdate = await global.database.updateConnectedAccount(connection.id, req.body.visibility == 1 ? true : false);
 
         if (!tryUpdate) {
             return res.status(500).json({
@@ -399,9 +401,9 @@ router.patch("/connections/:platform/:connectionid", async (req, res) => {
             });
         }
 
-        await dispatcher.dispatchEventTo(account.token, "USER_CONNECTIONS_UPDATE", {});
+        await global.dispatcher.dispatchEventTo(account.id, "USER_CONNECTIONS_UPDATE", {});
 
-        let connectedAccounts = await globalUtils.database.getConnectedAccounts(account.id);
+        let connectedAccounts = await global.database.getConnectedAccounts(account.id);
 
         return res.status(200).json(connectedAccounts);
     }
@@ -438,11 +440,11 @@ router.delete("/guilds/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 
             }
     
             if (guild.owner_id == user.id) {
-                await dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
+                await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
                     id: req.params.guildid
                 });
                 
-                const del = await globalUtils.database.deleteGuild(guild.id);
+                const del = await global.database.deleteGuild(guild.id);
     
                 if (!del) {
                     return res.status(500).json({
@@ -453,7 +455,7 @@ router.delete("/guilds/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 
     
                 return res.status(204).send();
             } else {
-                const leave = await globalUtils.database.leaveGuild(user.id, guild.id);
+                const leave = await global.database.leaveGuild(user.id, guild.id);
     
                 if (!leave) {
                     return res.status(500).json({
@@ -462,11 +464,11 @@ router.delete("/guilds/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 
                     });
                 }
     
-                dispatcher.dispatchEventTo(user.token, "GUILD_DELETE", {
+                await global.dispatcher.dispatchEventTo(user.id, "GUILD_DELETE", {
                     id: req.params.guildid
                 });
     
-                await dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
+                await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
                     type: "leave",
                     roles: [],
                     user: {
@@ -518,7 +520,7 @@ router.patch("/guilds/:guildid/settings", guildMiddleware, rateLimitMiddleware(5
             });
         }
 
-        let usersGuildSettings = await globalUtils.database.getUsersGuildSettings(user.id);
+        let usersGuildSettings = await global.database.getUsersGuildSettings(user.id);
         let guildSettings = usersGuildSettings.find(x => x.guild_id == guild.id);
 
         if (!guildSettings) {
@@ -542,7 +544,7 @@ router.patch("/guilds/:guildid/settings", guildMiddleware, rateLimitMiddleware(5
             }
         }
 
-        let updateSettings = await globalUtils.database.setUsersGuildSettings(user.id, usersGuildSettings);
+        let updateSettings = await global.database.setUsersGuildSettings(user.id, usersGuildSettings);
 
         if (!updateSettings) {
             return res.status(500).json({

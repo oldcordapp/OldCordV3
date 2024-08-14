@@ -2,7 +2,7 @@ const express = require('express');
 const { logText } = require('../helpers/logger');
 const messages = require('./messages');
 const { channelPermissionsMiddleware, rateLimitMiddleware, guildPermissionsMiddleware, channelMiddleware, guildMiddleware } = require('../helpers/middlewares');
-const dispatcher = require('../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 const globalUtils = require('../helpers/globalutils');
 const Snowflake = require('../helpers/snowflake');
 const fs = require('fs');
@@ -28,7 +28,7 @@ router.get("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), as
             });  
         }
 
-        let emojis = await globalUtils.database.getGuildCustomEmojis(guild.id);
+        let emojis = await global.database.getGuildCustomEmojis(guild.id);
 
         return res.status(200).json(emojis);
     } catch (error) {
@@ -77,7 +77,7 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
 
         fs.writeFileSync(filePath, imageBuffer);
 
-        let tryCreateEmoji = await globalUtils.database.createCustomEmoji(guild.id, account.id, emoji_id, req.body.name);
+        let tryCreateEmoji = await global.database.createCustomEmoji(guild.id, account.id, emoji_id, req.body.name);
 
         if (!tryCreateEmoji) {
             return res.status(500).json({
@@ -86,7 +86,7 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
             });
         }
 
-        let currentEmojis = await globalUtils.database.getGuildCustomEmojis(guild.id);
+        let currentEmojis = await global.database.getGuildCustomEmojis(guild.id);
 
         for(var emoji of currentEmojis) {
             emoji.roles = [];
@@ -95,7 +95,7 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
             emoji.allNamesString = `:${emoji.name}:`
         }
 
-        await dispatcher.dispatchEventInGuild(guild.id, "GUILD_EMOJIS_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_EMOJIS_UPDATE", {
             guild_id: guild.id,
             emojis: currentEmojis
         });
@@ -149,7 +149,7 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
 
         let emoji_id = req.params.emoji;
         
-        let emoji = await globalUtils.database.getGuildCustomEmojiById(guild.id, emoji_id);
+        let emoji = await global.database.getGuildCustomEmojiById(guild.id, emoji_id);
 
         if (emoji == null) {
             return res.status(404).json({
@@ -179,7 +179,7 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
             });    
         }
 
-        let tryUpdate = await globalUtils.database.updateCustomEmoji(guild.id, emoji_id, req.body.name);
+        let tryUpdate = await global.database.updateCustomEmoji(guild.id, emoji_id, req.body.name);
 
         if (!tryUpdate) {
             return res.status(500).json({
@@ -188,7 +188,7 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
             });
         }
 
-        let currentEmojis = await globalUtils.database.getGuildCustomEmojis(guild.id);
+        let currentEmojis = await global.database.getGuildCustomEmojis(guild.id);
 
         for(var emoji2 of currentEmojis) {
             emoji2.roles = [];
@@ -197,7 +197,7 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
             emoji2.allNamesString = `:${emoji.name}:`
         }
 
-        await dispatcher.dispatchEventInGuild(guild.id, "GUILD_EMOJIS_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_EMOJIS_UPDATE", {
             guild_id: guild.id,
             emojis: currentEmojis
         });
@@ -237,7 +237,7 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
 
         let emoji_id = req.params.emoji;
         
-        let emoji = await globalUtils.database.getGuildCustomEmojiById(guild.id, emoji_id);
+        let emoji = await global.database.getGuildCustomEmojiById(guild.id, emoji_id);
 
         if (emoji == null) {
             return res.status(404).json({
@@ -246,7 +246,7 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
             });  
         }
 
-        let tryDelete = await globalUtils.database.deleteCustomEmoji(guild.id, emoji_id);
+        let tryDelete = await global.database.deleteCustomEmoji(guild.id, emoji_id);
 
         if (!tryDelete) {
             return res.status(500).json({
@@ -255,7 +255,7 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
             });
         }
 
-        let currentEmojis = await globalUtils.database.getGuildCustomEmojis(guild.id);
+        let currentEmojis = await global.database.getGuildCustomEmojis(guild.id);
 
         for(var emoji2 of currentEmojis) {
             emoji2.roles = [];
@@ -264,7 +264,7 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
             emoji2.allNamesString = `:${emoji.name}:`
         }
 
-        await dispatcher.dispatchEventInGuild(guild.id, "GUILD_EMOJIS_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_EMOJIS_UPDATE", {
             guild_id: guild.id,
             emojis: currentEmojis
         });

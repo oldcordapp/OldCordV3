@@ -30,12 +30,18 @@ if (config.use_same_port) {
             cert: fs.readFileSync(config.cert_path),
             key: fs.readFileSync(config.key_path)
         });
+        
+        global.dispatcher = dispatcher;
+        global.gateway = gateway;
+        global.sessions = new Map();
+        global.userSessions = new Map();
 
-        gateway.setDispatcher(dispatcher);
         gateway.ready(server);
 
         database.setupDatabase();
-        globalUtils.setupShit(database, permissions);
+
+        global.database = database;
+        global.permissions = permissions;
 
         server.listen(config.port, () => {
             console.log("[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online!");
@@ -45,11 +51,17 @@ if (config.use_same_port) {
     } else {
         let server = createServer();
 
-        gateway.setDispatcher(dispatcher);
+        global.dispatcher = dispatcher;
+        global.gateway = gateway;
+        global.sessions = new Map();
+        global.userSessions = new Map();
+
         gateway.ready(server);
 
         database.setupDatabase();
-        globalUtils.setupShit(database, permissions);
+
+        global.database = database;
+        global.permissions = permissions;
 
         server.listen(config.port, () => {
             console.log("[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online!");
@@ -58,11 +70,17 @@ if (config.use_same_port) {
         server.on('request', app);
     }
 } else {
-    gateway.setDispatcher(dispatcher);
-    gateway.regularReady(config.ws_port);
+    global.dispatcher = dispatcher;
+    global.gateway = gateway;
+    global.sessions = new Map();
+    global.userSessions = new Map();
+
+    gateway.regularReady(config.ws_port)
 
     database.setupDatabase();
-    globalUtils.setupShit(database, permissions);
+
+    global.database = database;
+    global.permissions = permissions;
 
     app.listen(config.port, () => {
         console.log(`[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online! Gateway port: ${config.ws_port} - HTTP port: ${config.port}`);

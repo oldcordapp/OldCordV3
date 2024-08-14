@@ -6,7 +6,6 @@ const Snowflake = require('./snowflake');
 const fs = require('fs');
 const md5 = require('md5');
 const path = require('path');
-const gateway = require('../gateway');
 const embedder = require('./embedder');
 
 let db_config = globalUtils.config.db_config;
@@ -296,7 +295,7 @@ const database = {
                 SELECT * FROM acknowledgements WHERE user_id = $1 AND channel_id = $2 ORDER BY timestamp DESC LIMIT 1
             `, [user_id, channel_id]);
 
-            if (rows != null && rows.length > 0) {
+            if (rows == null || rows.length == 0) {
                 return null;
             }
 
@@ -961,9 +960,9 @@ const database = {
             const ret = [];
 
             for(var member of guildMembers) {
-                const client = gateway.clients.filter(x => x.user.id == member.id)[0];
+                let sessions = global.userSessions.get(member.id);
 
-                if (client == null || !client.presence) {
+                if (global.userSessions.size === 0 || !sessions) {
                     ret.push({                             
                         game: null,
                         status: 'offline',
@@ -974,7 +973,22 @@ const database = {
                             username: member.user.username
                         }
                     });
-                } else ret.push(client.presence);
+                } else {
+                    let session = sessions[sessions.length - 1]
+    
+                    if (!session.presence) {
+                        ret.push({                             
+                            game: null,
+                            status: 'offline',
+                            user: {
+                                avatar: member.user.avatar,
+                                discriminator: member.user.discriminator,
+                                id: member.user.id,
+                                username: member.user.username
+                            }
+                        });
+                    } else ret.push(session.presence);
+                }
             }
 
             return ret;

@@ -59,7 +59,7 @@ router.get("/:platform/callback", async (req, res) => {
         });
     }
 
-    let account = await globalUtils.database.getAccountByToken(token);
+    let account = await global.database.getAccountByToken(token);
 
     if (!account) {
         return res.status(401).json({
@@ -102,7 +102,7 @@ router.get("/:platform/callback", async (req, res) => {
         });
     }
 
-    let attemptAddConnection = await globalUtils.database.addConnectedAccount(account.id, platform, user.id, user.login);
+    let attemptAddConnection = await global.database.addConnectedAccount(account.id, platform, user.id, user.login);
 
     if (!attemptAddConnection) {
         return res.status(400).json({
@@ -113,7 +113,7 @@ router.get("/:platform/callback", async (req, res) => {
 
     pendingCallback = pendingCallback.filter(x => x !== pending);
 
-    await dispatcher.dispatchEventTo(account.token, "USER_CONNECTIONS_UPDATE", {});
+    await global.dispatcher.dispatchEventTo(account.id, "USER_CONNECTIONS_UPDATE", {});
 
     return res.status(200).json({
         code: 200,

@@ -176,7 +176,7 @@ async function authMiddleware(req, res, next) {
             });
         }
 
-        let account = await globalUtils.database.getAccountByToken(token);
+        let account = await global.database.getAccountByToken(token);
     
         if (!account) {
             return res.status(401).json({
@@ -237,7 +237,7 @@ async function guildMiddleware(req, res, next) {
         });
     }
 
-    let member = await globalUtils.database.getGuildMemberById(guild.id, sender.id);
+    let member = await global.database.getGuildMemberById(guild.id, sender.id);
 
     if (member == null) {
         return res.status(404).json({
@@ -268,7 +268,7 @@ async function userMiddleware(req, res, next) {
         });
     }
 
-    let guilds = await globalUtils.database.getUsersGuilds(user.id);
+    let guilds = await global.database.getUsersGuilds(user.id);
 
     if (guilds.length == 0) {
         return res.status(404).json({
@@ -316,7 +316,7 @@ async function channelMiddleware(req, res, next) {
         });
     }
 
-    let member = await globalUtils.database.getGuildMemberById(channel.guild_id, sender.id);
+    let member = await global.database.getGuildMemberById(channel.guild_id, sender.id);
 
     if (member == null) {
         return res.status(403).json({
@@ -325,7 +325,7 @@ async function channelMiddleware(req, res, next) {
         });
     }
 
-    let gCheck = await globalUtils.permissions.hasGuildPermissionTo(req.guild, member.id, "READ_MESSAGES", req.cookies['release_date']);
+    let gCheck = await global.permissions.hasGuildPermissionTo(req.guild, member.id, "READ_MESSAGES", req.cookies['release_date']);
 
     if (!gCheck) {
         return res.status(403).json({
@@ -334,7 +334,7 @@ async function channelMiddleware(req, res, next) {
         });
     }
 
-    let pCheck = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, member.id, "READ_MESSAGES");
+    let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, member.id, "READ_MESSAGES");
 
     if (!pCheck) {
         return res.status(403).json({
@@ -374,7 +374,7 @@ function guildPermissionsMiddleware(permission) {
             return next();
         }
 
-        let check = await globalUtils.permissions.hasGuildPermissionTo(req.guild, sender.id, permission, req.cookies['release_date']);
+        let check = await global.permissions.hasGuildPermissionTo(req.guild, sender.id, permission, req.cookies['release_date']);
 
         if (!check) {
             return res.status(403).json({
@@ -431,7 +431,7 @@ function channelPermissionsMiddleware(permission) {
             }
 
             if (permission == "SEND_MESSAGES") {
-                const guilds = await globalUtils.database.getUsersGuilds(channel.recipient.id);
+                const guilds = await global.database.getUsersGuilds(channel.recipient.id);
 
                 let share = guilds.some(guild => guild.members != null && guild.members.length > 0 && guild.members.some(member => member.id === sender.id));
 
@@ -446,7 +446,7 @@ function channelPermissionsMiddleware(permission) {
             return next();
         }
 
-        let check = await globalUtils.permissions.hasChannelPermissionTo(channel, req.guild, sender.id, permission);
+        let check = await global.permissions.hasChannelPermissionTo(channel, req.guild, sender.id, permission);
 
         if (!check) {
             return res.status(403).json({

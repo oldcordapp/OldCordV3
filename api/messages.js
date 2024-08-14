@@ -2,7 +2,7 @@ const express = require('express');
 const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { channelPermissionsMiddleware, rateLimitMiddleware } = require('../helpers/middlewares');
-const dispatcher = require('../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 const fs = require('fs');
 const mime = require('mime');
 const multer = require('multer');
@@ -15,7 +15,7 @@ const upload = multer();
 const router = express.Router({ mergeParams: true });
 
 router.param('messageid', async (req, res, next, messageid) => {
-    req.message = await globalUtils.database.getMessageById(messageid);
+    req.message = await global.database.getMessageById(messageid);
 
     next();
 });
@@ -57,7 +57,7 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
 
         let includeReactions = req.guild && !req.guild.exclusions.includes("reactions");
 
-        let messages = await globalUtils.database.getChannelMessages(channel.id, limit, req.query.before, req.query.after, includeReactions);
+        let messages = await global.database.getChannelMessages(channel.id, limit, req.query.before, req.query.after, includeReactions);
 
         for(var msg of messages) {
             if (msg.reactions) {
@@ -106,7 +106,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             const mentions= req.body.mentions;
             
             for(let mention of mentions) {
-                const user = await globalUtils.database.getAccountByUserId(mention);
+                const user = await global.database.getAccountByUserId(mention);
 
                 if (user != null) {
                     finalContent = finalContent.replace(`@${user.username}`, `<@${user.id}>`);
@@ -117,7 +117,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         }
 
         if (finalContent && finalContent.includes("@everyone")) {
-            let pCheck = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "MENTION_EVERYONE");
+            let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "MENTION_EVERYONE");
 
             if (!pCheck) {
                 finalContent = finalContent.replace(/@everyone/g, "");
@@ -127,7 +127,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         }
 
         if (channel.recipient != null) {
-            const recipient = await globalUtils.database.getAccountByUserId(channel.recipient.id);
+            const recipient = await global.database.getAccountByUserId(channel.recipient.id);
 
             if (recipient == null || !recipient.token) {
                 return res.status(404).json({
@@ -163,7 +163,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                         extension: extension
                     };
     
-                    const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, false);
+                    const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, false);
 
                     if (createMessage == null) {
                         return res.status(500).json({
@@ -172,12 +172,12 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                         });
                     }
 
-                    await dispatcher.dispatchInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
+                    await global.dispatcher.dispatchInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
 
                     return res.status(200).json(createMessage);
                 });
             } else {
-                const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
+                const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
     
                 if (createMessage == null) {
                     return res.status(500).json({
@@ -186,7 +186,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     });
                 }
         
-                await dispatcher.dispatchInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
+                await global.dispatcher.dispatchInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
         
                 return res.status(200).json(createMessage);
             }
@@ -212,7 +212,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             }
 
             if (req.body.tts == true) {
-                let canTts = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
+                let canTts = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
 
                 if (!canTts) {
                     req.body.tts = canTts;
@@ -241,7 +241,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 }
 
                 if (req.body.tts == "true") {
-                    let canTts = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
+                    let canTts = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
     
                     if (!canTts) {
                         req.body.tts = "false";
@@ -258,7 +258,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                         extension: extension
                     };
     
-                    const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, req.body.tts == "false" ? false : true);
+                    const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, req.body.tts == "false" ? false : true);
 
                     if (createMessage == null) {
                         return res.status(500).json({
@@ -267,7 +267,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                         });
                     }
             
-                    await dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_CREATE", createMessage);
+                    await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_CREATE", createMessage);
             
                     return res.status(200).json(createMessage);
                 });
@@ -276,7 +276,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     req.body.tts = false;
                 }
 
-                const createMessage = await globalUtils.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
+                const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
     
                 if (createMessage == null) {
                     return res.status(500).json({
@@ -285,7 +285,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     });
                 }
         
-                await dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_CREATE", createMessage);
+                await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_CREATE", createMessage);
         
                 return res.status(200).json(createMessage);
             }
@@ -339,7 +339,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
                 });
             }
     
-            const del = await globalUtils.database.deleteMessage(req.params.messageid);
+            const del = await global.database.deleteMessage(req.params.messageid);
     
             if (!del) {
                 return res.status(500).json({
@@ -348,7 +348,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
                 });
             }
 
-            await dispatcher.dispatchInDM(guy.id, channel.recipient.id, "MESSAGE_DELETE", {
+            await global.dispatcher.dispatchInDM(guy.id, channel.recipient.id, "MESSAGE_DELETE", {
                 id: req.params.messageid,
                 guild_id: channel.guild_id,
                 channel_id: req.params.channelid
@@ -363,7 +363,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
                 });
             }
     
-            const del = await globalUtils.database.deleteMessage(req.params.messageid);
+            const del = await global.database.deleteMessage(req.params.messageid);
     
             if (!del) {
                 return res.status(500).json({
@@ -372,7 +372,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
                 });
             }
     
-            await dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_DELETE", {
+            await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_DELETE", {
                 id: req.params.messageid,
                 guild_id: channel.guild_id,
                 channel_id: req.params.channelid
@@ -441,7 +441,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 const mentions = req.body.mentions;
                 
                 for(let mention of mentions) {
-                    const user = await globalUtils.database.getAccountByUserId(mention);
+                    const user = await global.database.getAccountByUserId(mention);
 
                     if (user != null) {
                         finalContent = finalContent.replace(`@${user.username}`, `<@${user.id}>`);
@@ -452,7 +452,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
             }
 
             if (finalContent && finalContent.includes("@everyone")) {
-                let pCheck = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
+                let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
 
                 if (!pCheck) {
                     finalContent = finalContent.replace(/@everyone/g, "");
@@ -461,7 +461,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 req.body.content = finalContent;
             }
 
-            const update = await globalUtils.database.updateMessage(message.id, req.body.content);
+            const update = await global.database.updateMessage(message.id, req.body.content);
 
             if (!update) {
                 return res.status(500).json({
@@ -470,7 +470,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            message = await globalUtils.database.getMessageById(req.params.messageid);
+            message = await global.database.getMessageById(req.params.messageid);
 
             if (message == null) {
                 return res.status(404).json({
@@ -479,7 +479,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            await dispatcher.dispatchInDM(guy.id, channel.recipient.id, "MESSAGE_UPDATE", message);
+            await global.dispatcher.dispatchInDM(guy.id, channel.recipient.id, "MESSAGE_UPDATE", message);
 
             return res.status(204).send();
         } else {
@@ -503,7 +503,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 const mentions= req.body.mentions;
                 
                 for(let mention of mentions) {
-                    const user = await globalUtils.database.getAccountByUserId(mention);
+                    const user = await global.database.getAccountByUserId(mention);
 
                     if (user != null) {
                         finalContent = finalContent.replace(`@${user.username}`, `<@${user.id}>`);
@@ -514,7 +514,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
             }
 
             if (finalContent && finalContent.includes("@everyone")) {
-                let pCheck = await globalUtils.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
+                let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
 
                 if (!pCheck) {
                     finalContent = finalContent.replace(/@everyone/g, "");
@@ -523,7 +523,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 req.body.content = finalContent;
             }
 
-            const update = await globalUtils.database.updateMessage(message.id, req.body.content);
+            const update = await global.database.updateMessage(message.id, req.body.content);
 
             if (!update) {
                 return res.status(500).json({
@@ -532,7 +532,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            message = await globalUtils.database.getMessageById(req.params.messageid);
+            message = await global.database.getMessageById(req.params.messageid);
 
             if (message == null) {
                 return res.status(404).json({
@@ -541,7 +541,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            await dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_UPDATE", message);
+            await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_UPDATE", message);
 
             return res.status(204).send();
         }
@@ -584,7 +584,7 @@ router.post("/:messageid/ack", rateLimitMiddleware(5, 1000 * 10), rateLimitMiddl
             });
         }
 
-        let tryAck = await globalUtils.database.acknowledgeMessage(guy.id, channel.id, message.id, 0);
+        let tryAck = await global.database.acknowledgeMessage(guy.id, channel.id, message.id, 0);
 
         if (!tryAck) {
             return res.status(500).json({
@@ -593,7 +593,7 @@ router.post("/:messageid/ack", rateLimitMiddleware(5, 1000 * 10), rateLimitMiddl
             });
         }
 
-        dispatcher.dispatchEventTo(guy.token, "MESSAGE_ACK", {
+        await global.dispatcher.dispatchEventTo(guy.id, "MESSAGE_ACK", {
             channel_id: channel.id,
             message_id: message.id
         });

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const globalUtils = require('../helpers/globalutils');
-const dispatcher = require('../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 const instanceMiddleware = require('../helpers/middlewares').instanceMiddleware;
 const rateLimitMiddleware = require("../helpers/middlewares").rateLimitMiddleware;
 const { logText } = require('../helpers/logger');
@@ -51,7 +51,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             });
         }
 
-        const registrationAttempt = await globalUtils.database.createAccount(req.body.username, req.body.email, req.body.password);
+        const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password);
 
         if ('reason' in registrationAttempt) {
             return res.status(400).json({
@@ -63,10 +63,10 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
         if (req.body.invite) {
             let code = req.body.invite;
             
-            let invite = await globalUtils.database.getInvite(code);
+            let invite = await global.database.getInvite(code);
 
             if (invite) {
-                let account = await globalUtils.database.getAccountByToken(registrationAttempt.token);
+                let account = await global.database.getAccountByToken(registrationAttempt.token);
 
                 if (account == null) {
                     return res.status(401).json({
@@ -75,14 +75,14 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                     });
                 }
 
-                await globalUtils.database.joinGuild(account.id, invite.guild.id);
+                await global.database.joinGuild(account.id, invite.guild.id);
 
-                let guild = await globalUtils.database.getGuildById(invite.guild.id);
+                let guild = await global.database.getGuildById(invite.guild.id);
                 
                 if (guild) {
-                    dispatcher.dispatchEventTo(registrationAttempt.token, "GUILD_CREATE", guild);
+                    await global.dispatcher.dispatchEventTo(account.id, "GUILD_CREATE", guild);
 
-                    await dispatcher.dispatchEventInGuild(invite.guild.id, "GUILD_MEMBER_ADD", {
+                    await global.dispatcher.dispatchEventInGuild(invite.guild.id, "GUILD_MEMBER_ADD", {
                         roles: [],
                         user: {
                             username: account.username,
@@ -93,7 +93,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                         guild_id: invite.guild.id
                     });
     
-                    await dispatcher.dispatchEventInGuild(invite.guild.id, "PRESENCE_UPDATE", {
+                    await global.dispatcher.dispatchEventInGuild(invite.guild.id, "PRESENCE_UPDATE", {
                         game_id: null,
                         status: "online",
                         user: {
@@ -113,10 +113,10 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
         if (autoJoinGuild.length > 0) {
             let guildId = autoJoinGuild[0].split(':')[1];
 
-            let guild = await globalUtils.database.getGuildById(guildId);
+            let guild = await global.database.getGuildById(guildId);
 
             if (guild != null) {
-                let account = await globalUtils.database.getAccountByToken(registrationAttempt.token);
+                let account = await global.database.getAccountByToken(registrationAttempt.token);
 
                 if (account == null) {
                     return res.status(401).json({
@@ -125,11 +125,11 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                     });
                 }
 
-                await globalUtils.database.joinGuild(account.id, guildId);
+                await global.database.joinGuild(account.id, guildId);
 
-                dispatcher.dispatchEventTo(registrationAttempt.token, "GUILD_CREATE", guild);
+                await global.dispatcher.dispatchEventTo(account.id, "GUILD_CREATE", guild);
 
-                await dispatcher.dispatchEventInGuild(guildId, "GUILD_MEMBER_ADD", {
+                await global.dispatcher.dispatchEventInGuild(guildId, "GUILD_MEMBER_ADD", {
                     roles: [],
                     user: {
                         username: account.username,
@@ -140,7 +140,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                     guild_id: guildId
                 });
 
-                await dispatcher.dispatchEventInGuild(guildId, "PRESENCE_UPDATE", {
+                await global.dispatcher.dispatchEventInGuild(guildId, "PRESENCE_UPDATE", {
                     game_id: null,
                     status: "online",
                     user: {
@@ -184,7 +184,7 @@ router.post("/login", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) 
             });
         }
     
-        const loginAttempt = await globalUtils.database.checkAccount(req.body.email, req.body.password);
+        const loginAttempt = await global.database.checkAccount(req.body.email, req.body.password);
     
         if ('reason' in loginAttempt) {
             return res.status(400).json({

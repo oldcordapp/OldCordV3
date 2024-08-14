@@ -1,6 +1,6 @@
 const express = require('express');
 const globalUtils = require('../../helpers/globalutils');
-const dispatcher = require('../../helpers/dispatcher');
+const dispatcher = global.dispatcher;
 const { rateLimitMiddleware } = require('../../helpers/middlewares');
 const { logText } = require('../../helpers/logger');
 const router = express.Router();
@@ -16,7 +16,7 @@ router.get("/", async (req, res) => {
         });
     }
 
-    let relationships = await globalUtils.database.getRelationshipsByUserId(account.id);
+    let relationships = await global.database.getRelationshipsByUserId(account.id);
     
     return res.status(200).json(relationships);
   }
@@ -75,14 +75,14 @@ router.put("/:userid", async (req, res) => {
     
             if (friend_flags.all == false) {
                 if (friend_flags.mutual_guilds == true) {
-                    let guilds = await globalUtils.database.getUsersGuilds(user.id);
+                    let guilds = await global.database.getUsersGuilds(user.id);
     
                     canFrGuilds = guilds.length > 0 && guilds.some(guild => guild.members != null && guild.members.length > 0 && guild.members.some(member => member.id === account.id));
                 }
     
                 if (friend_flags.mutual_friends == true) {
-                    ourFriends = await globalUtils.database.getRelationshipsByUserId(account.id);
-                    theirFriends = await globalUtils.database.getRelationshipsByUserId(user.id);
+                    ourFriends = await global.database.getRelationshipsByUserId(account.id);
+                    theirFriends = await global.database.getRelationshipsByUserId(user.id);
         
                     let sharedFriends = [];
                     
@@ -145,8 +145,8 @@ router.put("/:userid", async (req, res) => {
                     type: 3
                 });
     
-                let trySetOutgoing = await globalUtils.database.modifyRelationships(account.id, relationships);
-                let trySetIncoming = await globalUtils.database.modifyRelationships(user.id, theirRelationships);
+                let trySetOutgoing = await global.database.modifyRelationships(account.id, relationships);
+                let trySetIncoming = await global.database.modifyRelationships(user.id, theirRelationships);
     
                 if (!trySetOutgoing) {
                     return res.status(500).json({
@@ -165,8 +165,8 @@ router.put("/:userid", async (req, res) => {
                 return res.status(204).send();
             }
     
-            ourFriends = await globalUtils.database.getRelationshipsByUserId(account.id);
-            theirFriends = await globalUtils.database.getRelationshipsByUserId(user.id);
+            ourFriends = await global.database.getRelationshipsByUserId(account.id);
+            theirFriends = await global.database.getRelationshipsByUserId(user.id);
 
             let relationships = ourFriends;
             let theirRelationships = theirFriends;
@@ -205,8 +205,8 @@ router.put("/:userid", async (req, res) => {
                 type: 3
             });
 
-            let trySetOutgoing = await globalUtils.database.modifyRelationships(account.id, relationships);
-            let trySetIncoming = await globalUtils.database.modifyRelationships(user.id, theirRelationships);
+            let trySetOutgoing = await global.database.modifyRelationships(account.id, relationships);
+            let trySetIncoming = await global.database.modifyRelationships(user.id, theirRelationships);
     
             if (!trySetOutgoing) {
                 return res.status(500).json({
