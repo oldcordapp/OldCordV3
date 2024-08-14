@@ -65,7 +65,7 @@ class session {
             "offline",
             "dnd"
         ];
-        
+
         if (!valid_status.includes(status.toLowerCase())) return;
 
         if (status.toLowerCase() != "offline") {
@@ -294,7 +294,7 @@ class session {
                     let getLatestAcknowledgement = await global.database.getLatestAcknowledgement(this.user.id, channel.id);
 
                     if (getLatestAcknowledgement) {
-                        read_states.push(getLatestAcknowledgement);
+                        this.read_states.push(getLatestAcknowledgement);
                     }
                 }
             }
