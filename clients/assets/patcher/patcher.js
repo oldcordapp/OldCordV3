@@ -145,7 +145,7 @@ const release_date = (function() {
 
 	//Apply patch
 	modules[modId] = {
-		exports: (file) => wpRequire.p + file.substring(2),
+		exports: (file) => wpRequire.p + "flags/" + file.substring(2),
 		id: modId,
 		loaded: true
 	};

@@ -99,19 +99,19 @@ const globalUtils = {
     },
     getRegions: () => {
         return [{
-            id: "sydney",
+            id: "2016",
             name: "Up to 2016"
         }, {
-            id: "london",
+            id: "2017",
             name: "Up to 2017"
         }, {
-            id: "tokyo",
+            id: "2018",
             name: "Up to 2018"
         }, {
-            id: "singapore",
+            id: "2019",
             name: "Up to 2019"
         }, {
-            id: "amsterdam",
+            id: "everything",
             name: "Everything"
         }];
     },
