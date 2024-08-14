@@ -14,43 +14,8 @@ Which is why, on future commits where the db is changed in a significant way, I 
 
 # Setup
 Download and setup a postgreSQL server with the database name of your choice.
-Create a config.json file in the root directory, with the example contents:
+Download the config.json from the repository and modify the entries of your choice. Look below for a guide.
 
-```js
-{
-    "token_secret": "35c8...",
-    "gateway": "",
-    "use_wss": false,
-    "base_url": "127.0.0.1",
-    "local_deploy": true,
-    "use_same_port": true,
-    "port": 1337,
-    "cache404s": false,
-    "serveSelector": true,
-    "gateway_has_no_port": false,
-    "instance_name": "Staging",
-    "instance_description": "An oldcord v3 instance",
-    "instance_flags": [
-        "NO_FLAGS"
-    ],
-    "acknowledge_heartbeat_acks" : false,
-    "cert_path": "",
-    "key_path": "",
-    "ws_port": 0,
-    "db_config" : {
-        "host": "localhost",
-        "port": 5433,
-        "database": "database_name",
-        "user": "postgres_username",
-        "password": "postgres_password"
-    },
-    "custom_invite_url" : "",
-    "integration_config" : [],
-    "trusted_users" : [
-        "1270287666822275072"
-    ],
-}
-```
 Run npm install and then node server.js to start Oldcord.
 
 Since V3 is hosted on my own server at home, I use cloudflared to bypass CG-NAT and have enabled cloudflare's free SSL so the SSL stuff in the earlier configuration is kinda deprecated.
