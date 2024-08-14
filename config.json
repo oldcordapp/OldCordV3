@@ -11,9 +11,7 @@
     "gateway_has_no_port": false,
     "instance_name": "Staging",
     "instance_description": "An oldcord v3 instance",
-    "instance_flags": [
-        "NO_FLAGS"
-    ],
+    "instance_flags": [],
     "acknowledge_heartbeat_acks" : false,
     "cert_path": "",
     "key_path": "",
@@ -23,9 +21,10 @@
         "port": 5433,
         "database": "oldcord_v3",
         "user": "postgres",
-        "password": "oldcord_test"
+        "password": "postgres_password"
     },
-    "trusted_users" : [
-        "1270287666822275072"
-    ]
+    "patcher_location" : "./clients/assets/patcher/patcher.js",
+    "trusted_users" : [],
+    "custom_invite_url" : "",
+    "integration_config" : []
 }
