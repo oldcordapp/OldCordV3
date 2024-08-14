@@ -154,7 +154,9 @@ const database = {
                 afk_timeout INTEGER DEFAULT 300,
                 creation_date TEXT,
                 exclusions TEXT DEFAULT '[]',
-                custom_emojis TEXT DEFAULT '[]'
+                custom_emojis TEXT DEFAULT '[]',
+                default_message_notifications INTEGER DEFAULT 0,
+                verification_level INTEGER DEFAULT 0
            );`, []);
 
             await database.runQuery(`
@@ -1638,12 +1640,25 @@ const database = {
                 roles: roles,
                 emojis: emojis,
                 presences: presences,
-                voice_states: []
+                voice_states: [],
+                default_message_notifications: rows[0].default_message_notifications ?? 0,
+                verification_level: rows[0].verification_level ?? 0
             }
         } catch (error) {
             logText(error, "error");
 
             return null;
+        }
+    },
+    transferGuildOwnership: async (guild_id, new_owner) => {
+        try {
+            await database.runQuery(`UPDATE guilds SET owner_id = $1 WHERE id = $2`, [new_owner, guild_id]);
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
         }
     },
     getUsersGuilds: async (id) => {
@@ -2455,7 +2470,7 @@ const database = {
             return null;
         }
     },
-    updateGuild: async (guild_id, afk_channel_id , afk_timeout, icon , name, region) => {
+    updateGuild: async (guild_id, afk_channel_id, afk_timeout, icon, name, default_message_notifications, verification_level) => {
         try {
             let send_icon  = 'NULL';
 
@@ -2488,7 +2503,7 @@ const database = {
                 }
             }
 
-            await database.runQuery(`UPDATE guilds SET name = $1, icon = $2, afk_channel_id = $3, afk_timeout = $4 WHERE id = $5`, [name, send_icon, (afk_channel_id == null ? 'NULL' : afk_channel_id), afk_timeout, guild_id]);
+            await database.runQuery(`UPDATE guilds SET name = $1, icon = $2, afk_channel_id = $3, afk_timeout = $4, default_message_notifications = $5, verification_level = $6 WHERE id = $7`, [name, send_icon, (afk_channel_id == null ? 'NULL' : afk_channel_id), afk_timeout, default_message_notifications, verification_level, guild_id]);
 
             return true;
         } catch(error) {

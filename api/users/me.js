@@ -195,8 +195,6 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
             delete account2.password;
             delete account2.created_at;
 
-            global.permissions
-  
             await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
 
             await global.dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id, account2);

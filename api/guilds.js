@@ -229,12 +229,6 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
 
 router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GUILD"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
     try {
-        if (req.body.name.length < 2 || req.body.name.length > 30) {
-            return res.status(400).json({
-                name: "Must be between 2 and 30 in length."
-            })
-        }
-
         const sender = req.account;
 
         if (sender == null) {
@@ -253,13 +247,87 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             }); 
         }
 
+        if (req.body.name && req.body.name.length < 2 || req.body.name && req.body.name.length > 30) {
+            return res.status(400).json({
+                name: "Must be between 2 and 30 in length."
+            })
+        }
+
         if (req.body.region && req.body.region != what.region) {
             return res.status(400).json({
                 region: "Cannot change the oldcord year region for this server at this time. Try again later."
             });
         }
 
-        const update = await global.database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.name, req.body.region);
+        if (req.body.default_message_notifications && req.body.default_message_notifications < 0) {
+            return res.status(400).json({
+                code: 400,
+                message: "Default Message Notifications must be less or equal than 3 but greater than 0."
+            }); 
+        }
+        
+        if (req.body.default_message_notifications && req.body.default_message_notifications > 3) {
+            return res.status(400).json({
+                code: 400,
+                message: "Default Message Notifications must be less or equal than 3 but greater than 0."
+            }); 
+        }
+
+        if (req.body.verification_level && req.body.verification_level < 0) {
+            return res.status(400).json({
+                code: 400,
+                message: "Verification level must be less or equal than 3 but greater than 0."
+            }); 
+        }
+        
+        if (req.body.verification_level && req.body.verification_level > 3) {
+            return res.status(400).json({
+                code: 400,
+                message: "Verification level must be less or equal than 3 but greater than 0."
+            }); 
+        }
+
+        if (req.body.owner_id) {
+            if (req.body.owner_id == sender.id) {
+                return res.status(400).json({
+                    code: 400,
+                    message: "Cannot change the new owner to the current owner"
+                });
+            }
+
+            let new_owner = what.members.find(x => x.id == req.body.owner_id);
+
+            if (!new_owner) {
+                return res.status(404).json({
+                    code: 404,
+                    message: "Unknown Member"
+                });
+            }
+
+            let tryTransferOwner = await global.database.transferGuildOwnership(what.id, req.body.owner_id);
+            
+            if (!tryTransferOwner) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                }); 
+            }
+
+            what = await global.database.getGuildById(req.params.guildid);
+
+            if (what == null) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                }); 
+            }
+    
+            await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_UPDATE", what);
+    
+            return res.status(200).json(what);
+        }
+
+        const update = await global.database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.name, req.body.default_message_notifications, req.body.verification_level);
 
         if (!update) {
             return res.status(500).json({
