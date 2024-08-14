@@ -56,32 +56,36 @@ class session {
         this.timeout = setTimeout(this.terminate.bind(this), SESSION_TIMEOUT);
     }
     async updatePresence(status, game_id = null) {
-        if (status == this.presence.status) return;
+        try {
+            if (status == this.presence.status) return;
 
-        let valid_status = [
-            "online",
-            "idle",
-            "invisible",
-            "offline",
-            "dnd"
-        ];
+            let valid_status = [
+                "online",
+                "idle",
+                "invisible",
+                "offline",
+                "dnd"
+            ];
 
-        if (!valid_status.includes(status.toLowerCase())) return;
+            if (!valid_status.includes(status.toLowerCase())) return;
 
-        if (status.toLowerCase() != "offline") {
-            this.user.settings.status = status.toLowerCase();
+            if (status.toLowerCase() != "offline") {
+                this.user.settings.status = status.toLowerCase();
 
-            await global.database.updateSettings(this.user.id, this.user.settings);
+                await global.database.updateSettings(this.user.id, this.user.settings);
 
-            await this.dispatch("USER_SETTINGS_UPDATE", this.user.settings);
+                await this.dispatch("USER_SETTINGS_UPDATE", this.user.settings);
 
-            //prevent users from saving offline as their last seen status... as u cant do that
+                //prevent users from saving offline as their last seen status... as u cant do that
+            }
+
+            this.presence.status = status;
+            this.presence.game_id = game_id;
+            
+            await this.dispatchPresenceUpdate();
+        } catch(error) { 
+            logText(error, "error");
         }
-
-        this.presence.status = status;
-        this.presence.game_id = game_id;
-        
-        await this.dispatchPresenceUpdate();
     }
     dispatch(type, payload) {
         if (!this.ready) return;
