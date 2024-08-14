@@ -50,18 +50,6 @@ const gateway = {
                 try {
                     const msg = data.toString("utf-8");
                     const packet = JSON.parse(msg);
-                    const cookieStore = socket.cookieStore;
-                    const release_date = cookieStore['release_date'];
-                    const build = release_date;
-                    const parts = build.split('_');
-                    const month2 = parts[0];
-                    const day = parts[1];
-                    const year2 = parts[2];
-                    const date = new Date(`${month2} ${day} ${year2}`);
-                    const client_date = date;
-
-                    let month = client_date.getMonth();
-                    let year = client_date.getFullYear();
 
                     logText(`Incoming -> ${msg}`, "GATEWAY");
 
@@ -147,7 +135,7 @@ const gateway = {
                         if (socket.cookieStore['release_date'].includes("2015")) {
                             if (packet.d.idle_since == null && packet.d.game_id == null && socket.user.settings.status == 'idle') {
                                 await socket.session.updatePresence("online", null);
-                            } else if (packet.d.idle_since != null && packet.d.status == 'idle') {
+                            } else if (packet.d.idle_since != null && packet.d.game_id == null) {
                                 await socket.session.updatePresence("idle", null);
                             }
                         } else if (socket.cookieStore['release_date'].includes("2016")) {
