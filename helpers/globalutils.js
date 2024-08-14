@@ -89,16 +89,16 @@ const globalUtils = {
 
         switch(flag) {
             case "NO_REGISTRATION":
-                ret = "Account registration is currently disabled on this instance."
+                ret = "Account registration is currently disabled on this instance. Please try again later."
                 break;
             case "NO_GUILD_CREATION":
-                ret = "Creating guilds is currently not allowed on this instance."
+                ret = "Creating guilds is not allowed at this time. Please try again later."
                 break;
             case "NO_INVITE_USE":
-                ret = "You are not allowed to accept this invite."
+                ret = "You are not allowed to accept this invite. Please try again later."
                 break;
             case "NO_INVITE_CREATION":
-                ret = "Creating invites is not allowed on this instance."
+                ret = "Creating invites is not allowed. Please try again later."
                 break;
         }
 
@@ -177,7 +177,7 @@ const globalUtils = {
             discriminator: user.discriminator,
             id: user.id,
             avatar: user.avatar,
-            //bot: user.bot //TODO: Include this selectively
+            bot: user.bot,
         };
     }
 };
