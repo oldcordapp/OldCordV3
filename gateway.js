@@ -72,7 +72,7 @@ const gateway = {
 
                         let sesh = new session(globalUtils.generateString(16), socket, user, packet.d.token, false, {
                             game: null,
-                            status: socket.user.settings.status,
+                            status: "offline",
                             user: {
                                 avatar: socket.user.avatar,
                                 discriminator: socket.user.discriminator,
@@ -123,7 +123,7 @@ const gateway = {
                             }
                         });
 
-                        await socket.session.updatePresence("online", null);
+                        await socket.session.updatePresence(socket.user.settings.status, null);
                     } else if (packet.op == 1) {
                         if (!socket.hb) return;
 
