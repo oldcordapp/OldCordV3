@@ -15,6 +15,32 @@ const connections = require('./connections');
 app.use("/auth", auth);
 app.use("/connections", connections);
 
+app.get("/incidents/unresolved.json", (req, res) => {
+    return res.status(200).json({
+        scheduled_maintenances: [],
+        incidents: []
+    });
+});
+
+app.get("/scheduled-maintenances/upcoming.json", (req, res) => {
+    return res.status(200).json({
+        scheduled_maintenances: []
+    });
+});
+
+app.get("/scheduled-maintenances/active.json", (req, res) => {
+    return res.status(200).json({
+        scheduled_maintenances: [],
+        incidents: []
+    });
+});
+
+app.get("/gateway", (req, res) => {
+    return res.status(200).json({
+        url: `${config.use_wss ? 'wss' : 'ws'}://${config.gateway == "" ? req.headers['host']?.split(':')[0] : config.gateway}${config.gateway_has_no_port ? '' : `:${config.use_same_port ? config.port : config.ws_port}`}`
+    });
+});
+
 app.use(authMiddleware);
 
 app.use("/tutorial", tutorial);
@@ -26,20 +52,6 @@ app.use("/invite", invites);
 
 app.use("/track", (_, res) => {
     return res.status(204).send();
-});
-
-app.get("/scheduled-maintenances", (req, res) => {
-    return res.status(204).send();
-});
-
-app.get("/scheduled-maintenances/upcoming.json", (req, res) => {
-    return res.status(200).json([]);
-});
-
-app.get("/gateway", (req, res) => {
-    return res.status(200).json({
-        url: `${config.use_wss ? 'wss' : 'ws'}://${config.gateway == "" ? req.headers['host']?.split(':')[0] : config.gateway}${config.gateway_has_no_port ? '' : `:${config.use_same_port ? config.port : config.ws_port}`}`
-    });
 });
 
 module.exports = app;

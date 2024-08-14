@@ -20,6 +20,8 @@ router.param('messageid', async (req, res, next, messageid) => {
     next();
 });
 
+router.use("/:messageid/reactions", reactions);
+
 function handleJsonAndMultipart(req, res, next) {
     const contentType = req.headers['content-type'];
     if (contentType && contentType.startsWith('multipart/form-data')) {
@@ -610,7 +612,5 @@ router.post("/:messageid/ack", rateLimitMiddleware(5, 1000 * 10), rateLimitMiddl
         });
     }
 });
-
-router.use("/:messageid/reactions", reactions);
 
 module.exports = router;

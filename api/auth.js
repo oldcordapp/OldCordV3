@@ -5,6 +5,7 @@ const dispatcher = global.dispatcher;
 const instanceMiddleware = require('../helpers/middlewares').instanceMiddleware;
 const rateLimitMiddleware = require("../helpers/middlewares").rateLimitMiddleware;
 const { logText } = require('../helpers/logger');
+const Snowflake = require('../helpers/snowflake');
 
 const config = globalUtils.config;
 
@@ -213,6 +214,14 @@ router.post("/logout", (_, res) => {
 
 router.post("/forgot", (_, res) => {
     return res.status(204).send();
+});
+
+router.post("/fingerprint", (_, res) => {
+    let fingerprint = `${Snowflake.generate()}.${globalUtils.generateString(27)}`;
+
+    return res.status(200).json({
+        fingerprint: fingerprint
+    })
 });
 
 module.exports = router;

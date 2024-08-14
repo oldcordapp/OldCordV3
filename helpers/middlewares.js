@@ -39,7 +39,7 @@ async function clientMiddleware(req, res, next) {
         req.client_build_date = date;
         req.channel_types_are_ints = year.includes("2015") ? false : date.getMonth() >= 6;
 
-        return next();
+        next();
     }
     catch(error) {
         logText(error, "error");
@@ -135,6 +135,10 @@ async function assetsMiddleware(req, res) {
 
                 str = globalUtils.replaceAll(str, /status.discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
 
+                if (config.local_deploy) {
+                    str = globalUtils.replaceAll(str, "https://" + (config.local_deploy ? config.base_url + ":" + config.port : config.base_url), "http://" + (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
+                }
+                
                 str = globalUtils.replaceAll(str, /cdn.discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 str = globalUtils.replaceAll(str, /discord.gg/g, (config.custom_invite_url == "" ? (config.local_deploy ? config.base_url + ":" + config.port : config.base_url) + "/invite" : config.custom_invite_url));
                 
@@ -212,7 +216,7 @@ function instanceMiddleware(flag_check) {
             });
         }
 
-        return next();
+        next();
     };
 }
 
@@ -385,7 +389,7 @@ function guildPermissionsMiddleware(permission) {
             });
         }
 
-        return next();
+        next();
     }
 }
 
@@ -457,7 +461,7 @@ function channelPermissionsMiddleware(permission) {
             });
         }
 
-        return next();
+        next();
     }
 }
 
