@@ -257,6 +257,19 @@ class session {
     }
     async prepareReady() {
         try {
+            const cookieStore = this.socket.cookieStore;
+            const release_date = cookieStore['release_date'];
+            const build = release_date;
+            const parts = build.split('_');
+            const month2 = parts[0];
+            const day = parts[1];
+            const year2 = parts[2];
+            const date = new Date(`${month2} ${day} ${year2}`);
+            const client_date = date;
+
+            let month = client_date.getMonth();
+            let year = client_date.getFullYear();
+
             this.guilds = await global.database.getUsersGuilds(this.user.id);
 
             for(var guild of this.guilds) {
