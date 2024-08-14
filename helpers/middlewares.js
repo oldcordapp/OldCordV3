@@ -133,6 +133,8 @@ async function assetsMiddleware(req, res) {
                     str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 }
 
+                str = globalUtils.replaceAll(str, /status.discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
+
                 str = globalUtils.replaceAll(str, /cdn.discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 str = globalUtils.replaceAll(str, /discord.gg/g, (config.custom_invite_url == "" ? (config.local_deploy ? config.base_url + ":" + config.port : config.base_url) + "/invite" : config.custom_invite_url));
                 
