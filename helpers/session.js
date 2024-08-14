@@ -245,7 +245,7 @@ class session {
 
         this.socket = socket;
 
-        let items = this._eventsBuffer.filter(s => s.s > seq);
+        let items = this.eventsBuffer.filter(s => s.seq > seq);
 
 		for (var k of items) {
 			this.dispatch(k.type, k.payload);
