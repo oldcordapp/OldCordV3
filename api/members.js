@@ -78,7 +78,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
     }
 });
 
-router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware(200, 1000 * 60 * 60), async (req, res) => {
+router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPermissionsMiddleware("MANAGE_NICKNAMES"), rateLimitMiddleware(200, 1000 * 60 * 60), async (req, res) => {
     try {
         const sender = req.account;
 

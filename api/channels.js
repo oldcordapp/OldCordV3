@@ -346,29 +346,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
         let allow = 0;
         let deny = 0;
 
-        let permissionValuesObject = {
-            CREATE_INSTANT_INVITE: global.permissions.CREATE_INSTANT_INVITE,
-            KICK_MEMBERS: global.permissions.KICK_MEMBERS,
-            BAN_MEMBERS: global.permissions.BAN_MEMBERS,
-            MANAGE_ROLES: global.permissions.MANAGE_ROLES,
-            MANAGE_CHANNELS: global.permissions.MANAGE_CHANNELS,
-            MANAGE_GUILD: global.permissions.MANAGE_SERVER,
-            READ_MESSAGES: global.permissions.READ_MESSAGES,
-            SEND_MESSAGES: global.permissions.SEND_MESSAGES,
-            SEND_TTS_MESSAGES: global.permissions.SEND_TTS_MESSAGES,
-            MANAGE_MESSAGES: global.permissions.MANAGE_MESSAGES,
-            ADD_REACTIONS: global.permissions.ADD_REACTIONS,
-            EMBED_LINKS: global.permissions.EMBED_LINKS,
-            ATTACH_FILES: global.permissions.ATTACH_FILES,
-            READ_MESSAGE_HISTORY: global.permissions.READ_MESSAGE_HISTORY,
-            MENTION_EVERYONE: global.permissions.MENTION_EVERYONE,
-            CONNECT: global.permissions.CONNECT,
-            SPEAK: global.permissions.SPEAK,
-            MUTE_MEMBERS: global.permissions.MUTE_MEMBERS,
-            DEAFEN_MEMBERS: global.permissions.DEAFEN_MEMBERS,
-            MOVE_MEMBERS: global.permissions.MOVE_MEMBERS,
-            USE_VAD: global.permissions.USE_VOICE_ACTIVITY,
-        };
+        let permissionValuesObject = global.permissions.toObject();
         let permissionKeys = Object.keys(permissionValuesObject);
         let keys = permissionKeys.map((key) => permissionValuesObject[key]);
 
