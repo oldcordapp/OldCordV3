@@ -91,7 +91,7 @@ async function assetsMiddleware(req, res) {
         return res.status(404).send("File not found");
     }
 
-    if (!fs.existsSync(`${__dirname}/assets/${req.params.asset}`) && !fs.existsSync(`${__dirname}/assets/${req.params.asset}`)) {
+    if (!fs.existsSync(`./clients/assets/${req.params.asset}`) && !fs.existsSync(`./clients/assets/${req.params.asset}`)) {
         logText(`[LOG] Saving ${req.params.asset} -> https://discordapp.com/assets/${req.params.asset}...`, 'debug');
 
         let timestamps = await wayback.getTimestamps(`https://discordapp.com/assets/${req.params.asset}`);

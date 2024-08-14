@@ -135,13 +135,3 @@ body {
     color: red;
     font-size: 18px;
 }
-
-@font-face {
-    font-family: "Discord";
-    src: url(../fonts/unisansheavy.otf);
-}
-
-@font-face {
-    font-family: "Discord Lite";
-    src: url(../fonts/unisansthin.otf);
-}
