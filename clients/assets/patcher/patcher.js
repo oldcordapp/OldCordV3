@@ -67,13 +67,15 @@ const release_date = (function() {
 
 (function() {
 	console.log("Applying server region text patch");
-
-	findByPropsAll('Messages').forEach(e => {
-		e.Messages.FORM_LABEL_SERVER_REGION = 'Server Era';
-		e.Messages.REGION_SELECT_HEADER = 'Select a server era';
-		e.Messages.ONBOARDING_GUILD_SETTINGS_SERVER_REGION = 'Server Era';
-		e.Messages.REGION_SELECT_FOOTER = ''; //TODO: Write a description of what server eras do
-	});
+	
+	const messageModules = findByPropsAll('Messages');
+	for (const module of messageModules) {
+		const msgs = module.Messages;
+		msgs.FORM_LABEL_SERVER_REGION = 'Server Era';
+		msgs.REGION_SELECT_HEADER = 'Select a server era';
+		msgs.ONBOARDING_GUILD_SETTINGS_SERVER_REGION = 'Server Era';
+		msgs.REGION_SELECT_FOOTER = ''; //TODO: Write a description of what server eras do
+	}
 })();
 
 (function() {
