@@ -111,7 +111,7 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
             });
         }
 
-        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_ROLE_DELTE", {
+        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_ROLE_DELETE", {
             guild_id: req.params.guildid,
             role_id: req.params.roleid
         });
