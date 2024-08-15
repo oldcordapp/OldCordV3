@@ -53,26 +53,27 @@ const dispatcher = {
 
             let uSessions = global.userSessions.get(member.id);
 
-            if (!uSessions || uSessions.size === 0) continue;
+            if (!uSessions) continue;
 
-            let guildPermCheck = await global.permissions.hasGuildPermissionTo(guild.id, member.id, permission_check, socket.client_build);
+            for (let z = 0; z < uSessions.length; z++) {
+                let uSession = uSessions[z];
+                let guildPermCheck = await global.permissions.hasGuildPermissionTo(guild.id, member.id, permission_check, uSession.socket.client_build);
 
-            if (checkChannel && channel != null) {
-                const channelPermCheck = await global.permissions.hasChannelPermissionTo(channel, guild, member.id, permission_check);
+                if (checkChannel && channel != null) {
+                    const channelPermCheck = await global.permissions.hasChannelPermissionTo(channel, guild, member.id, permission_check);
 
-                if (!guildPermCheck && !channelPermCheck && guild.owner_id != member.id) {
-                    continue;
+                    if (!guildPermCheck && !channelPermCheck && guild.owner_id != member.id) {
+                        break;
+                    }
+
+                    guildPermCheck = true;
                 }
 
-                guildPermCheck = true;
-            }
+                if (!guildPermCheck && guild.owner_id != member.id) {
+                    break;
+                }
 
-            if (!guildPermCheck && guild.owner_id != member.id) {
-                continue;
-            }
-
-            for(var z = 0; z < uSessions.length; z++) {
-                uSessions[z].dispatch(type, payload);
+                uSession.dispatch(type, payload);
             }
         }
 
