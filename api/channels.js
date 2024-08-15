@@ -86,7 +86,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
         }
 
         if (channel.recipient != null) {
-            await global.dispatcher.dispatchInDM(typer.id, channel.recipient.id, "TYPING_START", {
+            await global.dispatcher.dispatchEventInDM(typer.id, channel.recipient.id, "TYPING_START", {
                 channel_id: req.params.channelid,
                 guild_id: channel.guild_id,
                 user_id: typer.id,

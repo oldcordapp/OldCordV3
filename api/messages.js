@@ -171,7 +171,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                         });
                     }
 
-                    await global.dispatcher.dispatchInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
+                    await global.dispatcher.dispatchEventInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
 
                     return res.status(200).json(createMessage);
                 });
@@ -185,7 +185,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     });
                 }
         
-                await global.dispatcher.dispatchInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
+                await global.dispatcher.dispatchEventInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
         
                 return res.status(200).json(createMessage);
             }
@@ -347,7 +347,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
                 });
             }
 
-            await global.dispatcher.dispatchInDM(guy.id, channel.recipient.id, "MESSAGE_DELETE", {
+            await global.dispatcher.dispatchEventInDM(guy.id, channel.recipient.id, "MESSAGE_DELETE", {
                 id: req.params.messageid,
                 guild_id: channel.guild_id,
                 channel_id: req.params.channelid
@@ -478,7 +478,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            await global.dispatcher.dispatchInDM(guy.id, channel.recipient.id, "MESSAGE_UPDATE", message);
+            await global.dispatcher.dispatchEventInDM(guy.id, channel.recipient.id, "MESSAGE_UPDATE", message);
 
             return res.status(204).send();
         } else {
