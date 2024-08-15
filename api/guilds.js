@@ -57,7 +57,7 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50
         let month = client_date.getMonth();
         let year = client_date.getFullYear();
 
-        if (selected_region == "sydney") {
+        if (selected_region == "2016") {
             if (month > 3 && month <= 10 && year == 2016) {
                 exclusions.push(...[
                     "system_messages",
@@ -67,14 +67,8 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50
                 ]) // 10 = september, 11 = october, 12 = november, 13 = december
             } else if (month > 9 && month <= 13 && year == 2016) {
                 exclusions.push("reactions");
-            } else if (year != 2016) selected_region = `amsterdam`;
+            } else if (year != 2016) selected_region = "everything";
         }
-
-        //sydney = up to 2016
-        //london = up to 2017
-        //tokyo = up to 2018
-        //singapore = up to 2019
-        //amsterdam = everything
 
         const guild = await global.database.createGuild(creator.id, req.body.icon, req.body.name, req.body.region, exclusions);
 
