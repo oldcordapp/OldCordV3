@@ -130,36 +130,31 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
             }
         }
 
-        let reset = req.body.nick == "";
-
         let nick = req.body.nick;
-        
-        if (!nick && !reset) {
+        if (nick == null || nick === undefined) {
+            //Don't change nick
             nick = member.nick;
+        } else if (nick === "" || nick == member.user.username) {
+            //Reset nick
+            nick = null;
         } else {
-            if (!reset) {
-                if (nick.length < 2) {
-                    return res.status(400).json({
-                        code: 400,
-                        nick: "Nickname must be between 2 and 30 characters."
-                    });
-                }
-
-                if (nick.length > 30) {
-                    return res.status(400).json({
-                        code: 400,
-                        nick: "Nickname must be between 2 and 30 characters."
-                    });
-                }
+            //Set new nick
+            if (nick.length < 2) {
+                return res.status(400).json({
+                    code: 400,
+                    nick: "Nickname must be between 2 and 30 characters."
+                });
             }
 
-            if (nick == member.user.username) {
-                reset = true;
-                nick = null;
+            if (nick.length > 30) {
+                return res.status(400).json({
+                    code: 400,
+                    nick: "Nickname must be between 2 and 30 characters."
+                });
             }
         }
 
-        if (nick || reset) {
+        if (nick != member.nick) {
             let tryUpdateNick = await global.database.updateGuildMemberNick(req.params.guildid, member.user.id, nick);
 
             if (!tryUpdateNick) {
