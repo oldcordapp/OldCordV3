@@ -11,8 +11,21 @@ const dispatcher = {
         }
     },
     dispatchEventInDM: async (author_id, recipient_id, type, payload) => {
-        await this.dispatchEventTo(author_id, type, payload);
-        await this.dispatchEventTo(recipient_id, type, payload);
+        let sessions1 = global.userSessions.get(author_id);
+        
+        if (!sessions1 || sessions1.size === 0) return false;
+
+        let sessions2 = global.userSessions.get(recipient_id);
+
+        if (!sessions2 || sessions2.size === 0) return false;
+        
+        for(let z = 0; z < sessions1.length; z++) {
+            sessions1[z].dispatch(type, payload);
+        }
+
+        for(let w = 0; w < sessions2.length; w++) {
+            sessions2[w].dispatch(type, payload);
+        }
 
         return true;
     },
