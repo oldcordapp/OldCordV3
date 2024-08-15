@@ -83,12 +83,6 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
             user: globalUtils.miniUserObject(member.user),
             roles: [],
             guild_id: req.params.guildid
-        })
-
-        await global.dispatcher.dispatchEventTo(sender.id, "GUILD_MEMBER_ADD", {
-            guild_id: req.params.guildid,
-            user: globalUtils.miniUserObject(member.user),
-            roles: []
         });
 
         if (req.query['delete-message-days']) {
