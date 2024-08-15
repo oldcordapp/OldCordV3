@@ -68,13 +68,8 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
                     name: "",
                     topic: "",
                     position: 0,
-                    recipient: {
-                        id: user.id,
-                        username: user.username,
-                        discriminator: user.discriminator,
-                        avatar: user.avatar
-                    },
                     type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
+                    recipient: globalUtils.miniUserObject(user),
                     guild_id: null,
                     is_private: true,
                     permission_overwrites: []
@@ -85,13 +80,8 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
                     name: "",
                     topic: "",
                     position: 0,
-                    recipient: {
-                        id: account.id,
-                        username: account.username,
-                        discriminator: account.discriminator,
-                        avatar: account.avatar
-                    },
                     type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
+                    recipient: globalUtils.miniUserObject(account),
                     guild_id: null,
                     is_private: true,
                     permission_overwrites: []
@@ -103,13 +93,8 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
                 name: "",
                 topic: "",
                 position: 0,
-                recipient: {
-                    id: user.id,
-                    username: user.username,
-                    discriminator: user.discriminator,
-                    avatar: user.avatar
-                },
                 type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
+                recipient: globalUtils.miniUserObject(user),
                 guild_id: null,
                 is_private: true,
                 permission_overwrites: []
@@ -162,13 +147,8 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             name: "",
             topic: "",
             position: 0,
-            recipient: {
-                id: user.id,
-                username: user.username,
-                discriminator: user.discriminator,
-                avatar: user.avatar
-            },
             type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
+            recipient: globalUtils.miniUserObject(user),
             guild_id: null,
             is_private: true,
             permission_overwrites: []
@@ -179,13 +159,8 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             name: "",
             topic: "",
             position: 0,
-            recipient: {
-                id: account.id,
-                username: account.username,
-                discriminator: account.discriminator,
-                avatar: account.avatar
-            },
             type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
+            recipient: globalUtils.miniUserObject(account),
             guild_id: null,
             is_private: true,
             permission_overwrites: []

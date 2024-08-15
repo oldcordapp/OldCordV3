@@ -51,19 +51,9 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
 
         await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
             type: "kick",
-            moderator: {
-                username: sender.username,
-                avatar: sender.avatar,
-                discriminator: sender.discriminator,
-                id: sender.id
-            },
+            moderator: globalUtils.miniUserObject(sender),
             roles: [],
-            user: {
-                username: member.user.username,
-                discriminator: member.user.discriminator,
-                id: member.user.id,
-                avatar: member.user.avatar
-            },
+            user: globalUtils.miniUserObject(member.user),
             guild_id: req.params.guildid
         })
 

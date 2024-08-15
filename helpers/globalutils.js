@@ -170,6 +170,15 @@ const globalUtils = {
         ret = ret.slice(0, -1);
 
         return ret;
+    },
+    miniUserObject: (user) => {
+        return {
+            username: user.username,
+            discriminator: user.discriminator,
+            id: user.id,
+            avatar: user.avatar,
+            //bot: user.bot //TODO: Include this selectively
+        };
     }
 };
 

@@ -85,24 +85,14 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
                     await global.dispatcher.dispatchEventInGuild(invite.guild.id, "GUILD_MEMBER_ADD", {
                         roles: [],
-                        user: {
-                            username: account.username,
-                            discriminator: account.discriminator,
-                            id: account.id,
-                            avatar: account.avatar
-                        },
+                        user: globalUtils.miniUserObject(account),
                         guild_id: invite.guild.id
                     });
     
                     await global.dispatcher.dispatchEventInGuild(invite.guild.id, "PRESENCE_UPDATE", {
                         game_id: null,
                         status: "online",
-                        user: {
-                            username: account.username,
-                            discriminator: account.discriminator,
-                            id: account.id,
-                            avatar: account.avatar
-                        },
+                        user: globalUtils.miniUserObject(account),
                         guild_id: invite.guild.id
                     });
                 }
@@ -132,24 +122,14 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
                 await global.dispatcher.dispatchEventInGuild(guildId, "GUILD_MEMBER_ADD", {
                     roles: [],
-                    user: {
-                        username: account.username,
-                        discriminator: account.discriminator,
-                        id: account.id,
-                        avatar: account.avatar
-                    },
+                    user: globalUtils.miniUserObject(account),
                     guild_id: guildId
                 });
 
                 await global.dispatcher.dispatchEventInGuild(guildId, "PRESENCE_UPDATE", {
                     game_id: null,
                     status: "online",
-                    user: {
-                        username: account.username,
-                        discriminator: account.discriminator,
-                        id: account.id,
-                        avatar: account.avatar
-                    },
+                    user: globalUtils.miniUserObject(account),
                     guild_id: guildId
                 });
             }

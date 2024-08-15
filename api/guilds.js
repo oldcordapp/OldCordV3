@@ -206,12 +206,7 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
             await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
                 type: "leave",
                 roles: [],
-                user: {
-                    username: user.username,
-                    discriminator: user.discriminator,
-                    id: user.id,
-                    avatar: user.avatar
-                },
+                user: globalUtils.miniUserObject(user),
                 guild_id: req.params.guildid
             })
 
