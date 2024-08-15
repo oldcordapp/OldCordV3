@@ -1,8 +1,6 @@
 const express = require('express');
 const { logText } = require('../helpers/logger');
-const messages = require('./messages');
-const { channelPermissionsMiddleware, rateLimitMiddleware, guildPermissionsMiddleware, channelMiddleware, guildMiddleware } = require('../helpers/middlewares');
-const dispatcher = global.dispatcher;
+const { guildPermissionsMiddleware, guildMiddleware } = require('../helpers/middlewares');
 const globalUtils = require('../helpers/globalutils');
 const Snowflake = require('../helpers/snowflake');
 const fs = require('fs');

@@ -1,5 +1,3 @@
-const globalUtils = require('./globalutils');
-
 const permissions = {
     CREATE_INSTANT_INVITE: 1 << 0,
     KICK_MEMBERS: 1 << 1,

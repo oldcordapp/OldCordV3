@@ -1,6 +1,5 @@
 const express = require('express');
 const { logText } = require('../helpers/logger');
-const globalUtils = require('../helpers/globalutils');
 
 const router = express.Router();
 

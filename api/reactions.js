@@ -2,13 +2,6 @@ const express = require('express');
 const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { channelPermissionsMiddleware, rateLimitMiddleware } = require('../helpers/middlewares');
-const dispatcher = global.dispatcher;
-const fs = require('fs');
-const mime = require('mime');
-const multer = require('multer');
-const sizeOf = require('image-size');
-const permissions = require('../helpers/permissions');
-const Snowflake = require('../helpers/snowflake');
 
 const router = express.Router({ mergeParams: false });
 

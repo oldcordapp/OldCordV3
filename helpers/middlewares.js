@@ -4,7 +4,6 @@ const globalUtils = require('./globalutils');
 const request = require('request');
 const wayback = require('./wayback');
 const fs = require('fs');
-const permissions = require('./permissions');
 
 const config = globalUtils.config;
 

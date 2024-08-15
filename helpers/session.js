@@ -1,4 +1,3 @@
-const dispatcher = global.dispatcher;
 const globalUtils = require('./globalutils');
 const { logText } = require("./logger");
 //Adapted from Hummus' handling of sessions & whatnot

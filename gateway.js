@@ -1,7 +1,6 @@
 const { logText } = require('./helpers/logger');
 const globalUtils = require('./helpers/globalutils');
 const WebSocket = require('ws').WebSocket;
-const zlib = require('zlib');
 const session = require('./helpers/session');
 
 const gateway = {

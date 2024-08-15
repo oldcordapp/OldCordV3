@@ -1,5 +1,3 @@
-const gateway = require("../gateway");
-const globalUtils = require("./globalutils");
 const { logText } = require("./logger");
 
 const dispatcher = {

@@ -1,6 +1,5 @@
 const express = require('express');
 const globalUtils = require('../../helpers/globalutils');
-const dispatcher = global.dispatcher;
 const { rateLimitMiddleware, guildMiddleware } = require('../../helpers/middlewares');
 const { logText } = require('../../helpers/logger');
 const router = express.Router();

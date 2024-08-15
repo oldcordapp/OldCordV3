@@ -3,7 +3,6 @@ const globalUtils = require('../helpers/globalutils');
 const router = express.Router({ mergeParams: true });
 const integrationConfig = globalUtils.config.integration_config;
 const Twitch = require('../helpers/integrations/twitch');
-const dispatcher = require('../helpers/dispatcher');
 
 let pendingCallback = [];
 

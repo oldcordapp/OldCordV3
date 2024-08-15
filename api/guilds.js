@@ -6,7 +6,6 @@ const members = require('./members');
 const bans = require('./bans');
 const emojis = require('./emojis');
 const { instanceMiddleware, rateLimitMiddleware, guildMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
-const dispatcher = global.dispatcher;
 const { requiresIntsForChannelTypes } = require('../helpers/globalutils');
 
 const router = express.Router();

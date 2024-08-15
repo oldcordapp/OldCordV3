@@ -7,7 +7,6 @@ const https = require('https');
 const { logText } = require('./helpers/logger');
 const database = require('./helpers/database');
 const cookieParser = require('cookie-parser');
-const NodeCache = require('node-cache');
 const path = require('path');
 const globalUtils = require('./helpers/globalutils');
 const { assetsMiddleware, clientMiddleware } = require('./helpers/middlewares');
@@ -19,7 +18,6 @@ const modules = require('./api/modules');
 const download = require('./api/download');
 const updates = require('./api/updates');
 const config = globalUtils.config;
-const cache = new NodeCache({ stdTTL: 600, checkPeriod: 120 });
 const app = express();
 
 app.set('trust proxy', 1);
