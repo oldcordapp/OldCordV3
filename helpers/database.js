@@ -1903,14 +1903,6 @@ const database = {
     },
     setRoles: async (guild_id, role_ids, user_id) => {
         try {
-            if (await database.getAccountByUserId(user_id) == null) {
-                return false; //Target user doesn't exist
-            }
-
-            if (await database.getGuildMemberById(guild_id, user_id) == null) {
-                return false; //Target user isn't in the guild
-            }
-
             if (!user_id || !guild_id)
                 return false;
             
