@@ -8,11 +8,11 @@ const SESSION_TIMEOUT = 60 * 2 * 1000; //2 mins
 function nineteeneightyfour(client_build, type, payload) {
     if (type == "CHANNEL_CREATE" || type == "CHANNEL_UPDATE") {
 
-        if (client_build.includes("2016") && globalUtils.requiresIntsForChannelTypes(client_build)) {
+        if (client_build.endsWith("2016") && globalUtils.requiresIntsForChannelTypes(client_build)) {
             if (typeof payload.type == 'string') {
                 payload.type = payload.type == "voice" ? 2 : 0;
             }
-        } else if (client_build.includes("2015")) {
+        } else if (client_build.endsWith("2015")) {
             if (typeof payload.type == 'number') {
                 payload.type = payload.type == 2 ? "voice" : "text"
             }

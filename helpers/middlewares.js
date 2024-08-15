@@ -36,7 +36,7 @@ async function clientMiddleware(req, res, next) {
 
         req.client_build = build;
         req.client_build_date = date;
-        req.channel_types_are_ints = year.includes("2015") ? false : date.getMonth() >= 6;
+        req.channel_types_are_ints = year == "2015" ? false : date.getMonth() >= 6;
 
         next();
     }
@@ -127,7 +127,7 @@ async function assetsMiddleware(req, res) {
             if (snapshot_url.endsWith(".js")) {
                 let str = Buffer.from(body).toString("utf-8");
 
-                if (release.includes("2015")) {
+                if (release.endsWith("2015")) {
                     str = globalUtils.replaceAll(str, ".presence.", ".presences.");
                     str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 }
@@ -143,7 +143,7 @@ async function assetsMiddleware(req, res) {
                 
                 str = globalUtils.replaceAll(str, /discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 
-                if (release.includes("2016")) {
+                if (release.endsWith("2016")) {
                     str = globalUtils.replaceAll(str, "QFusd4xbRKo", "gNEr6tM9Zgc"); //Gifv is gucci
                 }
                 

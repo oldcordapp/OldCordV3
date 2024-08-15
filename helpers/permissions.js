@@ -58,7 +58,7 @@ const permissions = {
     
             let highestRole = gatheredRoles[0];
     
-            if (for_build.includes("2015")) {
+            if (for_build.endsWith("2015")) {
                 highestRole = gatheredRoles[gatheredRoles.length - 1];
             }
     

@@ -76,7 +76,7 @@ const globalUtils = {
             let year = parts[2];
             let date = new Date(`${month} ${day} ${year}`);
 
-            return year.includes("2015") ? false : date.getMonth() >= 6;
+            return parts[2] == "2015" ? false : date.getMonth() >= 6;
         }
         catch(error) {
             logText(error, "error");
