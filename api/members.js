@@ -67,43 +67,42 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
     }
 });
 
-async function updateMember(member, guildId, roles, nick) {
+async function updateMember(member, guild_id, roles, nick) {
     if (!roles) {
         //No change
         roles = member.roles;
     } else {
         //New roles list
         let newRoles = [];
-        if (roles.length == 0) {
-            const tryClearRoles = await global.database.clearRoles(guildId, member.id);
+        for(var role of roles) {
+            if (JSON.stringify(role).includes("id")) {
+                let RoleObj = role;
 
-            if (!tryClearRoles) {
-                return res.status(500).json({
-                    code: 500,
-                    message: "Internal Server Error"
-                });
-            }
-        } else {
-            for(var role of roles) {
-                if (JSON.stringify(role).includes("id")) {
-                    let RoleObj = role;
-
-                    newRoles.push(RoleObj.id);
-                } else {
-                    newRoles.push(role);
-                }
+                newRoles.push(RoleObj.id);
+            } else {
+                newRoles.push(role);
             }
         }
         
-        if (!newRoles.includes(guildId)) {
+        if (!newRoles.includes(guild_id)) {
             //Ensure @everyone is in the member's role list
-            newRoles.push(guildId);
+            newRoles.push(guild_id);
         }
 
+        console.log(roles);
+        console.log(newRoles);
         roles = newRoles;
-
+        
+        //TODO: Optimize and make atomic. This needs to be as a single transaction.
+        if (!await global.database.clearRoles(guild_id, member.id)) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+        
         for (const role_id of roles) {
-            const attempt = await global.database.addRole(guildId, role_id, member.id);
+            const attempt = await global.database.addRole(guild_id, role_id, member.id);
 
             if (!attempt) {
                 return res.status(500).json({
@@ -140,7 +139,7 @@ async function updateMember(member, guildId, roles, nick) {
         }
 
         if (nick != member.nick) {
-            let tryUpdateNick = await global.database.updateGuildMemberNick(guildId, member.user.id, nick);
+            let tryUpdateNick = await global.database.updateGuildMemberNick(guild_id, member.user.id, nick);
 
             if (!tryUpdateNick) {
                 return res.status(500).json({
@@ -156,11 +155,11 @@ async function updateMember(member, guildId, roles, nick) {
     let newMember = {
         roles: roles,
         user: member.user,
-        guild_id: guildId,
+        guild_id: guild_id,
         nick: nick
     };
 
-    await global.dispatcher.dispatchEventInGuild(guildId, "GUILD_MEMBER_UPDATE", newMember);
+    await global.dispatcher.dispatchEventInGuild(guild_id, "GUILD_MEMBER_UPDATE", newMember);
     return newMember;
 }
 
