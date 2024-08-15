@@ -5,14 +5,14 @@ const { logText } = require("./logger");
 const BUFFER_LIMIT = 500; //max dispatch event backlog before terminating?
 const SESSION_TIMEOUT = 60 * 2 * 1000; //2 mins
 
-function nineteeneightyfour(client_build, type, payload) {
+function nineteeneightyfour(socket, type, payload) {
     if (type == "CHANNEL_CREATE" || type == "CHANNEL_UPDATE") {
 
-        if (client_build.endsWith("2016") && globalUtils.requiresIntsForChannelTypes(client_build)) {
+        if (socket.channel_types_are_ints) {
             if (typeof payload.type == 'string') {
                 payload.type = payload.type == "voice" ? 2 : 0;
             }
-        } else if (client_build.endsWith("2015")) {
+        } else if (socket.client_build.endsWith("2015")) {
             if (typeof payload.type == 'number') {
                 payload.type = payload.type == 2 ? "voice" : "text"
             }
@@ -107,7 +107,7 @@ class session {
             })
         }
 
-        payload = nineteeneightyfour(this.socket.cookieStore['release_date'], type, payload);
+        payload = nineteeneightyfour(this.socket, type, payload);
 
         this.send({
             op: 0,
@@ -260,18 +260,8 @@ class session {
     }
     async prepareReady() {
         try {
-            const cookieStore = this.socket.cookieStore;
-            const release_date = cookieStore['release_date'];
-            const build = release_date;
-            const parts = build.split('_');
-            const month2 = parts[0];
-            const day = parts[1];
-            const year2 = parts[2];
-            const date = new Date(`${month2} ${day} ${year2}`);
-            const client_date = date;
-
-            let month = client_date.getMonth();
-            let year = client_date.getFullYear();
+            let month = this.socket.client_build_date.getMonth();
+            let year = this.socket.client_build_date.getFullYear();
 
             this.guilds = await global.database.getUsersGuilds(this.user.id);
 
@@ -295,7 +285,7 @@ class session {
                 }
 
                 for(var channel of guild.channels) {
-                    if (!globalUtils.requiresIntsForChannelTypes(this.socket.cookieStore['release_date'])) {
+                    if (!globalUtils.requiresIntsForChannelTypes(this.socket.client_build)) {
                         channel.type = channel.type == 2 ? "voice" : "text";
                     }
 
@@ -344,7 +334,7 @@ class session {
 
                 let dmChannelObj = {
                     id: dm.id,
-                    type: globalUtils.requiresIntsForChannelTypes(this.socket.cookieStore['release_date']) ? 1 : "text",
+                    type: globalUtils.requiresIntsForChannelTypes(this.socket.client_build) ? 1 : "text",
                     recipient: globalUtils.miniUserObject(user2),
                     guild_id: null,
                     is_private: true,

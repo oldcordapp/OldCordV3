@@ -21,22 +21,10 @@ async function clientMiddleware(req, res, next) {
                 message: "Cookies are required to use the oldcord backend, please enable them and try again."
             })
         }
-    
-        let build = cookies['release_date'];
 
-        if (!build) {
+        if (!globalUtils.addClientCapabilities(cookies['release_date'], req)) {
             return res.redirect("/selector");
         }
-
-        let parts = build.split('_');
-        let month = parts[0];
-        let day = parts[1];
-        let year = parts[2];
-        let date = new Date(`${month} ${day} ${year}`);
-
-        req.client_build = build;
-        req.client_build_date = date;
-        req.channel_types_are_ints = year == "2015" ? false : date.getMonth() >= 6;
 
         next();
     }
@@ -78,8 +66,8 @@ function rateLimitMiddleware(max, windowMs, ignore_trusted) {
 }
 
 async function assetsMiddleware(req, res) {
-    let release = req.cookies['release_date'];
-
+    globalUtils.addClientCapabilities(req.cookies['release_date'], req);
+    
     if (config.cache404s && cached404s[req.params.asset] == 1) {
         return res.status(404).send("File not found");
     }
@@ -115,7 +103,7 @@ async function assetsMiddleware(req, res) {
             snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://d3dsisomax34re.cloudfront.net/assets/${req.params.asset}`;
         } else snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://discordapp.com/assets/${req.params.asset}`;
 
-        request(snapshot_url, { encoding: null }, (err, resp, body) => {
+        request(snapshot_url, { encoding: null }, function (err, resp, body) {
             if (err) {
                 console.log(err);
 
@@ -127,7 +115,7 @@ async function assetsMiddleware(req, res) {
             if (snapshot_url.endsWith(".js")) {
                 let str = Buffer.from(body).toString("utf-8");
 
-                if (release.endsWith("2015")) {
+                if (req.client_build.endsWith("2015")) {
                     str = globalUtils.replaceAll(str, ".presence.", ".presences.");
                     str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 }
@@ -143,7 +131,7 @@ async function assetsMiddleware(req, res) {
                 
                 str = globalUtils.replaceAll(str, /discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 
-                if (release.endsWith("2016")) {
+                if (req.client_build.endsWith("2016")) {
                     str = globalUtils.replaceAll(str, "QFusd4xbRKo", "gNEr6tM9Zgc"); //Gifv is gucci
                 }
                 
@@ -330,7 +318,7 @@ async function channelMiddleware(req, res, next) {
         });
     }
 
-    let gCheck = await global.permissions.hasGuildPermissionTo(req.guild, member.id, "READ_MESSAGES", req.cookies['release_date']);
+    let gCheck = await global.permissions.hasGuildPermissionTo(req.guild, member.id, "READ_MESSAGES", req.client_build);
 
     if (!gCheck) {
         return res.status(403).json({
@@ -379,7 +367,7 @@ function guildPermissionsMiddleware(permission) {
             return next();
         }
 
-        let check = await global.permissions.hasGuildPermissionTo(req.guild, sender.id, permission, req.cookies['release_date']);
+        let check = await global.permissions.hasGuildPermissionTo(req.guild, sender.id, permission, req.client_build);
 
         if (!check) {
             return res.status(403).json({

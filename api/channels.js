@@ -25,7 +25,7 @@ router.param('channelid', async (req, res, next, channelid) => {
                         name: "",
                         topic: "",
                         position: 0,
-                        type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
+                        type: req.channel_types_are_ints ? 1 : "text",
                         recipient: globalUtils.miniUserObject(user),
                         guild_id: null,
                         is_private: true,
@@ -37,7 +37,7 @@ router.param('channelid', async (req, res, next, channelid) => {
                         name: "",
                         topic: "",
                         position: 0,
-                        type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
+                        type: req.channel_types_are_ints ? 1 : "text",
                         recipient: globalUtils.miniUserObject(user),
                         guild_id: null,
                         is_private: true,
@@ -47,7 +47,7 @@ router.param('channelid', async (req, res, next, channelid) => {
             } else req.channel = null;
         }
     } else {
-        if (globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
+        if (req.channel_types_are_ints) {
             channel.type = parseInt(channel.type);
         } else channel.type = parseInt(channel.type) == 2 ? "voice" : "text"
 
@@ -182,7 +182,7 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
             });
         }
 
-        if (!globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
+        if (!req.channel_types_are_ints) {
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 
@@ -391,7 +391,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
             });
         }
 
-        if (!globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
+        if (!req.channel_types_are_ints) {
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 
@@ -442,7 +442,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
         let channel_overwrites = await global.database.getChannelPermissionOverwrites(channel.id);
         let overwriteIndex = channel_overwrites.findIndex(x => x.id == id);
 
-        if (!globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
+        if (!req.channel_types_are_ints) {
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 
@@ -471,7 +471,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
             });
         }
 
-        if (!globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
+        if (!req.channel_types_are_ints) {
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 
@@ -516,7 +516,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
             });
         }
 
-        if (!globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
+        if (!req.channel_types_are_ints) {
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 

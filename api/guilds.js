@@ -77,7 +77,7 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50
                 message: "Internal Server Error"
             });
         } else {
-            if (!globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
+            if (!req.channel_types_are_ints) {
                 guild.channels[0].type = "text";
             }
 
@@ -536,7 +536,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
                 });
             }
 
-            if (!requiresIntsForChannelTypes(req.cookies['release_date'])) {
+            if (!globalUtils.requiresIntsForChannelTypes(req.client_build)) {
                 channel.type = channel.type == 2 ? "voice" : "text";
             }
 

@@ -55,7 +55,7 @@ const dispatcher = {
 
             if (!uSessions || uSessions.size === 0) continue;
 
-            let guildPermCheck = await global.permissions.hasGuildPermissionTo(guild.id, member.id, permission_check, socket.cookieStore['release_date']);
+            let guildPermCheck = await global.permissions.hasGuildPermissionTo(guild.id, member.id, permission_check, socket.client_build);
 
             if (checkChannel && channel != null) {
                 const channelPermCheck = await global.permissions.hasChannelPermissionTo(channel, guild, member.id, permission_check);
@@ -99,7 +99,7 @@ const dispatcher = {
             for(let z = 0; z < uSessions.length; z++) {
                 let socket = uSessions[z].socket;
 
-                if (type == "PRESENCE_UPDATE" && socket && socket.cookieStore['release_date'].includes("2015")) {
+                if (type == "PRESENCE_UPDATE" && socket && socket.client_build.endsWith("2015")) {
                     let new_status = payload.status;
     
                     payload.status = (new_status != "idle" && new_status != "offline" && new_status != "invisible" && new_status != "dnd") ? "online" : "offline";

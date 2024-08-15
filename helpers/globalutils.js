@@ -84,6 +84,26 @@ const globalUtils = {
             return true;
         }
     },
+    addClientCapabilities: (client_build, obj) => {
+        if (!client_build)
+            return false; //No release date provided
+        
+        let parts = client_build.split('_');
+        if (parts.length < 3) {
+            //Invalid release date format
+            return false;
+        } else {
+            let month = parts[0];
+            let day = parts[1];
+            let year = parts[2];
+            let date = new Date(`${month} ${day} ${year}`);
+            
+            obj.client_build = client_build;
+            obj.client_build_date = date;
+            obj.channel_types_are_ints = year == "2015" ? false : date.getMonth() >= 6;
+            return true;
+        }
+    },
     flagToReason: (flag) => {
         let ret = "";
 

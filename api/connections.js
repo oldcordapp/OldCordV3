@@ -30,7 +30,7 @@ router.get("/:platform/authorize", async (req, res) => {
         token: token,
         platform: platform,
         user_agent: req.headers['user-agent'],
-        release_date: req.cookies['release_date']
+        release_date: req.client_build
     });
 
     return res.redirect(`https://id.twitch.tv/oauth2/authorize?response_type=code&client_id=${checkPlatform.client_id}&redirect_uri=${encodeURI(checkPlatform.redirect_uri)}&scope=channel_subscriptions+channel_check_subscription+channel%3Aread%3Asubscriptions&state=3ebc725b6bf7dfd21f353c5e8f91c212`);
@@ -40,7 +40,7 @@ router.get("/:platform/callback", async (req, res) => {
     let code = req.query.code;
     let platform = req.params.platform;
     //let state = req.params.state;
-    let pending = pendingCallback.find(x => x.user_agent == req.headers['user-agent'] && x.release_date == req.cookies['release_date']);
+    let pending = pendingCallback.find(x => x.user_agent == req.headers['user-agent'] && x.release_date == req.client_build);
 
     if (!pending) {
         return res.status(401).json({

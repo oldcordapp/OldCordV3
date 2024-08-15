@@ -33,6 +33,12 @@ const gateway = {
 
                 return;
             }
+            
+            if (!globalUtils.addClientCapabilities(cookieStore['release_date'], socket)) {
+                socket.close(1000, 'The release_date cookie is in an invalid format.');
+
+                return;
+            }
 
             let identified = false;
             let resumed = false;
@@ -126,7 +132,7 @@ const gateway = {
                     } else if (packet.op == 3) {
                         if (!socket.session) return socket.close(4003, 'Not authenticated');
 
-                        if (socket.cookieStore['release_date'].includes("2015")) {
+                        if (socket.client_build.includes("2015")) {
                             if (!packet.d.game_id) {
                                 packet.d.game_id = null; //just some precautions
                             }
@@ -138,7 +144,7 @@ const gateway = {
                             }
                             
                             await socket.session.updatePresence("online", packet.d.game_id);
-                        } else if (socket.cookieStore['release_date'].includes("2016")) {
+                        } else if (socket.client_build.includes("2016")) {
                             if (!packet.d.game) {
                                 packet.d.game = null; //just some precautions
                             }

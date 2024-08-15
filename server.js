@@ -301,15 +301,15 @@ app.get("/channels/:guildid/:channelid", (_, res) => {
 /*
 app.get("/widget", (req, res) => {
     try {
-        if (!req.cookies['release_date']) {
+        if (!req.client_build) {
             return res.redirect("/selector");
         }
 
-        if (!fs.existsSync(`./clients/assets/${req.cookies['release_date']}`)) {
+        if (!fs.existsSync(`./clients/assets/${req.client_build}`)) {
             return res.redirect("/selector");
         }
 
-        res.send(fs.readFileSync(`./clients/assets/${req.cookies['release_date']}/widget.html`, 'utf8'));
+        res.send(fs.readFileSync(`./clients/assets/${req.client_build}/widget.html`, 'utf8'));
     }
     catch(error) {
         logText(error, "error");
@@ -322,15 +322,15 @@ app.get("/widget", (req, res) => {
 /*
 app.get('/developers/*', (req, res) => {
 	try {
-        if (!req.cookies['release_date']) {
+        if (!req.client_build) {
             return res.redirect("/selector");
         }
 
-        if (!fs.existsSync(`./clients/assets/${req.cookies['release_date']}`)) {
+        if (!fs.existsSync(`./clients/assets/${req.client_build}`)) {
             return res.redirect("/selector");
         }
 
-        let year = req.cookies['release_date'].split('_')[2];
+        let year = req.client_build.split('_')[2];
 
         if (year.includes("2015")) {
             return res.redirect("https://www.youtube.com/watch?v=jeg_TJvkSjg"); //wtf r u doing lol
@@ -352,15 +352,15 @@ app.get('/developers', (req, res) => {
 
 app.get("*", (req, res) => {
     try {
-        if (!req.cookies['release_date']) {
+        if (!req.client_build) {
             return res.redirect("/selector");
         }
 
-        if (!fs.existsSync(`./clients/assets/${req.cookies['release_date']}`)) {
+        if (!fs.existsSync(`./clients/assets/${req.client_build}`)) {
             return res.redirect("/selector");
         }
 
-        let appFile = fs.readFileSync(`./clients/assets/${req.cookies['release_date']}/app.html`, 'utf8');
+        let appFile = fs.readFileSync(`./clients/assets/${req.client_build}/app.html`, 'utf8');
 
         if (config.patcher_location !== "") {
             let patcherFile = fs.readFileSync(config.patcher_location, "utf8");
