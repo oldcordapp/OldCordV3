@@ -67,74 +67,59 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
     }
 });
 
-router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPermissionsMiddleware("MANAGE_NICKNAMES"), rateLimitMiddleware(200, 1000 * 60 * 60), async (req, res) => {
-    try {
-        const sender = req.account;
+async function updateMember(member, guildId, roles, nick) {
+    if (!roles) {
+        //No change
+        roles = member.roles;
+    } else {
+        //New roles list
+        let newRoles = [];
+        if (roles.length == 0) {
+            const tryClearRoles = await global.database.clearRoles(guildId, member.id);
 
-        if (sender == null) {
-            return res.status(401).json({
-                code: 401,
-                message: "Unauthorized"
-            });
-        }
-
-        const member = req.member;
-
-        if (member == null) {
-            return res.status(404).json({
-                code: 404,
-                message: "Unknown Member"
-            });
-        }
-
-        let roles;
-        
-        if (!req.body.roles) {
-            roles = member.roles;
+            if (!tryClearRoles) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
         } else {
-            roles = [];
-            if (req.body.roles.length == 0) {
-                const tryClearRoles = await global.database.clearRoles(req.params.guildid, member.id);
+            for(var role of roles) {
+                if (JSON.stringify(role).includes("id")) {
+                    let RoleObj = role;
 
-                if (!tryClearRoles) {
-                    return res.status(500).json({
-                        code: 500,
-                        message: "Internal Server Error"
-                    });
-                }
-            } else {
-                for(var role of req.body.roles) {
-                    if (JSON.stringify(role).includes("id")) {
-                        let RoleObj = role;
-
-                        roles.push(RoleObj.id);
-                    } else {
-                        roles.push(role);
-                    }
-                }
-
-                if (!roles.includes(req.params.guildid)) {
-                    roles.push(req.params.guildid);
-                }
-
-                for(var role_id of roles) {
-                    const attempt = await global.database.addRole(req.params.guildid, role_id, member.id);
-        
-                    if (!attempt) {
-                        return res.status(500).json({
-                            code: 500,
-                            message: "Internal Server Error"
-                        });
-                    }
+                    newRoles.push(RoleObj.id);
+                } else {
+                    newRoles.push(role);
                 }
             }
         }
+        
+        if (!newRoles.includes(guildId)) {
+            //Ensure @everyone is in the member's role list
+            newRoles.push(guildId);
+        }
 
-        let nick = req.body.nick;
-        if (nick == null || nick === undefined) {
-            //Don't change nick
-            nick = member.nick;
-        } else if (nick === "" || nick == member.user.username) {
+        roles = newRoles;
+
+        for (const role_id of roles) {
+            const attempt = await global.database.addRole(guildId, role_id, member.id);
+
+            if (!attempt) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+        }
+    }
+
+    if (nick == null || nick === undefined) {
+        //No change
+        nick = member.nick;
+    } else {
+        //Change
+        if (nick === "" || nick == member.user.username) {
             //Reset nick
             nick = null;
         } else {
@@ -155,7 +140,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
         }
 
         if (nick != member.nick) {
-            let tryUpdateNick = await global.database.updateGuildMemberNick(req.params.guildid, member.user.id, nick);
+            let tryUpdateNick = await global.database.updateGuildMemberNick(guildId, member.user.id, nick);
 
             if (!tryUpdateNick) {
                 return res.status(500).json({
@@ -166,19 +151,44 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
 
             member.nick = nick;
         }
-        
-        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_UPDATE", {
-            roles: roles,
-            user: member.user,
-            guild_id: req.params.guildid,
-            nick: nick
-        });
+    }
+
+    let newMember = {
+        roles: roles,
+        user: member.user,
+        guild_id: guildId,
+        nick: nick
+    };
+
+    await global.dispatcher.dispatchEventInGuild(guildId, "GUILD_MEMBER_UPDATE", newMember);
+    return newMember;
+}
+
+router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPermissionsMiddleware("MANAGE_NICKNAMES"), rateLimitMiddleware(200, 1000 * 60 * 60), async (req, res) => {
+    try {
+        const sender = req.account;
+
+        if (sender == null) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        if (req.member == null) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Member"
+            });
+        }
+
+        let newMember = await updateMember(req.member, req.guild.id, req.body.roles, req.body.nick);
 
         return res.status(200).json({
-            user: member.user,
-            nick: nick,
-            guild_id: req.params.guildid,
-            roles: roles,
+            user: newMember.user,
+            nick: newMember.nick,
+            guild_id: req.guild.id,
+            roles: newMember.roles,
             deaf: false,
             mute: false
         });
@@ -202,45 +212,8 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
                 message: "Unauthorized"
             });
         }
-
-        let guild = req.guild;
-
-        if (!guild) {
-            return res.status(404).json({
-                code: 404,
-                message: "Unknown Guild"
-            });
-        }
-
-        let nick = req.body.nick;
-        let reset = !nick;
-
-        if (nick.length < 2 && !reset) {
-            return res.status(400).json({
-                code: 400,
-                nick: "Nickname must be between 2 and 20 characters."
-            });
-        }
-
-        if (nick.length > 30 && !reset) {
-            return res.status(400).json({
-                code: 400,
-                nick: "Nickname must be between 2 and 20 characters."
-            });
-        }
-
-        if (reset) nick = null;
-
-        let tryUpdate = await global.database.updateGuildMemberNick(guild.id, account.id, nick);
-
-        if (!tryUpdate) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
-            });
-        }
         
-        let member = await global.database.getGuildMemberById(guild.id, account.id);
+        let member = req.guild.members.find(y => y.id == account.id);
 
         if (!member) {
             return res.status(500).json({
@@ -248,12 +221,14 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
                 message: "Internal Server Error"
             });
         }
+        
+        let newMember = await updateMember(member, req.guild.id, null, req.body.nick);
 
-        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_UPDATE", {
-            roles: member.roles,
-            user: member.user,
-            guild_id: req.params.guildid,
-            nick: nick
+        await global.dispatcher.dispatchEventInGuild(req.guild.id, "GUILD_MEMBER_UPDATE", {
+            roles: newMember.roles,
+            user: newMember.user,
+            guild_id: req.guild.id,
+            nick: newMember.nick
         });
 
         return res.status(204).send();
