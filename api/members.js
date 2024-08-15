@@ -91,23 +91,11 @@ async function updateMember(member, guild_id, roles, nick) {
 
         roles = newRoles;
         
-        //TODO: Optimize and make atomic. This needs to be as a single transaction.
-        if (!await global.database.clearRoles(guild_id, member.id)) {
+        if (!await global.database.setRoles(guild_id, roles, member.id)) {
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
             });
-        }
-        
-        for (const role_id of roles) {
-            const attempt = await global.database.addRole(guild_id, role_id, member.id);
-
-            if (!attempt) {
-                return res.status(500).json({
-                    code: 500,
-                    message: "Internal Server Error"
-                });
-            }
         }
     }
 
