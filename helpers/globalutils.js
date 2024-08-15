@@ -85,12 +85,12 @@ const globalUtils = {
         }
     },
     addClientCapabilities: (client_build, obj) => {
-        if (!client_build)
-            return false; //No release date provided
-        
-        let parts = client_build.split('_');
-        if (parts.length < 3) {
-            //Invalid release date format
+        let parts = client_build ? client_build.split('_') : null;
+        if (!parts || parts.length < 3) {
+            //Invalid release date format. Use defaults.
+            obj.client_build = "";
+            obj.client_build_date = new Date();
+            obj.channel_types_are_ints = false;
             return false;
         } else {
             let month = parts[0];
@@ -100,7 +100,7 @@ const globalUtils = {
             
             obj.client_build = client_build;
             obj.client_build_date = date;
-            obj.channel_types_are_ints = year == "2015" ? false : date.getMonth() >= 6;
+            obj.channel_types_are_ints = date.getFullYear() >= 2016 && (date.getMonth() >= 6 || date.getFullYear() >= 2017);
             return true;
         }
     },
