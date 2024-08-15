@@ -3,7 +3,14 @@ const encode = require('base64url');
 const fs = require('fs');
 const { logText } = require('./logger');
 
-let config = JSON.parse(fs.readFileSync("./config.json", "utf8"));
+const configPath = "./config.json";
+if (!fs.existsSync(configPath)) {
+    console.error("No config.json file exists: Please create one using config.example.json as a template.");
+    process.exit(1);
+    return;
+}
+
+const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
 const globalUtils = {
     config: config,
@@ -163,6 +170,15 @@ const globalUtils = {
         ret = ret.slice(0, -1);
 
         return ret;
+    },
+    miniUserObject: (user) => {
+        return {
+            username: user.username,
+            discriminator: user.discriminator,
+            id: user.id,
+            avatar: user.avatar,
+            //bot: user.bot //TODO: Include this selectively
+        };
     }
 };
 

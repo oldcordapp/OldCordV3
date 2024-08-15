@@ -345,13 +345,8 @@ class session {
 
                 let dmChannelObj = {
                     id: dm.id,
-                    recipient: {
-                        id: user2.id,
-                        username: user2.username,
-                        discriminator: user2.discriminator,
-                        avatar: user2.avatar
-                    },
                     type: globalUtils.requiresIntsForChannelTypes(this.socket.cookieStore['release_date']) ? 1 : "text",
+                    recipient: globalUtils.miniUserObject(user2),
                     guild_id: null,
                     is_private: true,
                     last_message_id: dm.last_message_id

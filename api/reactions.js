@@ -354,12 +354,7 @@ router.get("/:urlencoded", async (req, res) => {
 
             if (user == null) continue;
 
-            return_users.push({
-                username: user.username,
-                discriminator: user.discriminator,
-                id: user.id,
-                avatar: user.avatar
-            });
+            return_users.push(globalUtils.miniUserObject(user));
         }
 
         return res.status(200).json(return_users);

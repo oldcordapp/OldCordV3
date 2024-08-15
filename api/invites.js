@@ -146,24 +146,14 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
 
         await global.dispatcher.dispatchEventInGuild(invite.guild.id, "GUILD_MEMBER_ADD", {
             roles: [],
-            user: {
-                username: sender.username,
-                discriminator: sender.discriminator,
-                id: sender.id,
-                avatar: sender.avatar
-            },
+            user: globalUtils.miniUserObject(sender),
             guild_id: invite.guild.id
         });
 
         await global.dispatcher.dispatchEventInGuild(invite.guild.id, "PRESENCE_UPDATE", {
             game_id: null,
             status: "online",
-            user: {
-                username: sender.username,
-                discriminator: sender.discriminator,
-                id: sender.id,
-                avatar: sender.avatar
-            },
+            user: globalUtils.miniUserObject(sender),
             guild_id: invite.guild.id
         })
 

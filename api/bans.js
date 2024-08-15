@@ -79,30 +79,15 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
 
         await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
             type: "ban",
-            moderator: {
-                username: sender.username,
-                avatar: sender.avatar,
-                discriminator: sender.discriminator,
-                id: sender.id
-            },
-            user: {
-                username: member.user.username,
-                discriminator: member.user.discriminator,
-                id: member.user.id,
-                avatar: member.user.avatar
-            },
+            moderator: globalUtils.miniUserObject(sender),
+            user: globalUtils.miniUserObject(member.user),
             roles: [],
             guild_id: req.params.guildid
         })
 
         await global.dispatcher.dispatchEventTo(sender.id, "GUILD_MEMBER_ADD", {
             guild_id: req.params.guildid,
-            user: {
-                username: member.user.username,
-                avatar: member.user.avatar,
-                id: member.user.id,
-                discriminator: member.user.discriminator
-            },
+            user: globalUtils.miniUserObject(member.user),
             roles: []
         });
 

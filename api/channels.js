@@ -26,13 +26,8 @@ router.param('channelid', async (req, res, next, channelid) => {
                         name: "",
                         topic: "",
                         position: 0,
-                        recipient: {
-                            id: user.id,
-                            username: user.username,
-                            discriminator: user.discriminator,
-                            avatar: user.avatar
-                        },
                         type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
+                        recipient: globalUtils.miniUserObject(user),
                         guild_id: null,
                         is_private: true,
                         permission_overwrites: [] 
@@ -43,13 +38,8 @@ router.param('channelid', async (req, res, next, channelid) => {
                         name: "",
                         topic: "",
                         position: 0,
-                        recipient: {
-                            id: user.id,
-                            username: user.username,
-                            discriminator: user.discriminator,
-                            avatar: user.avatar
-                        },
                         type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
+                        recipient: globalUtils.miniUserObject(user),
                         guild_id: null,
                         is_private: true,
                         permission_overwrites: [] 
@@ -124,12 +114,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
                     roles: [],
                     deaf: false,
                     mute: false,
-                    user: {
-                        username: typer.username,
-                        discriminator: typer.discriminator,
-                        id: typer.id,
-                        avatar: typer.avatar
-                    }
+                    user: globalUtils.miniUserObject(typer)
                 }
             })
 
