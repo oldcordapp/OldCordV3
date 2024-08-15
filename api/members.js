@@ -89,8 +89,6 @@ async function updateMember(member, guild_id, roles, nick) {
             newRoles.push(guild_id);
         }
 
-        console.log(roles);
-        console.log(newRoles);
         roles = newRoles;
         
         //TODO: Optimize and make atomic. This needs to be as a single transaction.
