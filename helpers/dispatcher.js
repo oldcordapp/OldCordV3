@@ -32,17 +32,13 @@ const dispatcher = {
 
         if (guild == null) return false;
 
-        let chanId = channel_id;
-        let checkChannel = true;
-
-        if (chanId == null) {
-            chanId = "...";
-            checkChannel = false;
+        let channel;
+        if (channel_id) {
+            channel = await global.database.getChannelById(channel_id);
+            
+            if (!channel)
+                return false;
         }
-
-        const channel = await global.database.getChannelById(chanId);
-
-        if (channel == null && checkChannel) return false;
 
         const members = await global.database.getGuildMembers(guild_id);
 
@@ -57,22 +53,23 @@ const dispatcher = {
 
             for (let z = 0; z < uSessions.length; z++) {
                 let uSession = uSessions[z];
-                let guildPermCheck = await global.permissions.hasGuildPermissionTo(guild.id, member.id, permission_check, uSession.socket.client_build);
+                
+                if (guild.owner_id != member.id) { //Skip checks if owner
+                    let guildPermCheck = await global.permissions.hasGuildPermissionTo(guild.id, member.id, permission_check, uSession.socket.client_build);
+                    
+                    if (!guildPermCheck)
+                        break; //No access to guild
 
-                if (checkChannel && channel != null) {
-                    const channelPermCheck = await global.permissions.hasChannelPermissionTo(channel, guild, member.id, permission_check);
+                    if (channel) {
+                        const channelPermCheck = await global.permissions.hasChannelPermissionTo(channel, guild, member.id, permission_check);
 
-                    if (!guildPermCheck && !channelPermCheck && guild.owner_id != member.id) {
-                        break;
+                        if (!channelPermCheck) {
+                            break; //No access to channel
+                        }
                     }
-
-                    guildPermCheck = true;
                 }
 
-                if (!guildPermCheck && guild.owner_id != member.id) {
-                    break;
-                }
-
+                //Success
                 uSession.dispatch(type, payload);
             }
         }
