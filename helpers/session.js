@@ -78,7 +78,7 @@ class session {
                 //prevent users from saving offline as their last seen status... as u cant do that
             }
 
-            this.presence.status = status;
+            this.presence.status = status.toLowerCase();
             this.presence.game_id = game_id;
             
             await this.dispatchPresenceUpdate();
@@ -210,7 +210,7 @@ class session {
 
         if (uSessions.length == 0) {
             this.updatePresence("offline", null);
-        } else await this.updatePresence(uSessions[uSessions.length - 1].presence.status, uSessions[uSessions.length - 1].presence.game);
+        } else await this.updatePresence(uSessions[uSessions.length - 1].presence.status, uSessions[uSessions.length - 1].presence.game_id);
     }
     send(payload) {
         if (this.dead) return;

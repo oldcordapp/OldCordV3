@@ -70,7 +70,7 @@ const gateway = {
                         socket.user = user;
 
                         let sesh = new session(globalUtils.generateString(16), socket, user, packet.d.token, false, {
-                            game: null,
+                            game_id: null,
                             status: "offline",
                             user: globalUtils.miniUserObject(socket.user)
                         });
@@ -117,7 +117,7 @@ const gateway = {
                             }
                         });
 
-                        await socket.session.updatePresence("online", null);
+                        await socket.session.updatePresence(socket.user.settings.status ?? "online", null);
                     } else if (packet.op == 1) {
                         if (!socket.hb) return;
 
@@ -127,32 +127,31 @@ const gateway = {
                         if (!socket.session) return socket.close(4003, 'Not authenticated');
 
                         if (socket.cookieStore['release_date'].includes("2015")) {
-                            if (packet.d.idle_since == null && packet.d.game_id == null && socket.user.settings.status == 'idle') {
-                                await socket.session.updatePresence("online", null);
-                            } else if (packet.d.idle_since != null && packet.d.game_id == null) {
-                                await socket.session.updatePresence("idle", null);
+                            if (!packet.d.game_id) {
+                                packet.d.game_id = null; //just some precautions
                             }
+
+                            if (packet.d.idle_since != null) {
+                                await socket.session.updatePresence("idle", packet.d.game_id);
+
+                                return;
+                            }
+                            
+                            await socket.session.updatePresence("online", packet.d.game_id);
                         } else if (socket.cookieStore['release_date'].includes("2016")) {
-                            if (packet.d.since != 0 && packet.d.afk == true) {
-                                await socket.session.updatePresence("idle", null);
-                            } else {
-                                let accepted_presences = [
-                                    "dnd",
-                                    "idle",
-                                    "online",
-                                    "invisible"
-                                ];
+                            if (!packet.d.game) {
+                                packet.d.game = null; //just some precautions
+                            }
 
-                                if (!packet.d.status && packet.d.idle_since && packet.d.idle_since > 0) {
-                                    packet.d.status = "idle";
-                                }
+                            if (!packet.d.status) {
+                                packet.d.status = "online"; //no buddy, cant trick the gateway into not setting any status for you
+                            }
 
-                                if (!accepted_presences.includes(packet.d.status.toLowerCase())) {
-                                    return socket.close(4000, 'Invalid payload');
-                                }
+                            if (packet.d.afk && packet.d.afk == true) {
+                                packet.d.status = "idle"; //do we really want to do this?
+                            }
 
-                                await socket.session.updatePresence(packet.d.status.toLowerCase(), null);
-                            } 
+                            await socket.session.updatePresence(packet.d.status.toLowerCase(), packet.d.game);
                         }
                     } else if (packet.op == 6) {
                         let token = packet.d.token;
@@ -176,7 +175,7 @@ const gateway = {
 
                         if (!session2) {
                             let sesh = new session(globalUtils.generateString(16), socket, socket.user, packet.d.token, false, {
-                                game: null,
+                                game_id: null,
                                 status: socket.user.settings.status,
                                 user: globalUtils.miniUserObject(socket.user)
                             });
