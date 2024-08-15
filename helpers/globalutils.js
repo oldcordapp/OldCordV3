@@ -4,10 +4,10 @@ const fs = require('fs');
 const { logText } = require('./logger');
 
 const configPath = "./config.json";
+
 if (!fs.existsSync(configPath)) {
     console.error("No config.json file exists: Please create one using config.example.json as a template.");
     process.exit(1);
-    return;
 }
 
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
