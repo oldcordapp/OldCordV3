@@ -1012,9 +1012,7 @@ const database = {
             let reactions = await database.getMessageReactions(message_id);
 
             if (reactions.find(x => x.user_id == user_id && x.emoji.id == emoji_id && x.emoji.name == emoji_name)) {
-                reactions = reactions.filter(x => 
-                    !(x.user_id == user_id && x.emoji.id === emoji_id && x.emoji.name === emoji_name)
-                );
+                reactions = reactions.filter(x => !(x.user_id == user_id && x.emoji.id === emoji_id && x.emoji.name === emoji_name));
             }
 
             reactions.push({
@@ -1038,9 +1036,7 @@ const database = {
         try {
             let reactions = await database.getMessageReactions(message_id);
 
-            reactions = reactions.filter(x => 
-                !(x.user_id == user_id && x.emoji.id === emoji_id && x.emoji.name === emoji_name)
-            );
+            reactions = reactions.filter(x => !(x.user_id == user_id && x.emoji.id === emoji_id && x.emoji.name === emoji_name));
 
             await database.runQuery(`UPDATE messages SET reactions = $1 WHERE message_id = $2`, [JSON.stringify(reactions), message_id]);
 
@@ -1436,7 +1432,7 @@ const database = {
 
                     const reactionMap = reactions.reduce((acc, reaction) => {
                         const { id, name } = reaction.emoji;
-                        const key = id;
+                        const key = id || name;
                     
                         if (!acc[key]) {
                             acc[key] = { 
