@@ -35,7 +35,7 @@ const permissions = {
     },
     async hasGuildPermissionTo(guild, user_id, key, for_build) {
         try {
-            const member = await global.database.getGuildMemberById(guild.id, user_id);
+            const member = guild.members.find(y => y.id == user_id);
 
             if (guild == null) return false;
     
@@ -72,7 +72,7 @@ const permissions = {
 
             if (guild == null) return false;
     
-            const member = await global.database.getGuildMemberById(guild.id, user_id);
+            const member = guild.members.find(y => y.id == user_id);
     
             if (member == null) return false;
     

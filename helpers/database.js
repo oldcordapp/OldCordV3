@@ -1100,7 +1100,7 @@ const database = {
             return false;
         }
     },
-    getGuildMembers: async (id) => {
+    getGuildMembers: async (id, client_build) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM members WHERE guild_id = $1
@@ -1150,7 +1150,7 @@ const database = {
                         deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                         mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
                         roles: roles,
-                        user: globalUtils.miniUserObject(user)
+                        user: globalUtils.miniUserObject(user, client_build)
                     })
                 }
 
@@ -1273,7 +1273,7 @@ const database = {
             return [];
         }
     },
-    getMessageById: async (id) => {
+    getMessageById: async (id, client_build) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM messages WHERE message_id = $1
@@ -1529,7 +1529,7 @@ const database = {
             return null;
         }
     },
-    getGuildById: async (id) => {
+    getGuildById: async (id, client_build) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM guilds WHERE id = $1
@@ -1545,7 +1545,7 @@ const database = {
                 return null;
             }
 
-            let members = await database.getGuildMembers(id);
+            let members = await database.getGuildMembers(id, client_build);
 
             if (members == null || members.length == 0) {
                 return null;
@@ -1617,7 +1617,7 @@ const database = {
             return false;
         }
     },
-    getUsersGuilds: async (id) => {
+    getUsersGuilds: async (id, client_build) => {
         try {
             const guilds = [];
             const members = await database.runQuery(`
@@ -1626,7 +1626,7 @@ const database = {
 
             if (members != null && members.length > 0) {
                 for(var member of members) {
-                    let guild = await database.getGuildById(member.guild_id);
+                    let guild = await database.getGuildById(member.guild_id, client_build);
 
                     if (guild != null && 'id' in guild) {
                         let channels = await database.getGuildChannels(member.guild_id);
@@ -1893,6 +1893,37 @@ const database = {
             roleStr = roleStr.replace(guild_id, "")
 
             await database.runQuery(`UPDATE members SET roles = $1 WHERE user_id = $2`, [roleStr, user_id]);
+
+            return true;
+        } catch(error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    setRoles: async (guild_id, role_ids, user_id) => {
+        try {
+            if (!user_id || !guild_id)
+                return false;
+            
+            let roleStr = null;
+
+            for (var role of role_ids) {
+                if (await database.getRoleById(role) == null) {
+                    continue; //Invalid role
+                }
+
+                if (role == guild_id) {
+                    continue; //everyone has the everyone role silly
+                }
+                
+                if (roleStr == null)
+                    roleStr = role;
+                else
+                    roleStr += ':' + role;
+            }
+
+            await database.runQuery(`UPDATE members SET roles = $1 WHERE user_id = $2`, [roleStr ?? "NULL", user_id]);
 
             return true;
         } catch(error) {

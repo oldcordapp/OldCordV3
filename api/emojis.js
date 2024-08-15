@@ -106,7 +106,7 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
             name: req.body.name,
             require_colons: true,
             roles: [],
-            user: globalUtils.miniUserObject(account)
+            user: globalUtils.miniUserObject(account, req.client_build)
         })
     } catch (error) {
         logText(error, "error");

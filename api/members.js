@@ -68,6 +68,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
 });
 
 async function updateMember(member, guild_id, roles, nick) {
+    let rolesChanged = false;
     if (!roles) {
         //No change
         roles = member.roles;
@@ -88,21 +89,22 @@ async function updateMember(member, guild_id, roles, nick) {
             //Ensure @everyone is in the member's role list
             newRoles.push(guild_id);
         }
-
-        roles = newRoles;
         
-        //TODO: Optimize and make atomic. This needs to be as a single transaction.
-        if (!await global.database.clearRoles(guild_id, member.id)) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
-            });
+        if (member.roles.length != newRoles.length) {
+            rolesChanged = true;
+        } else {
+            for (let i = 0; i < member.roles.length; i++) {
+                if (member.roles[i] != newRoles[i]) {
+                    rolesChanged = true;
+                    break;
+                }
+            }
         }
-        
-        for (const role_id of roles) {
-            const attempt = await global.database.addRole(guild_id, role_id, member.id);
 
-            if (!attempt) {
+        if (rolesChanged) {
+            roles = newRoles;
+            
+            if (!await global.database.setRoles(guild_id, roles, member.id)) {
                 return res.status(500).json({
                     code: 500,
                     message: "Internal Server Error"
@@ -157,7 +159,9 @@ async function updateMember(member, guild_id, roles, nick) {
         nick: nick
     };
 
-    await global.dispatcher.dispatchEventInGuild(guild_id, "GUILD_MEMBER_UPDATE", newMember);
+    if (rolesChanged || newMember.nick !== member.nick)
+        await global.dispatcher.dispatchEventInGuild(guild_id, "GUILD_MEMBER_UPDATE", newMember);
+    
     return newMember;
 }
 
