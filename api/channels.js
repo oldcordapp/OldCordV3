@@ -237,7 +237,7 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
         if (config.instance_flags.includes("NO_INVITE_CREATION")) {
             return res.status(400).json({
                 code: 400,
-                message: "Creating invites is not allowed. Please try again later."
+                message: "Creating invites is not allowed."
             })
         }
 
