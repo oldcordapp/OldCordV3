@@ -1901,6 +1901,37 @@ const database = {
             return false;
         }
     },
+    setRoles: async (guild_id, role_ids, user_id) => {
+        try {
+            if (!user_id || !guild_id)
+                return false;
+            
+            let roleStr = null;
+
+            for (var role of role_ids) {
+                if (await database.getRoleById(role) == null) {
+                    continue; //Invalid role
+                }
+
+                if (role == guild_id) {
+                    continue; //everyone has the everyone role silly
+                }
+                
+                if (roleStr == null)
+                    roleStr = role;
+                else
+                    roleStr += ':' + role;
+            }
+
+            await database.runQuery(`UPDATE members SET roles = $1 WHERE user_id = $2`, [roleStr ?? "NULL", user_id]);
+
+            return true;
+        } catch(error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
     joinGuild: async (user_id, guild_id) => {
         try {
             const guild = await database.getGuildById(guild_id);
