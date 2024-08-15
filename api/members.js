@@ -134,21 +134,23 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
 
         let nick = req.body.nick;
         
-        if (nick) {
+        if (!nick && !reset) {
             nick = member.nick;
         } else {
-            if (nick && nick.length < 2 && !reset) {
-                return res.status(400).json({
-                    code: 400,
-                    nick: "Nickname must be between 2 and 30 characters."
-                });
-            }
+            if (!reset) {
+                if (nick.length < 2) {
+                    return res.status(400).json({
+                        code: 400,
+                        nick: "Nickname must be between 2 and 30 characters."
+                    });
+                }
 
-            if (nick && nick.length > 30 && !reset) {
-                return res.status(400).json({
-                    code: 400,
-                    nick: "Nickname must be between 2 and 30 characters."
-                });
+                if (nick.length > 30) {
+                    return res.status(400).json({
+                        code: 400,
+                        nick: "Nickname must be between 2 and 30 characters."
+                    });
+                }
             }
 
             if (nick == member.user.username) {
