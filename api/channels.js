@@ -25,8 +25,8 @@ router.param('channelid', async (req, res, next, channelid) => {
                         name: "",
                         topic: "",
                         position: 0,
-                        type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
-                        recipient: globalUtils.miniUserObject(user),
+                        type: globalUtils.requiresIntsForChannelTypes(req.client_build) ? 1 : "text",
+                        recipient: globalUtils.miniUserObject(user, req.client_build),
                         guild_id: null,
                         is_private: true,
                         permission_overwrites: [] 
@@ -37,8 +37,8 @@ router.param('channelid', async (req, res, next, channelid) => {
                         name: "",
                         topic: "",
                         position: 0,
-                        type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
-                        recipient: globalUtils.miniUserObject(user),
+                        type: globalUtils.requiresIntsForChannelTypes(req.client_build) ? 1 : "text",
+                        recipient: globalUtils.miniUserObject(user, req.client_build),
                         guild_id: null,
                         is_private: true,
                         permission_overwrites: [] 
@@ -47,14 +47,14 @@ router.param('channelid', async (req, res, next, channelid) => {
             } else req.channel = null;
         }
     } else {
-        if (globalUtils.requiresIntsForChannelTypes(req.cookies['release_date'])) {
+        if (globalUtils.requiresIntsForChannelTypes(req.client_build)) {
             channel.type = parseInt(channel.type);
         } else channel.type = parseInt(channel.type) == 2 ? "voice" : "text"
 
         req.channel = channel;
 
         if (channel && channel.guild_id) {
-            req.guild = await global.database.getGuildById(channel.guild_id);
+            req.guild = await global.database.getGuildById(channel.guild_id, req.client_build);
         }
     }
 

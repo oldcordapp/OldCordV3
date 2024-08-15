@@ -28,7 +28,8 @@ const gateway = {
                 return acc;
             }, {});
             
-            if (!cookieStore['release_date']) {
+            let client_build = cookieStore['release_date'];
+            if (!client_build) {
                 socket.close(1000, 'The release_date cookie is required to establish a connection to the Oldcord gateway.');
 
                 return;
@@ -72,7 +73,7 @@ const gateway = {
                         let sesh = new session(globalUtils.generateString(16), socket, user, packet.d.token, false, {
                             game_id: null,
                             status: "offline",
-                            user: globalUtils.miniUserObject(socket.user)
+                            user: globalUtils.miniUserObject(socket.user, client_build)
                         });
 
                         socket.session = sesh;        
@@ -126,7 +127,7 @@ const gateway = {
                     } else if (packet.op == 3) {
                         if (!socket.session) return socket.close(4003, 'Not authenticated');
 
-                        if (socket.cookieStore['release_date'].includes("2015")) {
+                        if (client_build.includes("2015")) {
                             if (!packet.d.game_id) {
                                 packet.d.game_id = null; //just some precautions
                             }
@@ -138,7 +139,7 @@ const gateway = {
                             }
                             
                             await socket.session.updatePresence("online", packet.d.game_id);
-                        } else if (socket.cookieStore['release_date'].includes("2016")) {
+                        } else if (client_build.includes("2016")) {
                             if (!packet.d.game) {
                                 packet.d.game = null; //just some precautions
                             }
@@ -177,7 +178,7 @@ const gateway = {
                             let sesh = new session(globalUtils.generateString(16), socket, socket.user, packet.d.token, false, {
                                 game_id: null,
                                 status: socket.user.settings.status,
-                                user: globalUtils.miniUserObject(socket.user)
+                                user: globalUtils.miniUserObject(socket.user, client_build)
                             });
 
                             sesh.seq = packet.d.seq;

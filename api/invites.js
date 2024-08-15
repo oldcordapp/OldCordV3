@@ -65,7 +65,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
             });
         }
 
-        const guild = await global.database.getGuildById(channel.guild_id);
+        const guild = await global.database.getGuildById(channel.guild_id, req.client_build);
 
         if (guild == null) {
             return res.status(404).json({
@@ -123,7 +123,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
             });
         }
 
-        const guild = await global.database.getGuildById(invite.guild.id);
+        const guild = await global.database.getGuildById(invite.guild.id, req.client_build);
 
         if (guild == null) {
             return res.status(404).json({

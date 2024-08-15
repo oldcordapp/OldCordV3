@@ -171,13 +171,14 @@ const globalUtils = {
 
         return ret;
     },
-    miniUserObject: (user) => {
+    miniUserObject: (user, client_build) => {
+        const supportsBots = client_build && !client_build.endsWith("_2015");
         return {
             username: user.username,
             discriminator: user.discriminator,
             id: user.id,
             avatar: user.avatar,
-            bot: user.bot,
+            bot: supportsBots ? user.bot : undefined,
         };
     }
 };

@@ -262,8 +262,7 @@ class session {
         try {
             const cookieStore = this.socket.cookieStore;
             const release_date = cookieStore['release_date'];
-            const build = release_date;
-            const parts = build.split('_');
+            const parts = release_date.split('_');
             const month2 = parts[0];
             const day = parts[1];
             const year2 = parts[2];
@@ -273,7 +272,7 @@ class session {
             let month = client_date.getMonth();
             let year = client_date.getFullYear();
 
-            this.guilds = await global.database.getUsersGuilds(this.user.id);
+            this.guilds = await global.database.getUsersGuilds(this.user.id, release_date);
 
             for(var guild of this.guilds) {
                 let guild_presences = await global.database.getGuildPresences(guild.id);

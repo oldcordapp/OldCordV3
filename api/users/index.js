@@ -91,7 +91,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
                 topic: "",
                 position: 0,
                 type: globalUtils.requiresIntsForChannelTypes(req.cookies['release_date']) ? 1 : "text",
-                recipient: globalUtils.miniUserObject(user),
+                recipient: globalUtils.miniUserObject(user, req.client_build),
                 guild_id: null,
                 is_private: true,
                 permission_overwrites: []
@@ -217,7 +217,7 @@ router.get("/:userid/profile", userMiddleware, async (req, res) => {
 
         let ret = {};
 
-        let guilds = await global.database.getUsersGuilds(user.id);
+        let guilds = await global.database.getUsersGuilds(user.id, req.client_build);
 
         let sharedGuilds = guilds.filter(guild => guild.members != null && guild.members.length > 0 && guild.members.some(member => member.id === account.id));
         let mutualGuilds = [];
