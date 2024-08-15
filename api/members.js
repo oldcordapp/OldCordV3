@@ -87,42 +87,45 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
             });
         }
 
-        const roles = [];
+        let roles;
+        
+        if (!req.body.roles) {
+            roles = member.roles;
+        } else {
+            roles = [];
+            if (req.body.roles.length == 0) {
+                const tryClearRoles = await global.database.clearRoles(req.params.guildid, member.id);
 
-        if (req.body.roles && req.body.roles.length == 0) {
-            const tryClearRoles = await global.database.clearRoles(req.params.guildid, member.id);
-
-            if (!tryClearRoles) {
-                return res.status(500).json({
-                    code: 500,
-                    message: "Internal Server Error"
-                });
-            }
-        }
-
-        if (req.body.roles && req.body.roles.length > 0) {
-            for(var role of req.body.roles) {
-                if (JSON.stringify(role).includes("id")) {
-                    let RoleObj = role;
-
-                    roles.push(RoleObj.id);
-                } else {
-                    roles.push(role);
-                }
-            }
-
-            if (!roles.includes(req.params.guildid)) {
-                roles.push(req.params.guildid);
-            }
-
-            for(var role_id of roles) {
-                const attempt = await global.database.addRole(req.params.guildid, role_id, member.id);
-    
-                if (!attempt) {
+                if (!tryClearRoles) {
                     return res.status(500).json({
                         code: 500,
                         message: "Internal Server Error"
                     });
+                }
+            } else {
+                for(var role of req.body.roles) {
+                    if (JSON.stringify(role).includes("id")) {
+                        let RoleObj = role;
+
+                        roles.push(RoleObj.id);
+                    } else {
+                        roles.push(role);
+                    }
+                }
+
+                if (!roles.includes(req.params.guildid)) {
+                    roles.push(req.params.guildid);
+                }
+
+                for(var role_id of roles) {
+                    const attempt = await global.database.addRole(req.params.guildid, role_id, member.id);
+        
+                    if (!attempt) {
+                        return res.status(500).json({
+                            code: 500,
+                            message: "Internal Server Error"
+                        });
+                    }
                 }
             }
         }
@@ -130,24 +133,28 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
         let reset = req.body.nick == "";
 
         let nick = req.body.nick;
+        
+        if (nick) {
+            nick = member.nick;
+        } else {
+            if (nick && nick.length < 2 && !reset) {
+                return res.status(400).json({
+                    code: 400,
+                    nick: "Nickname must be between 2 and 30 characters."
+                });
+            }
 
-        if (nick && nick.length < 2 && !reset) {
-            return res.status(400).json({
-                code: 400,
-                nick: "Nickname must be between 2 and 30 characters."
-            });
-        }
+            if (nick && nick.length > 30 && !reset) {
+                return res.status(400).json({
+                    code: 400,
+                    nick: "Nickname must be between 2 and 30 characters."
+                });
+            }
 
-        if (nick && nick.length > 30 && !reset) {
-            return res.status(400).json({
-                code: 400,
-                nick: "Nickname must be between 2 and 30 characters."
-            });
-        }
-
-        if (nick == member.user.username) {
-            reset = true;
-            nick = null;
+            if (nick == member.user.username) {
+                reset = true;
+                nick = null;
+            }
         }
 
         if (nick || reset) {
@@ -164,15 +171,15 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
         }
         
         await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_UPDATE", {
-            roles: member.roles,
+            roles: roles,
             user: member.user,
             guild_id: req.params.guildid,
-            nick: member.nick
+            nick: nick
         });
 
         return res.status(200).json({
             user: member.user,
-            nick: member.nick,
+            nick: nick,
             guild_id: req.params.guildid,
             roles: roles,
             deaf: false,
