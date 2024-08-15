@@ -235,7 +235,7 @@ async function guildMiddleware(req, res, next) {
     if (member == null) {
         return res.status(404).json({
             code: 404,
-            message: "Unknown Guild"
+            message: "Unknown Member"
         });
     }
 
