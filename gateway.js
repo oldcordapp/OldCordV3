@@ -3,6 +3,40 @@ const globalUtils = require('./helpers/globalutils');
 const WebSocket = require('ws').WebSocket;
 const session = require('./helpers/session');
 
+async function syncPresence(socket, packet) {
+    let allSessions = global.userSessions.get(socket.user.id);
+
+    if (!allSessions || allSessions.size === 0) return;
+
+    let setStatusTo = "online";
+    let gameField = null;
+
+    if (socket.client_build.includes("2015")) {
+        gameField = packet.d.game_id || null;
+
+        if (packet.d.idle_since != null) {
+            setStatusTo = "idle";
+        }
+    } else if (socket.client_build.includes("2016")) {
+        gameField = packet.d.game || null;
+
+        if (packet.d.status) {
+            setStatusTo = packet.d.status.toLowerCase();
+        }
+        
+        if (packet.d.afk && packet.d.afk === true) {
+            setStatusTo = "idle";
+        }
+    }
+
+    // Sync
+    for (let session of allSessions) {
+        session.presence.status = setStatusTo;
+        session.presence.game_id = gameField;
+    }
+
+    await socket.session.updatePresence(setStatusTo, gameField);
+}
 const gateway = {
     server: null,
     port: null,
@@ -133,33 +167,7 @@ const gateway = {
                     } else if (packet.op == 3) {
                         if (!socket.session) return socket.close(4003, 'Not authenticated');
 
-                        if (socket.client_build.includes("2015")) {
-                            if (!packet.d.game_id) {
-                                packet.d.game_id = null; //just some precautions
-                            }
-
-                            if (packet.d.idle_since != null) {
-                                await socket.session.updatePresence("idle", packet.d.game_id);
-
-                                return;
-                            }
-                            
-                            await socket.session.updatePresence("online", packet.d.game_id);
-                        } else if (socket.client_build.includes("2016")) {
-                            if (!packet.d.game) {
-                                packet.d.game = null; //just some precautions
-                            }
-
-                            if (!packet.d.status) {
-                                packet.d.status = "online"; //no buddy, cant trick the gateway into not setting any status for you
-                            }
-
-                            if (packet.d.afk && packet.d.afk == true) {
-                                packet.d.status = "idle"; //do we really want to do this?
-                            }
-
-                            await socket.session.updatePresence(packet.d.status.toLowerCase(), packet.d.game);
-                        }
+                        await syncPresence(socket, packet);
                     } else if (packet.op == 6) {
                         let token = packet.d.token;
                         let session_id = packet.d.session_id;
