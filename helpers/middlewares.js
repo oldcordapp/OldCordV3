@@ -230,9 +230,9 @@ async function guildMiddleware(req, res, next) {
         });
     }
 
-    let member = await global.database.getGuildMemberById(guild.id, sender.id);
+    let member = guild.members.find(y => y.id == sender.id);
 
-    if (member == null) {
+    if (!member) {
         return res.status(404).json({
             code: 404,
             message: "Unknown Guild"
@@ -309,7 +309,7 @@ async function channelMiddleware(req, res, next) {
         });
     }
 
-    let member = await global.database.getGuildMemberById(channel.guild_id, sender.id);
+    let member = req.guild.members.find(y => y.id == sender.id);
 
     if (member == null) {
         return res.status(403).json({
