@@ -197,7 +197,7 @@ const globalUtils = {
             discriminator: user.discriminator,
             id: user.id,
             avatar: user.avatar,
-            //bot: user.bot //TODO: Include this selectively
+            bot: user.bot
         };
     }
 };

@@ -149,6 +149,8 @@ async function assetsMiddleware(req, res) {
                 
                 str = globalUtils.replaceAll(str, /discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
                 
+                str = globalUtils.replaceAll(str, `if(!this.has(e))throw new Error('`, "const noop=()=>{};if(!this.has(e))noop('");
+                
                 if (req.client_build.endsWith("2016")) {
                     str = globalUtils.replaceAll(str, "QFusd4xbRKo", "gNEr6tM9Zgc"); //Gifv is gucci
                 }

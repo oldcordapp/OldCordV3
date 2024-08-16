@@ -647,7 +647,7 @@ const database = {
                         password: row.password,
                         token: row.token,
                         verified: true,
-                        //bot: rows[0].bot == 1 ? true : false,
+                        bot: rows[0].bot == 1 ? true : false,
                         //verified: rows[0].verified == 1 ? true : false,
                         created_at: row.created_at,
                         settings: JSON.parse(row.settings)
