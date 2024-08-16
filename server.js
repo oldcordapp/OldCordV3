@@ -353,12 +353,15 @@ app.get('/developers', (req, res) => {
 
 app.get("/patch.js", (req, res) => {
     try {
-        res.send(patcher.patchFile);
+        if (patcher.patchFile)
+            res.type('js').send(patcher.patchFile);
+        else
+            res.status(404).type('js').send("// No patcher has been configured for this instance.");
     }
     catch(error) {
         logText(error, "error");
 
-        return res.status(400).json({
+        return res.status(500).json({
             code: 500,
             message: "Internal Server Error"
         });
