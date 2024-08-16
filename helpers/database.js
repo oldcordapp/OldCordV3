@@ -459,7 +459,7 @@ const database = {
                     password: rows[0].password,
                     token: rows[0].token,
                     verified: true,
-                    //bot: rows[0].bot == 1 ? true : false,
+                    bot: rows[0].bot == 1 ? true : false,
                     //verified: rows[0].verified == 1 ? true : false,
                     created_at: rows[0].created_at,
                     settings: JSON.parse(rows[0].settings)
@@ -614,7 +614,7 @@ const database = {
                     password: rows[0].password,
                     token: rows[0].token,
                     verified: true,
-                    //bot: rows[0].bot == 1 ? true : false,
+                    bot: rows[0].bot == 1 ? true : false,
                     //verified: rows[0].verified == 1 ? true : false,
                     created_at: rows[0].created_at,
                     settings: JSON.parse(rows[0].settings)
