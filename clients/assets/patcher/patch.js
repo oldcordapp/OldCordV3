@@ -1,3 +1,5 @@
+//patcher_config is inserted here
+
 if (!webpackJsonp)
 	throw Error("Monkey patcher ran too early.");
 
