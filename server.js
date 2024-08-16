@@ -19,6 +19,7 @@ const download = require('./api/download');
 const updates = require('./api/updates');
 const config = globalUtils.config;
 const app = express();
+const patcher = require('./helpers/patcher');
 
 app.set('trust proxy', 1);
 
@@ -350,6 +351,20 @@ app.get('/developers', (req, res) => {
 });
 */
 
+app.get("/patch.js", (req, res) => {
+    try {
+        res.send(patcher.patchFile);
+    }
+    catch(error) {
+        logText(error, "error");
+
+        return res.status(400).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
 app.get("*", (req, res) => {
     try {
         if (!req.client_build) {
@@ -361,13 +376,9 @@ app.get("*", (req, res) => {
         }
 
         let appFile = fs.readFileSync(`./clients/assets/${req.client_build}/app.html`, 'utf8');
-
-        if (config.patcher_location !== "") {
-            let patcherFile = fs.readFileSync(config.patcher_location, "utf8");
-
-            appFile += `\n<script>${patcherFile}</script>`;
-        }
-
+        
+        appFile = patcher.inject(appFile);
+        
         res.send(appFile);
     }
     catch(error) {

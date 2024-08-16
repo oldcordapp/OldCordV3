@@ -26,7 +26,7 @@ router.param('channelid', async (req, res, next, channelid) => {
                         topic: "",
                         position: 0,
                         type: req.channel_types_are_ints ? 1 : "text",
-                        recipient: globalUtils.miniUserObject(user, req.client_build),
+                        recipient: globalUtils.miniUserObject(user),
                         guild_id: null,
                         is_private: true,
                         permission_overwrites: [] 
@@ -38,7 +38,7 @@ router.param('channelid', async (req, res, next, channelid) => {
                         topic: "",
                         position: 0,
                         type: req.channel_types_are_ints ? 1 : "text",
-                        recipient: globalUtils.miniUserObject(user, req.client_build),
+                        recipient: globalUtils.miniUserObject(user),
                         guild_id: null,
                         is_private: true,
                         permission_overwrites: [] 
@@ -54,7 +54,7 @@ router.param('channelid', async (req, res, next, channelid) => {
         req.channel = channel;
 
         if (channel && channel.guild_id) {
-            req.guild = await global.database.getGuildById(channel.guild_id, req.client_build);
+            req.guild = await global.database.getGuildById(channel.guild_id);
         }
     }
 

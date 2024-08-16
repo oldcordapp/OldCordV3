@@ -77,7 +77,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
                 await global.database.joinGuild(account.id, invite.guild.id);
 
-                let guild = await global.database.getGuildById(invite.guild.id, req.client_build);
+                let guild = await global.database.getGuildById(invite.guild.id);
                 
                 if (guild) {
                     await global.dispatcher.dispatchEventTo(account.id, "GUILD_CREATE", guild);
@@ -103,7 +103,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
         if (autoJoinGuild.length > 0) {
             let guildId = autoJoinGuild[0].split(':')[1];
 
-            let guild = await global.database.getGuildById(guildId, req.client_build);
+            let guild = await global.database.getGuildById(guildId);
 
             if (guild != null) {
                 let account = await global.database.getAccountByToken(registrationAttempt.token);
@@ -121,14 +121,14 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
                 await global.dispatcher.dispatchEventInGuild(guildId, "GUILD_MEMBER_ADD", {
                     roles: [],
-                    user: globalUtils.miniUserObject(account, req.client_build),
+                    user: globalUtils.miniUserObject(account),
                     guild_id: guildId
                 });
 
                 await global.dispatcher.dispatchEventInGuild(guildId, "PRESENCE_UPDATE", {
                     game_id: null,
                     status: "online",
-                    user: globalUtils.miniUserObject(account, req.client_build),
+                    user: globalUtils.miniUserObject(account),
                     guild_id: guildId
                 });
             }

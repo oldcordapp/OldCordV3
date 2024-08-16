@@ -647,7 +647,7 @@ const database = {
                         password: row.password,
                         token: row.token,
                         verified: true,
-                        //bot: rows[0].bot == 1 ? true : false,
+                        bot: rows[0].bot == 1 ? true : false,
                         //verified: rows[0].verified == 1 ? true : false,
                         created_at: row.created_at,
                         settings: JSON.parse(row.settings)
@@ -1100,7 +1100,7 @@ const database = {
             return false;
         }
     },
-    getGuildMembers: async (id, client_build) => {
+    getGuildMembers: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM members WHERE guild_id = $1
@@ -1150,7 +1150,7 @@ const database = {
                         deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                         mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
                         roles: roles,
-                        user: globalUtils.miniUserObject(user, client_build)
+                        user: globalUtils.miniUserObject(user)
                     })
                 }
 
@@ -1273,7 +1273,7 @@ const database = {
             return [];
         }
     },
-    getMessageById: async (id, client_build) => {
+    getMessageById: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM messages WHERE message_id = $1
@@ -1529,7 +1529,7 @@ const database = {
             return null;
         }
     },
-    getGuildById: async (id, client_build) => {
+    getGuildById: async (id) => {
         try {
             const rows = await database.runQuery(`
                 SELECT * FROM guilds WHERE id = $1
@@ -1545,7 +1545,7 @@ const database = {
                 return null;
             }
 
-            let members = await database.getGuildMembers(id, client_build);
+            let members = await database.getGuildMembers(id);
 
             if (members == null || members.length == 0) {
                 return null;
@@ -1617,7 +1617,7 @@ const database = {
             return false;
         }
     },
-    getUsersGuilds: async (id, client_build) => {
+    getUsersGuilds: async (id) => {
         try {
             const guilds = [];
             const members = await database.runQuery(`
@@ -1626,7 +1626,7 @@ const database = {
 
             if (members != null && members.length > 0) {
                 for(var member of members) {
-                    let guild = await database.getGuildById(member.guild_id, client_build);
+                    let guild = await database.getGuildById(member.guild_id);
 
                     if (guild != null && 'id' in guild) {
                         let channels = await database.getGuildChannels(member.guild_id);

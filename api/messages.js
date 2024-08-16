@@ -12,7 +12,7 @@ const upload = multer();
 const router = express.Router({ mergeParams: true });
 
 router.param('messageid', async (req, res, next, messageid) => {
-    req.message = await global.database.getMessageById(messageid, req.client_build);
+    req.message = await global.database.getMessageById(messageid);
 
     next();
 });
@@ -469,7 +469,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            message = await global.database.getMessageById(req.params.messageid, req.client_build);
+            message = await global.database.getMessageById(req.params.messageid);
 
             if (message == null) {
                 return res.status(404).json({
@@ -531,7 +531,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            message = await global.database.getMessageById(req.params.messageid, req.client_build);
+            message = await global.database.getMessageById(req.params.messageid);
 
             if (message == null) {
                 return res.status(404).json({

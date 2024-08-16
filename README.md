@@ -42,7 +42,28 @@ NO_REGISTRATION - Block all future users from creating an account on your instan
 NO_GUILD_CREATION - Block future guilds from being created. <br>
 NO_INVITE_USE - Block invites from being used. <br>
 
-More are to come with instance flags in the future. 
+More are to come with instance flags in the future. <br>
+
+The gcs_config section of the config.example.json is for the ability to auto-upload saved assets from the wayback machine for future use later. <br>
+It takes 2 properties, autoUploadBucket - which is the name of the bucket you want to automatically upload assets into, and gcStorageFolder (name of the folder within the bucket, i.e assets) <br>
+
+Here's an example google cloud storage configuration: 
+
+```
+"gcs_config" : {
+   "autoUploadBucket" : "discord_assets_stuff",
+   "gcStorageFolder" : "assets"
+},
+```
+
+To setup google cloud storage auto uploading, you need to download the Google Cloud SDK Shell and run these 2 commands to login and authorize your billing account for use in applications:
+
+```
+gcloud auth login
+gcloud auth application-default login
+```
+
+You <b>might</b> also need to configure cors for your use of the bucket accordingly.
 
 # Long term goals of this project
 - Support 2015, 2016, 2017, 2018 and 2019 fully. Not supporting 2020 as its the year discord was no longer old imo.

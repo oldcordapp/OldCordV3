@@ -11,7 +11,7 @@ const { requiresIntsForChannelTypes } = require('../helpers/globalutils');
 const router = express.Router();
 
 router.param('guildid', async (req, _, next, guildid) => {
-    req.guild = await global.database.getGuildById(guildid, req.client_build);
+    req.guild = await global.database.getGuildById(guildid);
 
     next();
 });
@@ -301,7 +301,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
                 }); 
             }
 
-            what = await global.database.getGuildById(req.params.guildid, req.client_build);
+            what = await global.database.getGuildById(req.params.guildid);
 
             if (what == null) {
                 return res.status(500).json({
@@ -324,7 +324,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             });
         }
 
-        what = await global.database.getGuildById(req.params.guildid, req.client_build);
+        what = await global.database.getGuildById(req.params.guildid);
 
         if (what == null) {
             return res.status(500).json({
