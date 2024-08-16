@@ -8,7 +8,7 @@ const relationships = require('./relationships');
 router.use("/relationships", relationships);
 
 router.param('guildid', async (req, _, next, guildid) => {
-    req.guild = await global.database.getGuildById(guildid, req.client_build);
+    req.guild = await global.database.getGuildById(guildid);
 
     next();
 });

@@ -62,14 +62,13 @@ const gateway = {
                 return acc;
             }, {});
             
-            const client_build = cookieStore['release_date'];
-            if (!client_build) {
+            if (!cookieStore['release_date']) {
                 socket.close(1000, 'The release_date cookie is required to establish a connection to the Oldcord gateway.');
 
                 return;
             }
             
-            if (!globalUtils.addClientCapabilities(client_build, socket)) {
+            if (!globalUtils.addClientCapabilities(cookieStore['release_date'], socket)) {
                 socket.close(1000, 'The release_date cookie is in an invalid format.');
 
                 return;
@@ -113,7 +112,7 @@ const gateway = {
                         let sesh = new session(globalUtils.generateString(16), socket, user, packet.d.token, false, {
                             game_id: null,
                             status: "offline",
-                            user: globalUtils.miniUserObject(socket.user, client_build)
+                            user: globalUtils.miniUserObject(socket.user)
                         });
 
                         socket.session = sesh;        
@@ -192,7 +191,7 @@ const gateway = {
                             let sesh = new session(globalUtils.generateString(16), socket, socket.user, packet.d.token, false, {
                                 game_id: null,
                                 status: socket.user.settings.status,
-                                user: globalUtils.miniUserObject(socket.user, client_build)
+                                user: globalUtils.miniUserObject(socket.user)
                             });
 
                             sesh.seq = packet.d.seq;
