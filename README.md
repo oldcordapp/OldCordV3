@@ -63,7 +63,7 @@ gcloud auth login
 gcloud auth application-default login
 ```
 
-You <b>Might</b> also need to configure cors for your use of the bucket accordingly.
+You <b>might</b> also need to configure cors for your use of the bucket accordingly.
 
 # Long term goals of this project
 - Support 2015, 2016, 2017, 2018 and 2019 fully. Not supporting 2020 as its the year discord was no longer old imo.
