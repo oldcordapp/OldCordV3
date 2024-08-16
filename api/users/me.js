@@ -223,6 +223,28 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
   }
 });
 
+router.get("/settings", async (req, res) => {
+  try {
+    let account = req.account;
+
+    if (!account) {
+        return res.status(401).json({
+            code: 401,
+            message: "Unauthorized"
+        });
+    }
+
+    return res.status(200).json(account.settings);
+  } catch (error) {
+    logText(error, "error");
+
+    return res.status(500).json({
+      code: 500,
+      message: "Internal Server Error"
+    });
+  }
+})
+
 router.patch("/settings", async (req, res) => {
   try {
     let account = req.account;
