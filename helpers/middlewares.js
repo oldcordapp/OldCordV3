@@ -132,23 +132,24 @@ async function assetsMiddleware(req, res) {
 
             if (snapshot_url.endsWith(".js")) {
                 let str = Buffer.from(body).toString("utf-8");
+                const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
+                const baseUrlMain = config.base_url + portAppend;
+                const baseUrlCDN = (config.cdn_url ?? config.base_url) + portAppend;
 
                 if (req.client_build.endsWith("2015")) {
                     str = globalUtils.replaceAll(str, ".presence.", ".presences.");
-                    str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
+                    str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, baseUrlMain);
                 }
 
-                str = globalUtils.replaceAll(str, /status.discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
+                str = globalUtils.replaceAll(str, /status.discordapp.com/g, baseUrlMain);
+                str = globalUtils.replaceAll(str, /cdn.discordapp.com/g, baseUrlCDN);
+                str = globalUtils.replaceAll(str, /discord.gg/g, config.custom_invite_url == "" ? baseUrlMain + "/invite" : config.custom_invite_url);
+                str = globalUtils.replaceAll(str, /discordapp.com/g, baseUrlMain);
 
-                if (config.local_deploy) {
-                    str = globalUtils.replaceAll(str, "https://" + (config.local_deploy ? config.base_url + ":" + config.port : config.base_url), "http://" + (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
+                if (!config.secure) {
+                    str = globalUtils.replaceAll(str, "https://" + baseUrlMain, "http://" + baseUrlMain);
                 }
-                
-                str = globalUtils.replaceAll(str, /cdn.discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
-                str = globalUtils.replaceAll(str, /discord.gg/g, (config.custom_invite_url == "" ? (config.local_deploy ? config.base_url + ":" + config.port : config.base_url) + "/invite" : config.custom_invite_url));
-                
-                str = globalUtils.replaceAll(str, /discordapp.com/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
-                
+
                 str = globalUtils.replaceAll(str, `if(!this.has(e))throw new Error('`, "const noop=()=>{};if(!this.has(e))noop('");
                 
                 if (req.client_build.endsWith("2016")) {
@@ -161,7 +162,7 @@ async function assetsMiddleware(req, res) {
             } else if (snapshot_url.endsWith(".css")) {
                 let str = Buffer.from(body).toString("utf-8");
 
-                str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, (config.local_deploy ? config.base_url + ":" + config.port : config.base_url));
+                str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, base_url_main);
 
                 body = Buffer.from(str);
 
