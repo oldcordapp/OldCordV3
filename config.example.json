@@ -23,6 +23,7 @@
         "user": "postgres",
         "password": "postgres_password"
     },
+    "gcs_config" : { },
     "patcher_location" : "./clients/assets/patcher/patcher.js",
     "trusted_users" : [],
     "custom_invite_url" : "",

@@ -4,10 +4,18 @@ const globalUtils = require('./globalutils');
 const request = require('request');
 const wayback = require('./wayback');
 const fs = require('fs');
+const { Storage } = require('@google-cloud/storage');
 
 const config = globalUtils.config;
 
 let cached404s = {};
+let bucket = null;
+
+if (config.gcs_config && config.gcs_config.autoUploadBucket && config.gcs_config.autoUploadBucket !== "") {
+    let storage = new Storage();
+
+    bucket = storage.bucket(config.gcs_config.autoUploadBucket);
+}
 
 async function clientMiddleware(req, res, next) {
     try {
@@ -103,13 +111,23 @@ async function assetsMiddleware(req, res) {
             snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://d3dsisomax34re.cloudfront.net/assets/${req.params.asset}`;
         } else snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://discordapp.com/assets/${req.params.asset}`;
 
-        request(snapshot_url, { encoding: null }, function (err, resp, body) {
+        request(snapshot_url, { encoding: null }, async function (err, resp, body) {
             if (err) {
                 console.log(err);
 
                 cached404s[req.params.asset] = 1;
 
                 return res.status(404).send("File not found");
+            }
+
+            if (bucket !== null) {
+                let path = `${config.gcs_config.gcStorageFolder}/${req.params.asset}`;
+
+                const cloudFile = bucket.file(path);
+    
+                await cloudFile.save(body, { contentType: resp.headers["content-type"] });
+
+                logText(`[LOG] Uploaded ${req.params.asset} to Google Cloud Storage successfully.`, 'debug');
             }
 
             if (snapshot_url.endsWith(".js")) {
