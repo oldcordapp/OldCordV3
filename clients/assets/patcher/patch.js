@@ -68,7 +68,7 @@ const release_date = (function() {
 })();
 
 (function() {
-	console.log("Applying server region text patch");
+	console.log("Applying text patch");
 	
 	const messageModules = findByPropsAll('Messages');
 	for (const module of messageModules) {
@@ -77,6 +77,8 @@ const release_date = (function() {
 		msgs.REGION_SELECT_HEADER = 'Select a server era';
 		msgs.ONBOARDING_GUILD_SETTINGS_SERVER_REGION = 'Server Era';
 		msgs.REGION_SELECT_FOOTER = ''; //TODO: Write a description of what server eras do
+
+		msgs.NOTIFICATION_TITLE_DISCORD = 'Oldcord';
 	}
 })();
 
