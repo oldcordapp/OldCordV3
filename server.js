@@ -34,7 +34,7 @@ global.permissions = permissions;
 
 //Load certificates (if any)
 let certificates = null;
-if (config.secure && config.cert_path && config.cert_path !== "" && config.key_path && config.key_path !== "") {
+if (config.cert_path && config.cert_path !== "" && config.key_path && config.key_path !== "") {
     certificates = {
         cert: fs.readFileSync(config.cert_path),
         key: fs.readFileSync(config.key_path)
