@@ -363,7 +363,13 @@ class session {
                 relationships: this.relationships,
                 read_state: this.read_states ?? [],
                 tutorial: tutorial,
-                user: this.user,
+                user: {
+                    username: this.user.username,
+                    avatar: this.user.avatar,
+                    email: this.user.email,
+                    discriminator: this.user.discriminator,
+                    verified: this.user.verified
+                },
                 user_settings: this.user.settings,
                 session_id: this.id,
                 unavailable_guilds: this.unavailable_guilds,
