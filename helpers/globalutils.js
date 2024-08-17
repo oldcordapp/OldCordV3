@@ -14,6 +14,8 @@ const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
 const globalUtils = {
     config: config,
+    nonStandardPort: config.secure ? config.port != 443 : config.port != 80,
+    nonStandardWsPort: config.secure ? config.ws_port != 443 : config.ws_port != 80,
     generateString: (length) => {
         let result = '';
         let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

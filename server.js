@@ -23,68 +23,74 @@ const patcher = require('./helpers/patcher');
 
 app.set('trust proxy', 1);
 
-if (config.use_same_port) {
-    if (config.use_wss && config.key_path != "" && config.cert_path != "") {
-        let server = https.createServer({
-            cert: fs.readFileSync(config.cert_path),
-            key: fs.readFileSync(config.key_path)
-        });
-        
-        global.dispatcher = dispatcher;
-        global.gateway = gateway;
-        global.sessions = new Map();
-        global.userSessions = new Map();
+database.setupDatabase();
 
-        gateway.ready(server);
+global.dispatcher = dispatcher;
+global.gateway = gateway;
+global.sessions = new Map();
+global.userSessions = new Map();
+global.database = database;
+global.permissions = permissions;
 
-        database.setupDatabase();
-
-        global.database = database;
-        global.permissions = permissions;
-
-        server.listen(config.port, () => {
-            console.log("[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online!");
-        });
-    
-        server.on('request', app);
-    } else {
-        let server = createServer();
-
-        global.dispatcher = dispatcher;
-        global.gateway = gateway;
-        global.sessions = new Map();
-        global.userSessions = new Map();
-
-        gateway.ready(server);
-
-        database.setupDatabase();
-
-        global.database = database;
-        global.permissions = permissions;
-
-        server.listen(config.port, () => {
-            console.log("[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online!");
-        })
-    
-        server.on('request', app);
+//Load certificates (if any)
+let certificates = null;
+if (config.secure) {
+    if (!config.cert_path || config.cert_path == "") {
+        console.error("Cannot create a secure server. No SSL certificate path was provided in the config.");
+        process.exit(1);
     }
+    
+    if (!config.key_path || config.key_path == "") {
+        console.error("Cannot create a secure server. No SSL certificate key path was provided in the config.");
+        process.exit(1);
+    }
+    
+    if (!fs.existsSync(config.cert_path)) {
+        console.error("Cannot create a secure server. The certificate cannot be found.");
+        process.exit(1);
+    }
+    
+    if (!fs.existsSync(config.key_path)) {
+        console.error("Cannot create a secure server. The certificate key cannot be found.");
+        process.exit(1);
+    }
+    
+    certificates = {
+        cert: fs.readFileSync(config.cert_path),
+        key: fs.readFileSync(config.key_path)
+    };
+}
+
+//Prepare a HTTP server
+let httpServer;
+if (certificates)
+    httpServer = https.createServer(certificates);
+else
+    httpServer = createServer();
+
+let gatewayServer;
+if (config.port == config.ws_port) {
+    //Reuse the HTTP server
+    gatewayServer = httpServer;
 } else {
-    global.dispatcher = dispatcher;
-    global.gateway = gateway;
-    global.sessions = new Map();
-    global.userSessions = new Map();
-
-    gateway.regularReady(config.ws_port)
-
-    database.setupDatabase();
-
-    global.database = database;
-    global.permissions = permissions;
-
-    app.listen(config.port, () => {
-        console.log(`[OLDCORDV3] <RECONNECT TO A BETTER TIME>: Online! Gateway port: ${config.ws_port} - HTTP port: ${config.port}`);
+    //Prepare a separate HTTP server for the gateway
+    if (certificates)
+        gatewayServer = https.createServer(certificates);
+    else
+        gatewayServer = createServer();
+    
+    gatewayServer.listen(config.ws_port, () => {
+        logText(`Gateway ready on port ${config.ws_port}`, "GATEWAY");
     });
 }
+
+gateway.ready(gatewayServer);
+
+httpServer.listen(config.port, () => {
+    logText(`HTTP ready on port ${config.port}`, "OLDCORD");
+});
+
+httpServer.on('request', app);
 
 app.use(express.json({
     limit: '10mb',
@@ -279,7 +285,7 @@ app.use("/api/v*/", (_, res) => {
     });
 });
 
-if (config.serveSelector) {
+if (config.serve_selector) {
     app.get("/selector", (_, res) => {
         return res.send(fs.readFileSync(`./clients/assets/selector/selector.html`, 'utf8'));
     });
@@ -353,12 +359,15 @@ app.get('/developers', (req, res) => {
 
 app.get("/patch.js", (req, res) => {
     try {
-        res.send(patcher.patchFile);
+        if (patcher.patchFile)
+            res.type('js').send(patcher.patchFile);
+        else
+            res.status(404).type('js').send("// No patcher has been configured for this instance.");
     }
     catch(error) {
         logText(error, "error");
 
-        return res.status(400).json({
+        return res.status(500).json({
             code: 500,
             message: "Internal Server Error"
         });

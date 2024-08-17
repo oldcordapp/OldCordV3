@@ -243,13 +243,6 @@ const gateway = {
 
         gateway.handleEvents();
     },
-    regularReady: function (port) {
-        gateway.server = new WebSocket.Server({
-            port: port
-        });
-
-        gateway.handleEvents();
-    }
 };
 
 module.exports = gateway;

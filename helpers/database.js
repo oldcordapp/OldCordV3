@@ -2433,7 +2433,7 @@ const database = {
                     attachment.height,
                     attachment.width,
                     attachment.size,
-                    `${config.use_wss ? 'https' : 'http'}://${config.base_url}${config.local_deploy ? `:${config.port}` : ''}/attachments/${channel_id}/${attachment.id}/${attachment.name}`
+                    `${config.secure ? 'https' : 'http'}://${config.base_url}${globalUtils.nonStandardPort ? `:${config.port}` : ''}/attachments/${channel_id}/${attachment.id}/${attachment.name}`
                 ]);
             }
 
