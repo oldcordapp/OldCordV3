@@ -22,7 +22,6 @@
         "password": "postgres_password"
     },
     "gcs_config" : { },
-    "patcher_location" : "./clients/assets/patcher/patch.js",
     "patcher_config": {
     },
     "trusted_users" : [],

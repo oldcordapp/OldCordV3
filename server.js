@@ -34,27 +34,7 @@ global.permissions = permissions;
 
 //Load certificates (if any)
 let certificates = null;
-if (config.secure) {
-    if (!config.cert_path || config.cert_path == "") {
-        console.error("Cannot create a secure server. No SSL certificate path was provided in the config.");
-        process.exit(1);
-    }
-    
-    if (!config.key_path || config.key_path == "") {
-        console.error("Cannot create a secure server. No SSL certificate key path was provided in the config.");
-        process.exit(1);
-    }
-    
-    if (!fs.existsSync(config.cert_path)) {
-        console.error("Cannot create a secure server. The certificate cannot be found.");
-        process.exit(1);
-    }
-    
-    if (!fs.existsSync(config.key_path)) {
-        console.error("Cannot create a secure server. The certificate key cannot be found.");
-        process.exit(1);
-    }
-    
+if (config.cert_path && config.cert_path !== "" && config.key_path && config.key_path !== "") {
     certificates = {
         cert: fs.readFileSync(config.cert_path),
         key: fs.readFileSync(config.key_path)
