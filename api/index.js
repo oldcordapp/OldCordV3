@@ -36,8 +36,9 @@ app.get("/scheduled-maintenances/active.json", (req, res) => {
 });
 
 app.get("/gateway", (req, res) => {
+    let port = globalUtils.nonStandardWsPort ? `:${config.ws_port}` : "";
     return res.status(200).json({
-        url: `${config.secure ? 'wss' : 'ws'}://${config.gateway_url == "" ? req.headers['host'] : `${config.gateway_url}${globalUtils.nonStandardWsPort ? `:${config.ws_port}` : ""}`}`
+        url: `${config.secure ? 'wss' : 'ws'}://${config.gateway_url == "" ? config.base_url : config.gateway_url}${port}`
     });
 });
 
