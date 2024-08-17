@@ -112,6 +112,10 @@ async function assetsMiddleware(req, res) {
         } else snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://discordapp.com/assets/${req.params.asset}`;
 
         request(snapshot_url, { encoding: null }, async function (err, resp, body) {
+            const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
+            const baseUrlMain = config.base_url + portAppend;
+            const baseUrlCDN = (config.cdn_url ?? config.base_url) + portAppend;
+            
             if (err) {
                 console.log(err);
 
@@ -132,9 +136,6 @@ async function assetsMiddleware(req, res) {
 
             if (snapshot_url.endsWith(".js")) {
                 let str = Buffer.from(body).toString("utf-8");
-                const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
-                const baseUrlMain = config.base_url + portAppend;
-                const baseUrlCDN = (config.cdn_url ?? config.base_url) + portAppend;
 
                 if (req.client_build.endsWith("2015")) {
                     str = globalUtils.replaceAll(str, ".presence.", ".presences.");
