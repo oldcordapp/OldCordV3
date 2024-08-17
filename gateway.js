@@ -111,7 +111,7 @@ const gateway = {
 
                         let sesh = new session(globalUtils.generateString(16), socket, user, packet.d.token, false, {
                             game_id: null,
-                            status: "offline",
+                            status: "online",
                             user: globalUtils.miniUserObject(socket.user)
                         });
 
