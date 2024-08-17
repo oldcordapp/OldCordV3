@@ -22,8 +22,6 @@
         "password": "postgres_password"
     },
     "gcs_config" : { },
-    "patcher_config": {
-    },
     "trusted_users" : [],
     "custom_invite_url" : "",
     "integration_config" : []

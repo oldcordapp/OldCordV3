@@ -19,7 +19,6 @@ const download = require('./api/download');
 const updates = require('./api/updates');
 const config = globalUtils.config;
 const app = express();
-const patcher = require('./helpers/patcher');
 
 app.set('trust proxy', 1);
 
@@ -337,21 +336,16 @@ app.get('/developers', (req, res) => {
 });
 */
 
-app.get("/patch.js", (req, res) => {
-    try {
-        if (patcher.patchFile)
-            res.type('js').send(patcher.patchFile);
-        else
-            res.status(404).type('js').send("// No patcher has been configured for this instance.");
-    }
-    catch(error) {
-        logText(error, "error");
-
-        return res.status(500).json({
-            code: 500,
-            message: "Internal Server Error"
-        });
-    }
+app.get("/bootloaderConfig", (req, res) => {
+    const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
+    const baseUrlMain = config.base_url + portAppend;
+    const baseUrlCDN = (config.cdn_url && config.cdn_url !== "" ? config.cdn_url : config.base_url) + portAppend;
+    res.json({
+        baseUrlMain: baseUrlMain,
+        baseUrlCDN: baseUrlCDN,
+        custom_invite_url: config.custom_invite_url == "" ? config.baseUrlMain + "/invite" : config.custom_invite_url,
+        no_https: !config.secure
+    });
 });
 
 app.get("*", (req, res) => {
@@ -360,15 +354,7 @@ app.get("*", (req, res) => {
             return res.redirect("/selector");
         }
 
-        if (!fs.existsSync(`./clients/assets/${req.client_build}`)) {
-            return res.redirect("/selector");
-        }
-
-        let appFile = fs.readFileSync(`./clients/assets/${req.client_build}/app.html`, 'utf8');
-        
-        appFile = patcher.inject(appFile);
-        
-        res.send(appFile);
+        res.sendFile(path.join(__dirname, "clients/assets/bootloader/index.html"));
     }
     catch(error) {
         logText(error, "error");
