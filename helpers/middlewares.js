@@ -162,7 +162,7 @@ async function assetsMiddleware(req, res) {
             } else if (snapshot_url.endsWith(".css")) {
                 let str = Buffer.from(body).toString("utf-8");
 
-                str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, base_url_main);
+                str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, baseUrlMain);
 
                 body = Buffer.from(str);
 
