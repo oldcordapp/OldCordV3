@@ -364,20 +364,13 @@ class session {
                 read_state: this.read_states ?? [],
                 tutorial: tutorial,
                 user: {
-<<<<<<< Updated upstream
-=======
                     id: this.user.id,
->>>>>>> Stashed changes
                     username: this.user.username,
                     avatar: this.user.avatar,
                     email: this.user.email,
                     discriminator: this.user.discriminator,
-<<<<<<< Updated upstream
-                    verified: this.user.verified
-=======
                     verified: this.user.verified,
                     bot: this.user.bot,
->>>>>>> Stashed changes
                 },
                 user_settings: this.user.settings,
                 session_id: this.id,
