@@ -114,7 +114,7 @@ async function assetsMiddleware(req, res) {
         request(snapshot_url, { encoding: null }, async function (err, resp, body) {
             const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
             const baseUrlMain = config.base_url + portAppend;
-            const baseUrlCDN = (config.cdn_url ?? config.base_url) + portAppend;
+            const baseUrlCDN = (config.cdn_url && config.cdn_url !== "" ? config.cdn_url : config.base_url) + portAppend;
             
             if (err) {
                 console.log(err);
