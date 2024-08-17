@@ -29,18 +29,15 @@ body {
 }
 
 #background {
-    background-image: linear-gradient(to top, black 50%, rgba(0, 0, 0, 0) 100%), url(https://files.catbox.moe/o9bgvp.jpg);
+    background-image: url(https://files.catbox.moe/3kbp4h.png);
     background-repeat: no-repeat;
     background-size: cover;
-    filter: blur(8px);
-    -webkit-filter: blur(8px);
     height: 100%; 
     background-position: center;
 }
 
 #decision {
-    background-color: #1e2124;
-    border: 2px solid white;
+    background-color: #31373c;
     padding: 1em;
     color: white;
     font-family: "Discord Lite";
