@@ -342,8 +342,8 @@ app.get("/bootloaderConfig", (req, res) => {
     const baseUrlCDN = (config.cdn_url && config.cdn_url !== "" ? config.cdn_url : config.base_url) + portAppend;
     res.json({
         baseUrlMain: baseUrlMain,
-        baseUrlCDN: baseUrlCDN,
-        no_https: !config.secure
+        baseUrlCDNStatic: "cdn.oldcordapp.com",
+        baseUrlCDNUser: baseUrlCDN,
         custom_invite_url: config.custom_invite_url == "" ? baseUrlMain + "/invite" : config.custom_invite_url,
     });
 });

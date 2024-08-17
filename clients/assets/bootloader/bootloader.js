@@ -3,6 +3,8 @@ window.__OVERLAY__ = window.overlay != null;
 
 let config;
 
+function noop() {}
+
 const release_date = (function() {
 	const parts = `; ${document.cookie}`.split("; release_date=");
 	if (parts.length === 2)
@@ -11,6 +13,8 @@ const release_date = (function() {
 
 function patchJS(script) {
     script = script.replace('__[STANDALONE]__', '');
+    
+    script = script.replaceAll("https://", location.protocol + "//");
 
     if (release_date.endsWith("2015")) {
         script = script.replaceAll(".presence.", ".presences.");
@@ -18,15 +22,13 @@ function patchJS(script) {
     }
 
     script = script.replaceAll(/status.discordapp.com/g, config.baseUrlMain);
-    script = script.replaceAll(/cdn.discordapp.com/g, config.baseUrlCDN);
+    script = script.replaceAll(/cdn.discordapp.com/g, config.baseUrlCDNUser);
     script = script.replaceAll(/discord.gg/g, config.custom_invite_url);
     script = script.replaceAll(/discordapp.com/g, config.baseUrlMain);
+    
+    script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="https://${config.baseUrlCDNStatic}/assets/"`);
 
-    if (config.no_https) {
-        script = script.replaceAll("https://" + config.baseUrlMain, "http://" + config.baseUrlMain);
-    }
-
-    script = script.replaceAll(`if(!this.has(e))throw new Error('`, "const noop=()=>{};if(!this.has(e))noop('");
+    script = script.replaceAll("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
 
     if (release_date.endsWith("2016")) {
         script = script.replaceAll("QFusd4xbRKo", "gNEr6tM9Zgc");
@@ -37,6 +39,8 @@ function patchJS(script) {
 
 function patchCSS(css) {
     css = css.replaceAll(/d3dsisomax34re.cloudfront.net/g, config.baseUrlMain);
+    
+    css = css.replaceAll(/url\(\/assets\//g, `url(https://${config.baseUrlCDNStatic}/assets/`);
 
     return css;
 }
@@ -47,7 +51,7 @@ function monkeyPatcher() {
 
     const wpRequire = webpackJsonp([], [(module, exports, require) => { module.exports = require }]);
     const modules = wpRequire.c;
-
+    
     function propsFilter(props, module) {
         return props.every ? props.every((p) => module[p] !== undefined) : module[props] !== undefined;
     }
@@ -92,6 +96,11 @@ function monkeyPatcher() {
 
         return foundModules;
     }
+    
+    //Make the supporting funcs available for the benefit of debugging and modders
+    window.wpRequire = wpRequire;
+    window.findByProps = findByProps;
+    window.findByPropsAll = findByPropsAll;
 
     //Patches
     (function() {
@@ -186,7 +195,7 @@ function monkeyPatcher() {
 
         //Apply patch
         modules[modId] = {
-            exports: (file) => wpRequire.p + "flags/" + file.substring(2),
+            exports: (file) => `https://${config.baseUrlCDNStatic}/flags/${file.substring(2)}`,
             id: modId,
             loaded: true
         };
@@ -218,7 +227,7 @@ function monkeyPatcher() {
     config = await (await fetch("/bootloaderConfig")).json();
 
     console.log("Loading application");
-    let html = await (await fetch(`/assets/${release_date}/app.html`)).text();
+    let html = await (await fetch(`https://${config.baseUrlCDNStatic}/assets/clients/${release_date}/app.html`)).text();
     let head = /<head>([^]*?)<\/head>/.exec(html)[1];
     let body = /<body>([^]*?)<\/body>/.exec(html)[1];
     let scripts = /<script src="([^"]+)".*>/.exec(body);
@@ -230,7 +239,7 @@ function monkeyPatcher() {
 
     //Patch and install stylesheet
     for (let styleUrl of head.matchAll(/<link rel="stylesheet" href="([^"]+)"[^>]*>/g)) {
-        let style = await (await fetch(styleUrl[1])).text();
+        let style = await (await fetch(`https://${config.baseUrlCDNStatic}${styleUrl[1]}`)).text();
         
         console.log("Installing stylesheet " + styleUrl[1]);
         let elm = document.createElement("style");
@@ -240,7 +249,7 @@ function monkeyPatcher() {
 
     //Patch and execute scripts
     for (let scriptUrl of body.matchAll(/<script src="([^"]+)"[^>]*>/g)) {
-        let script = await (await fetch(scriptUrl[1])).text();
+        let script = await (await fetch(`https://${config.baseUrlCDNStatic}${scriptUrl[1]}`)).text();
         console.log("Executing " + scriptUrl[1]);
         eval?.(patchJS(script));
     }
