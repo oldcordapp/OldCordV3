@@ -343,8 +343,8 @@ app.get("/bootloaderConfig", (req, res) => {
     res.json({
         baseUrlMain: baseUrlMain,
         baseUrlCDN: baseUrlCDN,
-        custom_invite_url: config.custom_invite_url == "" ? config.baseUrlMain + "/invite" : config.custom_invite_url,
         no_https: !config.secure
+        custom_invite_url: config.custom_invite_url == "" ? baseUrlMain + "/invite" : config.custom_invite_url,
     });
 });
 
