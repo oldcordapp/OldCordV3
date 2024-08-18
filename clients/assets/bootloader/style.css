@@ -1,0 +1,17 @@
+.auth-copyright::after {
+	font-weight: bold;
+	font-size: 12px;
+	content: " This is not official Discord. Oldcord is a revival project of Old Discord and is not affiliated or endorsed by Discord. Do not login with your discord account."
+}
+.auth-inner .auth-logo {
+	width: 168px !important;
+	height: 168px !important;
+	background: url(https://cdn.oldcordapp.com/assets/hurple-text-white.png) !important;
+	-webkit-background-size: 168px 168px !important;
+	-moz-background-size: 168px 168px !important;
+	background-size: 168px 168px !important;
+}
+
+.auth-name {
+	display: none !important;
+}

@@ -14,6 +14,9 @@ const release_date = (function() {
 function patchJS(script) {
     script = script.replace('__[STANDALONE]__', '');
     
+    script = script.replaceAll("\"Discord\"", "\"Oldcord\"");
+    script = script.replaceAll("'Discord'", "'Oldcord'");
+    
     script = script.replaceAll("https://", location.protocol + "//");
 
     if (release_date.endsWith("2015")) {
