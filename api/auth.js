@@ -166,6 +166,13 @@ router.post("/login", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) 
     
         const loginAttempt = await global.database.checkAccount(req.body.email, req.body.password);
     
+        if ('disabled_until' in loginAttempt) {
+            return res.status(400).json({
+                code: 400,
+                email: "This account has been disabled.",
+            });
+        }
+
         if ('reason' in loginAttempt) {
             return res.status(400).json({
                 code: 400,
@@ -191,7 +198,7 @@ router.post("/logout", (_, res) => {
     return res.status(204).send();
 });
 
-router.post("/forgot", (_, res) => {
+router.post("/forgot", (req, res) => {
     return res.status(204).send();
 });
 

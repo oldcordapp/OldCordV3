@@ -100,7 +100,9 @@ const database = {
                 bot INTEGER DEFAULT 0,
                 relationships TEXT DEFAULT '[]',
                 settings TEXT DEFAULT '{"show_current_game":false,"inline_attachment_media":true,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"online"}',
-                guild_settings TEXT DEFAULT '[]'
+                guild_settings TEXT DEFAULT '[]',
+                disabled_until TEXT DEFAULT NULL,
+                disabled_reason TEXT DEFAULT NULL
            );`, []); // 4 = Everyone, 3 = Friends of Friends & Server Members, 2 = Friends of Friends, 1 = Server Members, 0 = No one
 
             await database.runQuery(`
@@ -442,24 +444,7 @@ const database = {
                 SELECT * FROM users WHERE email = $1
             `, [email]);
 
-            if (rows != null && rows.length > 0) {
-                return {
-                    id: rows[0].id,
-                    username: rows[0].username,
-                    discriminator: rows[0].discriminator,
-                    avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
-                    email: rows[0].email,
-                    password: rows[0].password,
-                    token: rows[0].token,
-                    verified: true,
-                    bot: rows[0].bot == 1 ? true : false,
-                    //verified: rows[0].verified == 1 ? true : false,
-                    created_at: rows[0].created_at,
-                    settings: JSON.parse(rows[0].settings)
-                };
-            } else {
-                return null;
-            }
+            return globalUtils.prepareAccountObject(rows);
         } catch (error) {  
             logText(error, "error");
 
@@ -597,24 +582,7 @@ const database = {
                 SELECT * FROM users WHERE token = $1
             `, [token]);
 
-            if (rows != null && rows.length > 0) {
-                return {
-                    id: rows[0].id,
-                    username: rows[0].username,
-                    discriminator: rows[0].discriminator,
-                    avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
-                    email: rows[0].email,
-                    password: rows[0].password,
-                    token: rows[0].token,
-                    verified: true,
-                    bot: rows[0].bot == 1 ? true : false,
-                    //verified: rows[0].verified == 1 ? true : false,
-                    created_at: rows[0].created_at,
-                    settings: JSON.parse(rows[0].settings)
-                };
-            } else {
-                return null;
-            }
+            return globalUtils.prepareAccountObject(rows); 
         } catch (error) {
             logText(error, "error");
 
@@ -663,24 +631,7 @@ const database = {
                 SELECT * FROM users WHERE id = $1
             `, [id]);
 
-            if (rows != null && rows.length > 0) {
-                return {
-                    id: rows[0].id,
-                    username: rows[0].username,
-                    discriminator: rows[0].discriminator,
-                    email: rows[0].email,
-                    password: rows[0].password,
-                    token: rows[0].token,
-                    verified: true,
-                    bot: rows[0].bot == 1 ? true : false,
-                    //verified: rows[0].verified == 1 ? true : false,
-                    created_at: rows[0].created_at,
-                    avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
-                    settings: JSON.parse(rows[0].settings)
-                };
-            } else {
-                return null;
-            }
+            return globalUtils.prepareAccountObject(rows);
         } catch (error) {
             logText(error, "error");
 
@@ -2446,13 +2397,7 @@ const database = {
             if (owner == null) {
                 return null;
             }
-
-            delete owner.email;
-            delete owner.created_at;
-            delete owner.token;
-            delete owner.settings;
-            delete owner.password;
-
+            
             if (icon != null) {
                 var extension = icon.split('/')[1].split(';')[0];
                 var imgData =  icon.replace(`data:image/${extension};base64,`, "");
@@ -2510,7 +2455,7 @@ const database = {
                 presences: [{
                     game: null,
                     status: "online",
-                    user: owner,
+                    user: globalUtils.miniUserObject(owner),
                 }],
                 icon: icon,
                 id: id,
@@ -2714,6 +2659,13 @@ const database = {
                 return {
                     success: false,
                     reason: "Email and/or password is invalid."
+                }
+            }
+
+            if (user.disabled_until != null) {
+                return {
+                    success: false,
+                    disabled_until: user.disabled_until
                 }
             }
             

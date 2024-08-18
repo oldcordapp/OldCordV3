@@ -15,15 +15,7 @@ router.param('userid', async (req, res, next, userid) => {
 router.use("/@me", me);
 
 router.get("/:userid", userMiddleware, async (req, res) => {
-    let return_user = req.user;
-
-    delete return_user.email;
-    delete return_user.password;
-    delete return_user.token;
-    delete return_user.settings;
-    delete return_user.verified;
-
-    return res.status(200).json(req.user);
+    return res.status(200).json(globalUtils.miniUserObject(req.user));
 });
 
 router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
@@ -207,14 +199,6 @@ router.get("/:userid/profile", userMiddleware, async (req, res) => {
             });
         }
 
-        let return_user = user;
-
-        delete return_user.email;
-        delete return_user.password;
-        delete return_user.token;
-        delete return_user.settings;
-        delete return_user.verified;
-
         let ret = {};
 
         let guilds = await global.database.getUsersGuilds(user.id);
@@ -259,11 +243,7 @@ router.get("/:userid/profile", userMiddleware, async (req, res) => {
 
         connectedAccounts = connectedAccounts.filter(x => x.visibility == 1);
 
-        for(var connected of connectedAccounts) {
-            delete connected.integrations;
-            delete connected.revoked;
-            delete connected.visibility;
-        }
+        connectedAccounts.forEach(x => x = globalUtils.sanitizeObject(x, ['integrations', 'revoked', 'visibility']));
 
         ret.user = user;
         ret.connected_accounts = connectedAccounts;

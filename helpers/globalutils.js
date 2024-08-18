@@ -145,7 +145,7 @@ const globalUtils = {
         }];
     },
     serverRegionToYear: (region) => {
-        return globalUtils.getRegions().find(x => x.id.toLowerCase() == region) ? globalUtils.getRegions().find(x => x.id.toLowerCase() == region).name : "amsterdam"
+        return globalUtils.getRegions().find(x => x.id.toLowerCase() == region) ? globalUtils.getRegions().find(x => x.id.toLowerCase() == region).name : "everything"
     },
     generateToken: (user_id, password_hash) => {
         //sorry ziad but im stealing this from hummus source, love you
@@ -192,6 +192,46 @@ const globalUtils = {
         ret = ret.slice(0, -1);
 
         return ret;
+    },
+    sanitizeObject: (object, toSanitize = []) => {
+        const sanitizedObject = { ...object };
+
+        if (toSanitize.length > 0) {
+            toSanitize.forEach(property => {
+                delete sanitizedObject[property];
+            });
+        }
+
+        return sanitizedObject;
+    },
+    prepareAccountObject: (rows) => {
+        if (rows == null || rows.length == 0) {
+            return null;
+        }
+
+        const user = {
+            id: rows[0].id,
+            username: rows[0].username,
+            discriminator: rows[0].discriminator,
+            avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
+            email: rows[0].email,
+            password: rows[0].password,
+            token: rows[0].token,
+            verified: true,
+            bot: rows[0].bot == 1 ? true : false,
+            created_at: rows[0].created_at,
+            settings: JSON.parse(rows[0].settings)
+        };
+
+        if (rows[0].disabled_until != 'NULL') {
+            user.disabled_until = rows[0].disabled_until;
+        }
+
+        if (rows[0].disabled_reason != 'NULL') {
+            user.disabled_reason = rows[0].disabled_reason;
+        }
+
+        return user;
     },
     miniUserObject: (user) => {
         return {

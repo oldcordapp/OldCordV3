@@ -24,11 +24,7 @@ router.get("/", async (req, res) => {
         });
     }
 
-    delete account.settings;
-    delete account.token;
-    delete account.password;
-    
-    return res.status(200).json(account);
+    return res.status(200).json(globalUtils.sanitizeObject(account, ['settings', 'token', 'password']));
   }
   catch (error) {
     logText(error, "error");
@@ -51,8 +47,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
         });
     }
 
-    delete account.settings;
-    delete account.created_at;
+    account = globalUtils.sanitizeObject(account, ['settings', 'created_at']);
 
     if (!req.body.avatar || req.body.avatar == "") req.body.avatar = null;
 
@@ -81,9 +76,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
         let account2 = await global.database.getAccountByEmail(account.email);
 
         if (account2 != null && account2.token) {
-          delete account2.password;
-          delete account2.settings;
-          delete account2.created_at;
+          account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password']);
 
           await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
 
@@ -163,9 +156,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           let account2 = await global.database.getAccountByEmail(update_object.email);
   
           if (account2 != null && account2.token) {
-            delete account2.settings;
-            delete account2.password;
-            delete account2.created_at;
+            account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password']);
   
             await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
 
@@ -190,9 +181,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           let account2 = await global.database.getAccountByEmail(update_object.email);
   
           if (account2 != null && account2.token) {
-            delete account2.settings;
-            delete account2.password;
-            delete account2.created_at;
+            account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password']);
 
             await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
 
@@ -204,11 +193,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
       }
     }
 
-    if (account != null) {
-      delete account.password;
-      delete account.settings;
-      delete account.created_at;
-    }
+    account = globalUtils.sanitizeObject(account, ['settings', 'created_at', 'password']);
 
     return res.status(200).json(account);
   } catch (error) {

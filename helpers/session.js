@@ -353,8 +353,7 @@ class session {
                         dmChannelObj.recipient
                     ];
 
-                    delete dmChannelObj.recipient;
-                    delete dmChannelObj.is_private;
+                    dmChannelObj = globalUtils.sanitizeObject(dmChannelObj, ['recipient', 'is_private']);
                 }
 
                 this.dm_list.push(dmChannelObj);
