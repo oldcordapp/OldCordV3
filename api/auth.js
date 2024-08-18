@@ -198,8 +198,43 @@ router.post("/logout", (_, res) => {
     return res.status(204).send();
 });
 
-router.post("/forgot", (req, res) => {
-    return res.status(204).send();
+router.post("/forgot", async (req, res) => {
+    try {
+        let email = req.body.email;
+
+        if (!email) {
+            return res.status(400).json({
+                code: 400,
+                email: "This field is required.",
+            });
+        }
+
+        let account = await global.database.getAccountByEmail(email);
+
+        if (!account) {
+            return res.status(400).json({
+                code: 400,
+                email: "Email does not exist.",
+            });
+        }
+
+        if (account.disabled_until) {
+            return res.status(400).json({
+                code: 400,
+                email: "This account has been disabled.",
+            });
+        }
+        
+        return res.status(204).send();
+    }
+    catch(error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        }); 
+    }
 });
 
 router.post("/fingerprint", (_, res) => {

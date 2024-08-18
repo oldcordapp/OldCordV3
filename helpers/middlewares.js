@@ -146,6 +146,67 @@ async function assetsMiddleware(req, res) {
     }
 }
 
+function staffAccessMiddleware(privilege_needed) {
+    return async function (req, res, next) {
+        try {
+            let account = req.account;
+
+            if (!account) {
+                return res.status(401).json({
+                    code: 401,
+                    message: "Unauthorized"
+                });
+            }
+
+            let staffDetails = await global.database.getStaffDetails(account.id);
+
+            if (!staffDetails) {
+                return res.status(401).json({
+                    code: 401,
+                    message: "Unauthorized"
+                });
+            }
+
+            req.is_staff = staffDetails != null;
+            req.staff_details = staffDetails ?? null;
+
+            if (staffDetails.privilege < privilege_needed) {
+                return res.status(401).json({
+                    code: 401,
+                    message: "Unauthorized"
+                });
+            }
+
+            next();
+        } catch(err) {
+            logText(err, "error");
+
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+    };
+}
+async function staffMiddleware(req, res, next) {
+    try {
+        
+
+        req.is_staff = staffDetails != null;
+        req.staff_details = staffDetails ?? null;
+
+        next();
+    }
+    catch(err) {
+        logText(err, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+}
+
 async function authMiddleware(req, res, next) {
     try {
         let token = req.headers['authorization'];
@@ -446,6 +507,7 @@ module.exports = {
     assetsMiddleware,
     instanceMiddleware,
     rateLimitMiddleware,
+    staffAccessMiddleware,
     channelMiddleware,
     guildMiddleware,
     userMiddleware,

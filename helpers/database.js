@@ -315,6 +315,27 @@ const database = {
             return null;
         }
     },
+    getStaffDetails: async (user_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM staff WHERE user_id = $1
+            `, [user_id]);
+
+            if (rows == null || rows.length == 0) {
+                return null;
+            }
+
+            return {
+                user_id: rows[0].user_id,
+                privilege: rows[0].privilege,
+                audit_log: JSON.parse(rows[0].audit_log) ?? []
+            };
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
     acknowledgeMessage: async (user_id, channel_id, message_id, mention_count) => {
         try {
             const date = new Date().toISOString();

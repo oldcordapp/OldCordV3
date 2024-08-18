@@ -1,38 +1,16 @@
 const express = require('express');
 const { logText } = require('../helpers/logger');
-const { guildPermissionsMiddleware, guildMiddleware } = require('../helpers/middlewares');
-const globalUtils = require('../helpers/globalutils');
-const Snowflake = require('../helpers/snowflake');
-const fs = require('fs');
+const { staffAccessMiddleware } = require('../helpers/middlewares');
 const router = express.Router({ mergeParams: true });
-const config = globalUtils.config;
 
-router.get("/guilds/search", async (req, res) => {
+router.get("/guilds/search", staffAccessMiddleware(1), async (req, res) => {
     try {
-        let account = req.account;
-
-        if (!account) {
-            return res.status(401).json({
-                code: 401,
-                message: "Unauthorized"
-            });
-        }
-
-        if (!config.instance_admins.includes(account.id)) {
-            return res.status(401).json({
-                code: 401,
-                message: "Unauthorized"
-            }); //to-do move this to its own thing
-        }
-
         let search = req.query.input;
-
-        console.log(search);
 
         if (!search) {
             return res.status(400).json({
                 code: 400,
-                search: "This is required."
+                search: "This field is required."
             });  
         }
 
@@ -46,13 +24,11 @@ router.get("/guilds/search", async (req, res) => {
         if (!isGuildId) {
             return res.status(400).json({
                 code: 400,
-                message: "Guild partial name/name search is not Implemented"
+                message: "Guild partial name/name search is not implemented."
             });
         }
 
         let guild = await global.database.getGuildById(tryNumber);
-
-        console.log(guild);
 
         if (!guild) {
             return res.status(404).json({
