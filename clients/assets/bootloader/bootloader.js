@@ -231,6 +231,14 @@ function monkeyPatcher() {
     let head = /<head>([^]*?)<\/head>/.exec(html)[1];
     let body = /<body>([^]*?)<\/body>/.exec(html)[1];
     let scripts = /<script src="([^"]+)".*>/.exec(body);
+    
+    //Copy icon
+    let icon = document.getElementById("icon");
+    if (icon) {
+        let newIcon = head.match(/<link rel="icon" href="([^"]+)"[^>]*>/i);
+        if (newIcon[1])
+            icon.href = newIcon[1];
+    }
 
     //Copy react roots
     for (let div of body.matchAll(/<div[^>]*><\/div>/g)) {
