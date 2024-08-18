@@ -211,7 +211,7 @@ app.get("/emojis/:file", async (req, res) => {
     }
 });
 
-app.use('/assets', express.static(__dirname + '/clients/assets'));
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 app.use("/assets/:asset", assetsMiddleware);
 
@@ -266,7 +266,7 @@ app.use("/api/v*/", (_, res) => {
 
 if (config.serve_selector) {
     app.get("/selector", (_, res) => {
-        return res.send(fs.readFileSync(`./clients/assets/selector/selector.html`, 'utf8'));
+        return res.send(fs.readFileSync(`./assets/selector/selector.html`, 'utf8'));
     });
 }
 
@@ -291,11 +291,11 @@ app.get("/widget", (req, res) => {
             return res.redirect("/selector");
         }
 
-        if (!fs.existsSync(`./clients/assets/${req.client_build}`)) {
+        if (!fs.existsSync(`./assets/${req.client_build}`)) {
             return res.redirect("/selector");
         }
 
-        res.send(fs.readFileSync(`./clients/assets/${req.client_build}/widget.html`, 'utf8'));
+        res.send(fs.readFileSync(`./assets/${req.client_build}/widget.html`, 'utf8'));
     }
     catch(error) {
         logText(error, "error");
@@ -312,7 +312,7 @@ app.get('/developers/*', (req, res) => {
             return res.redirect("/selector");
         }
 
-        if (!fs.existsSync(`./clients/assets/${req.client_build}`)) {
+        if (!fs.existsSync(`./assets/${req.client_build}`)) {
             return res.redirect("/selector");
         }
 
@@ -322,7 +322,7 @@ app.get('/developers/*', (req, res) => {
             return res.redirect("https://www.youtube.com/watch?v=jeg_TJvkSjg"); //wtf r u doing lol
         }
 
-        res.send(fs.readFileSync(`./clients/assets/developer_${year}/app.html`, 'utf8'));
+        res.send(fs.readFileSync(`./assets/developer_${year}/app.html`, 'utf8'));
     }
     catch(error) {
         logText(error, "error");
@@ -354,7 +354,7 @@ app.get("*", (req, res) => {
             return res.redirect("/selector");
         }
 
-        res.sendFile(path.join(__dirname, "clients/assets/bootloader/index.html"));
+        res.sendFile(path.join(__dirname, "assets/bootloader/index.html"));
     }
     catch(error) {
         logText(error, "error");
