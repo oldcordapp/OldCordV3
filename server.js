@@ -338,13 +338,12 @@ app.get('/developers', (req, res) => {
 
 app.get("/bootloaderConfig", (req, res) => {
     const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
-    const baseUrlMain = config.base_url + portAppend;
-    const baseUrlCDN = (config.cdn_url && config.cdn_url !== "" ? config.cdn_url : config.base_url) + portAppend;
+    const base_url = config.base_url + portAppend;
+    const base_url_static = (config.cdn_url && config.cdn_url !== "" ? config.cdn_url : "cdn.oldcordapp.com") + portAppend;
     res.json({
-        baseUrlMain: baseUrlMain,
-        baseUrlCDNStatic: "cdn.oldcordapp.com",
-        baseUrlCDNUser: baseUrlCDN,
-        custom_invite_url: config.custom_invite_url == "" ? baseUrlMain + "/invite" : config.custom_invite_url,
+        base_url: base_url,
+        base_url_static: base_url_static,
+        custom_invite_url: config.custom_invite_url == "" ? base_url + "/invite" : config.custom_invite_url,
     });
 });
 
