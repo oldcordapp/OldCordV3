@@ -112,10 +112,6 @@ async function assetsMiddleware(req, res) {
         } else snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://discordapp.com/assets/${req.params.asset}`;
 
         request(snapshot_url, { encoding: null }, async function (err, resp, body) {
-            const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
-            const baseUrlMain = config.base_url + portAppend;
-            const baseUrlCDN = (config.cdn_url && config.cdn_url !== "" ? config.cdn_url : config.base_url) + portAppend;
-            
             if (err) {
                 console.log(err);
 
@@ -135,39 +131,9 @@ async function assetsMiddleware(req, res) {
             }
 
             if (snapshot_url.endsWith(".js")) {
-                let str = Buffer.from(body).toString("utf-8");
-
-                if (req.client_build.endsWith("2015")) {
-                    str = globalUtils.replaceAll(str, ".presence.", ".presences.");
-                    str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, baseUrlMain);
-                }
-
-                str = globalUtils.replaceAll(str, /status.discordapp.com/g, baseUrlMain);
-                str = globalUtils.replaceAll(str, /cdn.discordapp.com/g, baseUrlCDN);
-                str = globalUtils.replaceAll(str, /discord.gg/g, config.custom_invite_url == "" ? baseUrlMain + "/invite" : config.custom_invite_url);
-                str = globalUtils.replaceAll(str, /discordapp.com/g, baseUrlMain);
-
-                if (!config.secure) {
-                    str = globalUtils.replaceAll(str, "https://" + baseUrlMain, "http://" + baseUrlMain);
-                }
-
-                str = globalUtils.replaceAll(str, `if(!this.has(e))throw new Error('`, "const noop=()=>{};if(!this.has(e))noop('");
-                
-                if (req.client_build.endsWith("2016")) {
-                    str = globalUtils.replaceAll(str, "QFusd4xbRKo", "gNEr6tM9Zgc"); //Gifv is gucci
-                }
-                
-                body = Buffer.from(str);
-
-                fs.writeFileSync(`./clients/assets/${req.params.asset}`, str, "utf-8");
+                fs.writeFileSync(`./clients/assets/${req.params.asset}`, body);
             } else if (snapshot_url.endsWith(".css")) {
-                let str = Buffer.from(body).toString("utf-8");
-
-                str = globalUtils.replaceAll(str, /d3dsisomax34re.cloudfront.net/g, baseUrlMain);
-
-                body = Buffer.from(str);
-
-                fs.writeFileSync(`./clients/assets/${req.params.asset}`, str, "utf-8");
+                fs.writeFileSync(`./clients/assets/${req.params.asset}`, body);
             } else {
                 fs.writeFileSync(`./clients/assets/${req.params.asset}`, body);
             }
