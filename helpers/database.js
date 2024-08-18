@@ -105,6 +105,13 @@ const database = {
                 disabled_reason TEXT DEFAULT NULL
            );`, []); // 4 = Everyone, 3 = Friends of Friends & Server Members, 2 = Friends of Friends, 1 = Server Members, 0 = No one
 
+           await database.runQuery(`
+            CREATE TABLE IF NOT EXISTS staff (
+                user_id TEXT,
+                privilege INTEGER DEFAULT 1,
+                audit_log TEXT DEFAULT '[]'
+            );`, []); //PRIVILEGE: 1 - (JANITOR) [Can only flag things for review], 2 - (MODERATOR) [Can only delete messages, mute users, and flag things for review], 3 - (ADMIN) [Free reign, can review flags, disable users, delete servers, etc], 4 - (INSTANCE OWNER) - [Can add new admins, manage staff, etc]
+
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS connected_accounts (
                 user_id TEXT,
@@ -2397,7 +2404,7 @@ const database = {
             if (owner == null) {
                 return null;
             }
-            
+
             if (icon != null) {
                 var extension = icon.split('/')[1].split(';')[0];
                 var imgData =  icon.replace(`data:image/${extension};base64,`, "");
