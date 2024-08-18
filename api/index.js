@@ -39,7 +39,7 @@ app.get("/gateway", (req, res) => {
     let host = req.headers['host'];
     if (host) host = host.split(':', 2)[0];
     return res.status(200).json({
-        url: `${config.secure ? 'wss' : 'ws'}://${config.gateway_url == "" ? (host ?? config.base_url) : config.gateway_url}:${globalUtils.nonStandardWsPort ? config.ws_port : ""}`
+        url: `${config.secure ? 'wss' : 'ws'}://${config.gateway_url == "" ? (host ?? config.base_url) : config.gateway_url}:${config.ws_port}`
     });
 });
 
