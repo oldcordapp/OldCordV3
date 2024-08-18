@@ -241,13 +241,6 @@ const database = {
                 user_id TEXT
            );`, []);
 
-            await database.runQuery(`
-                CREATE TABLE IF NOT EXISTS tutorial (
-                user_id TEXT PRIMARY KEY,
-                indicators_suppressed INTEGER DEFAULT 0,
-                indicators_confirmed TEXT DEFAULT NULL
-           );`, []);
-
             return true;
         } catch (error) {
             logText(error, "error");
@@ -2109,32 +2102,6 @@ const database = {
             return null;
         }
     },
-    getTutorial: async (user_id) => {
-        try {
-            const tut = await database.runQuery(`SELECT * FROM tutorial WHERE user_id = $1`, [user_id]);
-
-            if (tut != null && tut.length > 0) {
-                const indicators = [];
-
-                if (tut[0].indicators_confirmed != 'NULL' && tut[0].indicators_confirmed.includes(':')) {
-                    for(var indicator_confirmed of tut[0].indicators_confirmed.split(':')) {
-                        indicators.push(indicator_confirmed)
-                    }
-                }
-
-                return {
-                    indicators_suppressed: tut[0].indicators_suppressed == 1,
-                    indicators_confirmed: indicators
-                }
-            } else {
-                return null;
-            }
-        } catch(error) {
-            logText(error, "error");
-
-            return null;
-        }
-    },
     getDMChannels: async (user_id) => {
         try {
             const rows = await database.runQuery(`
@@ -2206,7 +2173,6 @@ const database = {
         try {
             const role_id = Snowflake.generate();
 
-            //INSERT INTO tutorial_indicators_confirmed (user_id, value) VALUES ($1, $2)
             await database.runQuery(`INSERT INTO roles (guild_id, role_id, name, permissions, position) VALUES ($1, $2, $3, $4, $5)`, [guild_id, role_id, name, permissions, position]);
 
             const role = await database.getRoleById(role_id);
@@ -2229,29 +2195,6 @@ const database = {
             } else {
                 await database.runQuery(`UPDATE roles SET name = $1, permissions = $2 WHERE role_id = $3`, [name, permissions, role_id]);
             }
-
-            return true;
-        } catch(error) {
-            logText(error, "error");
-
-            return false;
-        }
-    },
-    updateTutorial: async (user_id, indicators_suppressed, indicators_confirmed) => {
-        try {
-            let indicator_confirm = "";
-
-            for(var indicator of indicators_confirmed) {
-                indicator_confirm = indicator_confirm + indicator.toLowerCase() + ":" 
-            }
-
-            indicator_confirm = indicator_confirm.substring(indicator_confirm.lastIndexOf(':'), 0);
-
-            indicator_confirm = indicator_confirm.replace(/"::"/g, ":");
-
-            await database.runQuery(`
-                UPDATE tutorial SET indicators_suppressed = $1, indicators_confirmed = $2 WHERE user_id = $3
-            `, [indicators_suppressed == true ? 1 : 0, indicator_confirm, user_id]);
 
             return true;
         } catch(error) {
@@ -2620,7 +2563,6 @@ const database = {
             let token = globalUtils.generateToken(id, pwHash);
 
             await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, username, discriminator.toString(), email, pwHash, token, date, 'NULL'])
-            await database.runQuery(`INSERT INTO tutorial (user_id, indicators_suppressed, indicators_confirmed) VALUES ($1, $2, $3)`, [id, 0, 'NULL']);
 
             return {
                 token: token

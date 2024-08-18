@@ -305,13 +305,20 @@ class session {
                 }
             }
 
-            let tutorial = await global.database.getTutorial(this.user.id);
-
-            if (tutorial == null) {
-                tutorial = {
-                    indicators_suppressed: false,
-                    indicators_confirmed: []
-                }
+            let tutorial = {
+                indicators_suppressed: true,
+                indicators_confirmed: [
+                    "direct-messages",
+                    "voice-conversations",
+                    "organize-by-topic",
+                    "writing-messages",
+                    "instant-invite",
+                    "server-settings",
+                    "create-more-servers",
+                    "friends-list",
+                    "whos-online",
+                    "create-first-server"
+                ]
             }
 
             let dms = await global.database.getDMChannels(this.user.id);
