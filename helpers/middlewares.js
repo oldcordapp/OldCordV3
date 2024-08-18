@@ -86,7 +86,8 @@ async function assetsMiddleware(req, res) {
         return res.status(404).send("File not found");
     }
 
-    if (!fs.existsSync(`./clients/assets/${req.params.asset}`)) {
+    const filePath = `./clients/assets/${req.params.asset}`;
+    if (!fs.existsSync(filePath)) {
         logText(`[LOG] Saving ${req.params.asset} -> https://discordapp.com/assets/${req.params.asset}...`, 'debug');
 
         let timestamps = await wayback.getTimestamps(`https://discordapp.com/assets/${req.params.asset}`);
@@ -130,13 +131,7 @@ async function assetsMiddleware(req, res) {
                 logText(`[LOG] Uploaded ${req.params.asset} to Google Cloud Storage successfully.`, 'debug');
             }
 
-            if (snapshot_url.endsWith(".js")) {
-                fs.writeFileSync(`./clients/assets/${req.params.asset}`, body);
-            } else if (snapshot_url.endsWith(".css")) {
-                fs.writeFileSync(`./clients/assets/${req.params.asset}`, body);
-            } else {
-                fs.writeFileSync(`./clients/assets/${req.params.asset}`, body);
-            }
+            fs.writeFileSync(filePath, body);
 
             logText(`[LOG] Saved ${req.params.asset} from ${snapshot_url} successfully.`, 'debug');
 
