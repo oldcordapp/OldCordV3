@@ -6,7 +6,6 @@ const members = require('./members');
 const bans = require('./bans');
 const emojis = require('./emojis');
 const { instanceMiddleware, rateLimitMiddleware, guildMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
-const { requiresIntsForChannelTypes } = require('../helpers/globalutils');
 
 const router = express.Router();
 
@@ -536,7 +535,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
                 });
             }
 
-            if (!globalUtils.requiresIntsForChannelTypes(req.client_build)) {
+            if (!req.channel_types_are_ints) {
                 channel.type = channel.type == 2 ? "voice" : "text";
             }
 

@@ -45,6 +45,7 @@ class session {
         this.read_states = [];
         this.dm_list = [];
         this.relationships = [];
+        this.zlibHeader = true;
     }
     onClose(code) {
         if (this.dead) return;
@@ -219,9 +220,18 @@ class session {
         if (this.ratelimited) return;
 
         if (this.socket.wantsZlib) {
+            //Closely resembles Discord's zlib implementation from https://gist.github.com/devsnek/4e094812a4798d8f10428d04ee02cab7
             let stringifiedpayload = JSON.stringify(payload);
 
-            let buffer = zlib.deflateSync(stringifiedpayload);
+            let buffer;
+
+            buffer = zlib.deflateSync(stringifiedpayload, {chunkSize: 65535, flush: zlib.constants.Z_SYNC_FLUSH, finishFlush: zlib.constants.Z_SYNC_FLUSH, level: zlib.constants.Z_BEST_COMPRESSION})
+
+            if (!this.zlibHeader) {
+                buffer = buffer.subarray(2, buffer.length)
+            } else {
+                this.zlibHeader = false
+            }
 
             this.socket.send(buffer);
         } else this.socket.send(JSON.stringify(payload));
@@ -293,7 +303,7 @@ class session {
                 }
 
                 for(var channel of guild.channels) {
-                    if (!globalUtils.requiresIntsForChannelTypes(this.socket.client_build)) {
+                    if (!this.socket.channel_types_are_ints) {
                         channel.type = channel.type == 2 ? "voice" : "text";
                     }
 
@@ -349,7 +359,7 @@ class session {
 
                 let dmChannelObj = {
                     id: dm.id,
-                    type: globalUtils.requiresIntsForChannelTypes(this.socket.client_build) ? 1 : "text",
+                    type: this.socket.channel_types_are_ints ? 1 : "text",
                     recipient: globalUtils.miniUserObject(user2),
                     guild_id: null,
                     is_private: true,
