@@ -3,7 +3,6 @@
     "secure": false,
     "base_url": "127.0.0.1",
     "gateway_url": "",
-    "cdn_url": "",
     "port": 1337,
     "ws_port": 1337,
     "cache404s": false,
