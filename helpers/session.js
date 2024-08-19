@@ -45,6 +45,7 @@ class session {
         this.read_states = [];
         this.dm_list = [];
         this.relationships = [];
+        this.zlibHeader = true;
     }
     onClose(code) {
         if (this.dead) return;
@@ -219,9 +220,18 @@ class session {
         if (this.ratelimited) return;
 
         if (this.socket.wantsZlib) {
+            //Closely resembles Discord's zlib implementation from https://gist.github.com/devsnek/4e094812a4798d8f10428d04ee02cab7
             let stringifiedpayload = JSON.stringify(payload);
 
-            let buffer = zlib.deflateSync(stringifiedpayload);
+            let buffer;
+
+            buffer = zlib.deflateSync(stringifiedpayload, {chunkSize: 65535, flush: zlib.constants.Z_SYNC_FLUSH, finishFlush: zlib.constants.Z_SYNC_FLUSH, level: zlib.constants.Z_BEST_COMPRESSION})
+
+            if (!this.zlibHeader) {
+                buffer = buffer.subarray(2, buffer.length)
+            } else {
+                this.zlibHeader = false
+            }
 
             this.socket.send(buffer);
         } else this.socket.send(JSON.stringify(payload));
