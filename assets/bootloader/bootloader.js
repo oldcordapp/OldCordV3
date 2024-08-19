@@ -54,16 +54,16 @@ function monkeyPatcher() {
     if (!webpackJsonp)
         throw Error("Monkey patcher ran too early.");
 
-    let wpRequire;
-    wpRequire ??= webpackJsonp([10000], [(module, exports, require) => { module.exports = require; wpRequire ??= require; }], [0]);
-    const modules = wpRequire.c;
+    let wpRequire = null;
+    wpRequire ??= webpackJsonp([], [(module, exports, require) => { module.exports = require; }]);
+    wpRequire ??= webpackJsonp([], {10000: (module, exports, require) => { module.exports = require; }}, [[10000]]);
+    if (!wpRequire) {
+        throw "Failed to patch: Couldn't get webpack require()";
+    }
     
-    //LOAD EVERYTHING!!!!!!!!
-    //(not really everything; loading locales breaks timestamps)
-    for (let i = 1000; i < 8000; i++) {
-        try {
-            wpRequire(i);
-        } catch {}
+    const modules = wpRequire.c;
+    if (!modules) {
+        console.error("Couldn't get webpack modules cache. Some patches may fail.");
     }
     
     function propsFilter(props, module) {
@@ -173,9 +173,15 @@ function monkeyPatcher() {
             //Unknown build. Fallback: Search for the module.
             function bruteFindFlagsResolver(min, max) {
                 //Use brute force to find the damn thing
-                for (let i = max; i > min; i--) { //Start from end of the range as it tends to be there
+                for (let i = max; i >= min; i--) { //Start from end of the range as it tends to be there
+                    let unload = false;
                     try {
                         let mod = modules[i];
+                        if (!mod || !mod.loaded) {
+                            //Load unloaded modules, goddammit, tear the whole place up.
+                            unload = true;
+                            mod = wpRequire(i);
+                        }
                         if (mod && mod.id && mod.keys && mod.resolve) {
                             let keys = mod.keys();
                             if (keys && keys.includes('./sydney.png')) {
@@ -185,10 +191,12 @@ function monkeyPatcher() {
                     } catch (e) {
                         //Ignore exceptions. If it breaks, it's not what we're looking for.
                     }
+                    if (unload)
+                        delete modules[i]; //Unload anything which we had to load
                 }
             }
 
-            let result = bruteFindFlagsResolver(1900, 4000);
+            let result = bruteFindFlagsResolver(1000, 4000);
             if (result)
                 modId = result.id;
         }
