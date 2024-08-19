@@ -74,6 +74,10 @@ const gateway = {
                 return;
             }
 
+            if (req.url.includes("compress=zlib-stream")) {
+                socket.wantsZlib = true;
+            }
+
             let identified = false;
             let resumed = false;
 

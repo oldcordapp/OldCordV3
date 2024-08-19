@@ -1,5 +1,7 @@
 const globalUtils = require('./globalutils');
 const { logText } = require("./logger");
+const zlib = require('zlib');
+
 //Adapted from Hummus' handling of sessions & whatnot
 
 const BUFFER_LIMIT = 500; //max dispatch event backlog before terminating?
@@ -216,7 +218,13 @@ class session {
         if (this.dead) return;
         if (this.ratelimited) return;
 
-        this.socket.send(JSON.stringify(payload));
+        if (this.socket.wantsZlib) {
+            let stringifiedpayload = JSON.stringify(payload);
+
+            let buffer = zlib.deflateSync(stringifiedpayload);
+
+            this.socket.send(buffer);
+        } else this.socket.send(JSON.stringify(payload));
 
         this.lastMessage = Date.now();
     }
