@@ -1,7 +1,7 @@
 window.__require = window.require;
 window.__OVERLAY__ = window.overlay != null;
 
-const cdn_url = "https://cdn.oldcordapp.com/";
+const cdn_url = "https://cdn.oldcordapp.com";
 
 let config;
 
