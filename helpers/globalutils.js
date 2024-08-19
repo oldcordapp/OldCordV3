@@ -78,7 +78,7 @@ const globalUtils = {
             let year = parts[2];
             let date = new Date(`${month} ${day} ${year}`);
 
-            return parts[2] == "2015" ? false : date.getMonth() >= 6;
+            return parts[2] == "2015" ? false : ((parts[2] == "2016" && date.getMonth() >= 6) || date.getFullYear() >= 2017);
         }
         catch(error) {
             logText(error, "error");
@@ -102,7 +102,7 @@ const globalUtils = {
             
             obj.client_build = client_build;
             obj.client_build_date = date;
-            obj.channel_types_are_ints = date.getFullYear() >= 2016 && (date.getMonth() >= 6 || date.getFullYear() >= 2017);
+            obj.channel_types_are_ints = this.requiresIntsForChannelTypes(client_build);
             return true;
         }
     },
