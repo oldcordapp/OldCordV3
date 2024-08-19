@@ -3,4 +3,4 @@ node_modules
 package-lock.json
 package.json
 user_assets
-clients/assets/*.*
+assets/*.*
