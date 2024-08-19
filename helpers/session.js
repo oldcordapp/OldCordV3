@@ -303,7 +303,7 @@ class session {
                 }
 
                 for(var channel of guild.channels) {
-                    if (!globalUtils.requiresIntsForChannelTypes(this.socket.client_build)) {
+                    if (!this.socket.channel_types_are_ints) {
                         channel.type = channel.type == 2 ? "voice" : "text";
                     }
 
@@ -359,7 +359,7 @@ class session {
 
                 let dmChannelObj = {
                     id: dm.id,
-                    type: globalUtils.requiresIntsForChannelTypes(this.socket.client_build) ? 1 : "text",
+                    type: this.socket.channel_types_are_ints ? 1 : "text",
                     recipient: globalUtils.miniUserObject(user2),
                     guild_id: null,
                     is_private: true,

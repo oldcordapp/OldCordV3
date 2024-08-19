@@ -70,22 +70,6 @@ const globalUtils = {
 
         return code;
     },
-    requiresIntsForChannelTypes: (build) => {
-        try {
-            let parts = build.split('_');
-            let month = parts[0];
-            let day = parts[1];
-            let year = parts[2];
-            let date = new Date(`${month} ${day} ${year}`);
-
-            return parts[2] == "2015" ? false : date.getMonth() >= 6;
-        }
-        catch(error) {
-            logText(error, "error");
-
-            return true;
-        }
-    },
     addClientCapabilities: (client_build, obj) => {
         let parts = client_build ? client_build.split('_') : null;
         if (!parts || parts.length < 3) {
@@ -102,7 +86,7 @@ const globalUtils = {
             
             obj.client_build = client_build;
             obj.client_build_date = date;
-            obj.channel_types_are_ints = date.getFullYear() >= 2016 && (date.getMonth() >= 6 || date.getFullYear() >= 2017);
+            obj.channel_types_are_ints = (date.getFullYear() == 2016 && date.getMonth() >= 6) || date.getFullYear() >= 2017;
             return true;
         }
     },
