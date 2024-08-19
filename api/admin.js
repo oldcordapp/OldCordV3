@@ -28,7 +28,7 @@ router.get("/guilds/search", staffAccessMiddleware(1), async (req, res) => {
             });
         }
 
-        let guild = await global.database.getGuildById(tryNumber);
+        let guild = await global.database.getGuildById(search);
 
         if (!guild) {
             return res.status(404).json({

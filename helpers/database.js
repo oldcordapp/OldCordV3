@@ -1501,6 +1501,31 @@ const database = {
             return null;
         }
     },
+    getGuildsByName: async (name) => {
+        try {
+            const rows = await database.runQuery(`
+            SELECT * FROM guilds WHERE name ILIKE $1
+            `, [`%${name}%`]);
+
+            if (rows == null || rows.length == 0) {
+                return [];
+            }
+
+            let ret = [];
+
+            for(var row of rows) {
+                let guild = await database.getGuildById(row.id);
+
+                ret.push(guild);
+            }
+
+            return ret;
+        } catch (error) {
+            logText(error, "error");
+
+            return [];
+        }
+    },
     getGuildById: async (id) => {
         try {
             const rows = await database.runQuery(`
@@ -1569,6 +1594,7 @@ const database = {
                 emojis: emojis,
                 presences: presences,
                 voice_states: [],
+                creation_date: rows[0].creation_date,
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
                 verification_level: rows[0].verification_level ?? 0
             }
