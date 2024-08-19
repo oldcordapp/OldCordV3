@@ -50,28 +50,42 @@ function patchCSS(css) {
     return css;
 }
 
+const completedPatches = {};
+let patcherLock = 0;
 function monkeyPatcher() {
-    if (!webpackJsonp)
-        throw Error("Monkey patcher ran too early.");
+    if (patcherLock != 0)
+        return;
 
-    let wpRequire = null;
-    wpRequire ??= webpackJsonp([], [(module, exports, require) => { module.exports = require; }]);
-    wpRequire ??= webpackJsonp([], {10000: (module, exports, require) => { module.exports = require; }}, [[10000]]);
-    if (!wpRequire) {
+    patcherLock++;
+
+    if (patcherLock != 1) {
+        patcherLock--;
+        setTimeout(monkeyPatcher, 10);
+        return;
+    }
+
+    if (!window.webpackJsonp)
+        return; //Ran too early
+
+    patcherBusy = true;
+
+    window.wpRequire ??= webpackJsonp([], [(module, exports, require) => { module.exports = require; }]);
+    window.wpRequire ??= webpackJsonp([], {"monkeypatch": (module, exports, require) => { module.exports = require; }}, [["monkeypatch"]]);
+    if (!window.wpRequire) {
         throw "Failed to patch: Couldn't get webpack require()";
     }
-    
-    const modules = wpRequire.c;
+
+    const modules = window.wpRequire.c;
     if (!modules) {
         console.error("Couldn't get webpack modules cache. Some patches may fail.");
     }
-    
+
     function propsFilter(props, module) {
         return props.every ? props.every((p) => module[p] !== undefined) : module[props] !== undefined;
     }
 
     //TODO: DRY
-    function findByProps(props) {
+    window.findByProps ??= function(props) {
         for (const mod in modules) {
             if (!modules.hasOwnProperty(mod))
                 continue;
@@ -87,9 +101,9 @@ function monkeyPatcher() {
             if (propsFilter(props, module))
                 return module;
         }
-    }
+    };
 
-    function findByPropsAll(props) {
+    window.findByPropsAll ??= function(props) {
         let foundModules = [];
 
         for (const mod in modules) {
@@ -109,23 +123,27 @@ function monkeyPatcher() {
         }
 
         return foundModules;
-    }
-    
-    //Make the supporting funcs available for the benefit of debugging and modders
-    window.wpRequire = wpRequire;
-    window.findByProps = findByProps;
-    window.findByPropsAll = findByPropsAll;
+    };
 
     //Patches
     (function() {
+        if (completedPatches.disableTelemetry)
+            return;
+        
         const mod = findByProps("track");
         if (mod && mod.track) {
             console.log("Disabling telemetry");
+            completedPatches.disableTelemetry = true;
             mod.track = () => {};
         }
     })();
 
     (function() {
+        if (completedPatches.textPatch)
+            return;
+        
+        completedPatches.textPatch = true;
+        
         console.log("Applying text patch");
         
         const messageModules = findByPropsAll('Messages');
@@ -141,11 +159,14 @@ function monkeyPatcher() {
     })();
 
     (function() {
-        if (release_date.endsWith("_2015"))
+        if (completedPatches.flagsPatch)
+            return;
+        
+        if (release_date.endsWith("_2015")) {
+            completedPatches.flagsPatch = true;
             return; //Patch not needed; 2015 builds do not have region flags.
-
-        console.log("Applying region flag patch");
-
+        }
+        
         //Known builds
         let modId = {
             "january_22_2016": 1973,
@@ -167,21 +188,17 @@ function monkeyPatcher() {
             "november_3_2016": 3281,
             "november_22_2016": 3399,
             "december_22_2016": 3457,
+            
+            //TODO: Complete the list
+            "december_24_2017": 1787
         }[release_date];
 
         if (!modId) {
             //Unknown build. Fallback: Search for the module.
             function bruteFindFlagsResolver(min, max) {
-                //Use brute force to find the damn thing
                 for (let i = max; i >= min; i--) { //Start from end of the range as it tends to be there
-                    let unload = false;
                     try {
                         let mod = modules[i];
-                        if (!mod || !mod.loaded) {
-                            //Load unloaded modules, goddammit, tear the whole place up.
-                            unload = true;
-                            mod = wpRequire(i);
-                        }
                         if (mod && mod.id && mod.keys && mod.resolve) {
                             let keys = mod.keys();
                             if (keys && keys.includes('./sydney.png')) {
@@ -191,8 +208,6 @@ function monkeyPatcher() {
                     } catch (e) {
                         //Ignore exceptions. If it breaks, it's not what we're looking for.
                     }
-                    if (unload)
-                        delete modules[i]; //Unload anything which we had to load
                 }
             }
 
@@ -201,13 +216,12 @@ function monkeyPatcher() {
                 modId = result.id;
         }
 
-        if (!modId) {
-            //Failed
-            console.error("Failed to monkey patch flag lookup; couldn't find the module.");
-            return;
-        }
+        if (!modId)
+            return; //Failed
 
         //Apply patch
+        console.log("Applying region flag patch");
+        completedPatches.flagsPatch = true;
         modules[modId] = {
             exports: (file) => `${cdn_url}/flags/${file.substring(2)}`,
             id: modId,
@@ -216,16 +230,24 @@ function monkeyPatcher() {
     })();
 
     (function() {
+        if (completedPatches.emojisEverywhere)
+            return;
+        
         let module = findByProps("isEmojiDisabled");
         if (module) {
+            completedPatches.emojisEverywhere = true;
             console.log("Enabling emojis everywhere");
             module.isEmojiDisabled = () => false;
         }
     })();
 
     (function() {
+        if (completedPatches.fixEmojiWarning)
+            return;
+        
         let module = findByProps("_sendMessage");
         if (module) {
+            completedPatches.fixEmojiWarning = true;
             console.log("Fixing \"emoji doesn\'t work here\" error");
             let originalFunc = module._sendMessage.bind(module);
             findByProps("_sendMessage")._sendMessage = (channelId, _ref2) => {
@@ -234,6 +256,8 @@ function monkeyPatcher() {
             }
         }
     })();
+    
+    patcherLock--;
 }
 
 (async function() {
@@ -245,13 +269,36 @@ function monkeyPatcher() {
     let head = /<head>([^]*?)<\/head>/.exec(html)[1];
     let body = /<body>([^]*?)<\/body>/.exec(html)[1];
     let scripts = /<script src="([^"]+)".*>/.exec(body);
-    
+
+    async function patchAndExecute(path) {
+        if (path.startsWith("http")) {
+            path = new URL(path).pathname;
+        }
+        
+        //console.log("Patching and executing " + path);
+        let script = await (await fetch(`${cdn_url}${path}`)).text();
+        eval?.(patchJS(script));
+        
+        monkeyPatcher();
+    }
+
     //Copy icon
     let icon = document.getElementById("icon");
     if (icon) {
         let newIcon = head.match(/<link rel="icon" href="([^"]+)"[^>]*>/i);
         if (newIcon[1])
             icon.href = newIcon[1];
+    }
+
+    //Intercept new scripts so that they can be patched too
+    let oldAppendChild = document.head.appendChild.bind(document.head);
+    document.head.appendChild = function(elm) {
+        if (elm.tagName != "SCRIPT") {
+            oldAppendChild(elm);
+            return;
+        }
+        
+        patchAndExecute(elm.src);
     }
 
     //Copy react roots
@@ -263,7 +310,7 @@ function monkeyPatcher() {
     for (let styleUrl of head.matchAll(/<link rel="stylesheet" href="([^"]+)"[^>]*>/g)) {
         let style = await (await fetch(`${cdn_url}${styleUrl[1]}`)).text();
         
-        console.log("Installing stylesheet " + styleUrl[1]);
+        //console.log("Installing stylesheet " + styleUrl[1]);
         let elm = document.createElement("style");
         elm.innerText = patchCSS(style);
         document.head.appendChild(elm);
@@ -271,11 +318,9 @@ function monkeyPatcher() {
 
     //Patch and execute scripts
     for (let scriptUrl of body.matchAll(/<script src="([^"]+)"[^>]*>/g)) {
-        let script = await (await fetch(`${cdn_url}${scriptUrl[1]}`)).text();
-        console.log("Executing " + scriptUrl[1]);
-        eval?.(patchJS(script));
+        await patchAndExecute(scriptUrl[1]);
     }
     
-    //Apply monkey patches
-    monkeyPatcher();
+    //Run patcher again just to be sure
+    setTimeout(monkeyPatcher, 5000);
 })();
