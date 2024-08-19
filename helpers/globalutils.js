@@ -102,7 +102,7 @@ const globalUtils = {
             
             obj.client_build = client_build;
             obj.client_build_date = date;
-            obj.channel_types_are_ints = this.requiresIntsForChannelTypes(client_build);
+            obj.channel_types_are_ints = globalUtils.requiresIntsForChannelTypes(client_build);
             return true;
         }
     },
