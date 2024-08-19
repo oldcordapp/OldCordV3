@@ -59,7 +59,8 @@ function monkeyPatcher() {
     const modules = wpRequire.c;
     
     //LOAD EVERYTHING!!!!!!!!
-    for (let i = 1; i < 8000; i++) {
+    //(not really everything; loading locales breaks timestamps)
+    for (let i = 1000; i < 8000; i++) {
         try {
             wpRequire(i);
         } catch {}
