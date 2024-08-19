@@ -1,6 +1,8 @@
 window.__require = window.require;
 window.__OVERLAY__ = window.overlay != null;
 
+const cdn_url = "https://cdn.oldcordapp.com/";
+
 let config;
 
 function noop() {}
@@ -29,7 +31,7 @@ function patchJS(script) {
     script = script.replaceAll(/discord.gg/g, config.custom_invite_url);
     script = script.replaceAll(/discordapp.com/g, config.base_url);
     
-    script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="https://${config.base_url_static}/assets/"`);
+    script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
 
     script = script.replaceAll("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
 
@@ -43,7 +45,7 @@ function patchJS(script) {
 function patchCSS(css) {
     css = css.replaceAll(/d3dsisomax34re.cloudfront.net/g, config.base_url);
     
-    css = css.replaceAll(/url\(\/assets\//g, `url(https://${config.base_url_static}/assets/`);
+    css = css.replaceAll(/url\(\/assets\//g, `url(${cdn_url}/assets/`);
 
     return css;
 }
@@ -198,7 +200,7 @@ function monkeyPatcher() {
 
         //Apply patch
         modules[modId] = {
-            exports: (file) => `https://${config.base_url_static}/flags/${file.substring(2)}`,
+            exports: (file) => `${cdn_url}/flags/${file.substring(2)}`,
             id: modId,
             loaded: true
         };
@@ -230,7 +232,7 @@ function monkeyPatcher() {
     config = await (await fetch("/bootloaderConfig")).json();
 
     console.log("Loading application");
-    let html = await (await fetch(`https://${config.base_url_static}/assets/clients/${release_date}/app.html`)).text();
+    let html = await (await fetch(`${cdn_url}/assets/clients/${release_date}/app.html`)).text();
     let head = /<head>([^]*?)<\/head>/.exec(html)[1];
     let body = /<body>([^]*?)<\/body>/.exec(html)[1];
     let scripts = /<script src="([^"]+)".*>/.exec(body);
@@ -250,7 +252,7 @@ function monkeyPatcher() {
 
     //Patch and install stylesheet
     for (let styleUrl of head.matchAll(/<link rel="stylesheet" href="([^"]+)"[^>]*>/g)) {
-        let style = await (await fetch(`https://${config.base_url_static}${styleUrl[1]}`)).text();
+        let style = await (await fetch(`${cdn_url}${styleUrl[1]}`)).text();
         
         console.log("Installing stylesheet " + styleUrl[1]);
         let elm = document.createElement("style");
@@ -260,7 +262,7 @@ function monkeyPatcher() {
 
     //Patch and execute scripts
     for (let scriptUrl of body.matchAll(/<script src="([^"]+)"[^>]*>/g)) {
-        let script = await (await fetch(`https://${config.base_url_static}${scriptUrl[1]}`)).text();
+        let script = await (await fetch(`${cdn_url}${scriptUrl[1]}`)).text();
         console.log("Executing " + scriptUrl[1]);
         eval?.(patchJS(script));
     }
