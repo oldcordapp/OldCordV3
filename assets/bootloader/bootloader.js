@@ -58,6 +58,13 @@ function monkeyPatcher() {
     wpRequire ??= webpackJsonp([10000], [(module, exports, require) => { module.exports = require; wpRequire ??= require; }], [0]);
     const modules = wpRequire.c;
     
+    //LOAD EVERYTHING!!!!!!!!
+    for (let i = 1; i < 8000; i++) {
+        try {
+            wpRequire(i);
+        } catch {}
+    }
+    
     function propsFilter(props, module) {
         return props.every ? props.every((p) => module[p] !== undefined) : module[props] !== undefined;
     }
@@ -166,14 +173,8 @@ function monkeyPatcher() {
             function bruteFindFlagsResolver(min, max) {
                 //Use brute force to find the damn thing
                 for (let i = max; i > min; i--) { //Start from end of the range as it tends to be there
-                    let unload = false;
                     try {
                         let mod = modules[i];
-                        if (!mod || !mod.loaded) {
-                            //Load unloaded modules, goddammit, tear the whole place up.
-                            unload = true;
-                            mod = wpRequire(i);
-                        }
                         if (mod && mod.id && mod.keys && mod.resolve) {
                             let keys = mod.keys();
                             if (keys && keys.includes('./sydney.png')) {
@@ -183,8 +184,6 @@ function monkeyPatcher() {
                     } catch (e) {
                         //Ignore exceptions. If it breaks, it's not what we're looking for.
                     }
-                    if (unload)
-                        delete modules[i]; //Unload anything which we had to load
                 }
             }
 
