@@ -11,6 +11,7 @@ const guilds = require('./guilds');
 const invites = require('./invites');
 const channels = require('./channels');
 const connections = require('./connections');
+const admin = require('./admin');
 
 app.use("/auth", auth);
 app.use("/connections", connections);
@@ -45,6 +46,7 @@ app.get("/gateway", (req, res) => {
 
 app.use(authMiddleware);
 
+app.use("/admin", admin);
 app.use("/tutorial", tutorial);
 app.use("/users", users);
 app.use("/voice", voice);

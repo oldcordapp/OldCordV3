@@ -19,7 +19,7 @@ if (config.gcs_config && config.gcs_config.autoUploadBucket && config.gcs_config
 
 async function clientMiddleware(req, res, next) {
     try {
-        if (req.url.includes("/selector") || req.url.includes("/launch")) return next();
+        if (req.url.includes("/selector") || req.url.includes("/launch") || req.url.includes("/api/admin")) return next();
 
         let cookies = req.cookies;
 
@@ -182,24 +182,6 @@ function staffAccessMiddleware(privilege_needed) {
             });
         }
     };
-}
-async function staffMiddleware(req, res, next) {
-    try {
-        
-
-        req.is_staff = staffDetails != null;
-        req.staff_details = staffDetails ?? null;
-
-        next();
-    }
-    catch(err) {
-        logText(err, "error");
-
-        return res.status(500).json({
-            code: 500,
-            message: "Internal Server Error"
-        });
-    }
 }
 
 async function authMiddleware(req, res, next) {
