@@ -54,7 +54,8 @@ function monkeyPatcher() {
     if (!webpackJsonp)
         throw Error("Monkey patcher ran too early.");
 
-    const wpRequire = webpackJsonp([], [(module, exports, require) => { module.exports = require }]);
+    let wpRequire;
+    wpRequire ??= webpackJsonp([10000], [(module, exports, require) => { module.exports = require; wpRequire ??= require; }], [0]);
     const modules = wpRequire.c;
     
     function propsFilter(props, module) {
