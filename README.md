@@ -67,10 +67,18 @@ gcloud auth application-default login
 
 You <b>might</b> also need to configure cors for your use of the bucket accordingly.
 
-# Long term goals of this project
-- Support 2015, 2016, 2017, 2018 and 2019 fully. Not supporting 2020 as its the year discord was no longer old imo.
-- Allow for users to create guilds for specific years - where the maximum support on the backend for channels, messages, invites, etc is only limited to what was available for that year.
-- This will stop users from 2017 coming into 2015 servers spamming custom emojis or whatnot - as the requests will be rejected by the backend and the gateway will not dispatch any events for it.
+# Project Support Outline
+🟢 = Full Support <br>
+🟠 = Currently in development (or mostly supported, but not fully) <br>
+🔴 = Planned for development in the future <br>
+❎ = No plan for support in the future <br>
+
+2015 🟢 <br>
+2016 🟠 <br>
+2017 🟠 <br>
+2018 🟠 <br>
+2019 🔴 (NOTE: This is more like up to the middle of 2019) <br>
+2020+ ❎ (NOTE: This is not planned for support due to being when discord became a shell of its former self) <br>
 
 # Community
 We also have a discord server! You can join it here: https://discord.gg/HcpmWDxmzf
