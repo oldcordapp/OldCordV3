@@ -324,4 +324,6 @@ function monkeyPatcher() {
     
     //Run patcher again just to be sure
     setTimeout(monkeyPatcher, 5000);
+
+    document.getElementById("loadingTxt").remove();
 })();
