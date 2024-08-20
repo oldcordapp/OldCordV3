@@ -549,7 +549,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
             if (req.params.channelid == req.params.guildid) {
                 return res.status(403).json({
                     code: 403,
-                    message: "Missing Permissions"
+                    message: "The main channel cannot be deleted."
                 });
             }
 
