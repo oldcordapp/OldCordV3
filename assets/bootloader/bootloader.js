@@ -185,12 +185,21 @@ function monkeyPatcher() {
             "january_8_2017": 3456,
             "january_12_2017": 4103,
             "january_25_2017": 4186,
+            "january_23_2017": 4191,
             "january_31_2017": 4191,
             "februrary_1_2017": 4191,
             "februrary_21_2017": 4199,
             "februrary_25_2017": 4158,
             "march_14_2017": 1124,
-            //TODO: Complete the list
+            "march_30_2017": 706,
+            "may_3_2017": 670,
+            "may_17_2017": 724,
+            "july_20_2017": 698,
+            "august_17_2017": 700,
+            "september_28_2017": 764,
+            "october_5_2017": 1270,
+            "november_16_2017": 1662,
+            "december_21_2017": 1787,
             "december_24_2017": 1787,
         }[release_date];
 
