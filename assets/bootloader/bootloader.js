@@ -188,9 +188,16 @@ function monkeyPatcher() {
             "november_3_2016": 3281,
             "november_22_2016": 3399,
             "december_22_2016": 3457,
-            
+            "january_8_2017": 3456,
+            "january_12_2017": 4103,
+            "january_25_2017": 4186,
+            "january_31_2017": 4191,
+            "februrary_1_2017": 4191,
+            "februrary_21_2017": 4199,
+            "februrary_25_2017": 4158,
+            "march_14_2017": 1124,
             //TODO: Complete the list
-            "december_24_2017": 1787
+            "december_24_2017": 1787,
         }[release_date];
 
         if (!modId) {
