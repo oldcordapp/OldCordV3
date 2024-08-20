@@ -139,13 +139,6 @@ function monkeyPatcher() {
     })();
 
     (function() {
-        if (completedPatches.textPatch)
-            return;
-        
-        completedPatches.textPatch = true;
-        
-        console.log("Applying text patch");
-        
         const messageModules = findByPropsAll('Messages');
         for (const module of messageModules) {
             const msgs = module.Messages;
