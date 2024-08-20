@@ -145,7 +145,7 @@ function monkeyPatcher() {
             msgs.FORM_LABEL_SERVER_REGION = 'Server Era';
             msgs.REGION_SELECT_HEADER = 'Select a server era';
             msgs.ONBOARDING_GUILD_SETTINGS_SERVER_REGION = 'Server Era';
-            msgs.REGION_SELECT_FOOTER = ''; //TODO: Write a description of what server eras do
+            msgs.REGION_SELECT_FOOTER = 'Select which year was this server is created for. The features enabled in the server will be limited to this year.';
 
             msgs.NOTIFICATION_TITLE_DISCORD = 'Oldcord';
         }
