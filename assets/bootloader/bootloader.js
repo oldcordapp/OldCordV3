@@ -201,6 +201,7 @@ function monkeyPatcher() {
             "november_16_2017": 1662,
             "december_21_2017": 1787,
             "december_24_2017": 1787,
+            "april_1_2018": 2357,
         }[release_date];
 
         if (!modId) {
