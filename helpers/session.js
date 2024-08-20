@@ -228,11 +228,10 @@ class session {
             buffer = zlib.deflateSync(stringifiedpayload, {chunkSize: 65535, flush: zlib.constants.Z_SYNC_FLUSH, finishFlush: zlib.constants.Z_SYNC_FLUSH, level: zlib.constants.Z_BEST_COMPRESSION})
 
             if (!this.zlibHeader) {
-                buffer = buffer.subarray(2, buffer.length)
-            } else {
-                this.zlibHeader = false
+                buffer = buffer.subarray(2, buffer.length);
             }
-
+            else this.zlibHeader = false;
+            
             this.socket.send(buffer);
         } else this.socket.send(JSON.stringify(payload));
 

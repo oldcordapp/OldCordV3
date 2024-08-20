@@ -28,6 +28,7 @@ function patchJS(script) {
 
     script = script.replaceAll(/status.discordapp.com/g, config.base_url);
     script = script.replaceAll(/cdn.discordapp.com/g, config.base_url);
+    script = script.replaceAll(/discordcdn.com/g, config.base_url); //??? DISCORDCDN.COM?!!11
     script = script.replaceAll(/discord.gg/g, config.custom_invite_url);
     script = script.replaceAll(/discordapp.com/g, config.base_url);
     
