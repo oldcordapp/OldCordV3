@@ -121,6 +121,14 @@ async function assetsMiddleware(req, res) {
                 return res.status(404).send("File not found");
             }
 
+            if (resp.statusCode >= 400) {
+                logText(`!! Error saving asset: ${snapshot_url} - Archive.org reports ${resp.statusCode} !!`, 'debug');
+                
+                cached404s[req.params.asset] = 1;
+
+                return res.status(404).send("File not found");
+            }
+
             if (bucket !== null) {
                 let path = `${config.gcs_config.gcStorageFolder}/${req.params.asset}`;
 
