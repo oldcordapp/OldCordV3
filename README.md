@@ -1,4 +1,4 @@
-![Herple...](/hurple-text-white.png)
+![Herple...](/hurple.png)
 
 # OldCordV3
 Current code for OldCord (Rewritten) as typescript sucks for this kinda project.
