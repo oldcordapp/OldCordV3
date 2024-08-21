@@ -13,16 +13,18 @@ router.param('channelid', async (req, res, next, channelid) => {
     if (!guild) {
         //fallback for old system - only dm channels will trigger this
 
-        req.channel = await global.database.getChannelById(channelid);
+        req.channel = await global.database.getChannelById(channelid); 
     } else {
         const channel = req.guild.channels.find(y => y.id === channelid);
 
         if (channel == null) {
-            let dmChannel = await global.database.getDMChannelById(channelid);
+            //let dmChannel = await global.database.getDMChannelById(channelid);
     
-            if (dmChannel == null) {
+            //if (dmChannel == null) {
                 req.channel = null;
-            } else {
+            //} 
+            /*
+            else {
                 let user = req.account;
     
                 if (user != null) {
@@ -57,6 +59,7 @@ router.param('channelid', async (req, res, next, channelid) => {
                     }
                 } else req.channel = null;
             }
+            */
         } else {
             if (req.channel_types_are_ints) {
                 channel.type = parseInt(channel.type);

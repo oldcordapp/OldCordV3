@@ -28,6 +28,8 @@ const database = {
         }
         
         try {
+            console.log(queryString);
+            
             const query = {
                 text: queryString,
                 values: values
@@ -779,82 +781,6 @@ const database = {
             return false;
         }
     },
-    getChannelById: async (guild, id) => {
-        try {
-            let channel = guild.channels.find(x => x.id === id);
-
-            if (!channel) {
-                return null;
-            }
-
-            return channel;
-        } catch(error) {
-            logText(error, "error");
-
-            return null;
-        }
-    },
-    getDMChannelById: async (id) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM dm_channels WHERE id = $1
-            `, [id]);
-
-            if (rows == null || rows.length == 0) {
-                return null;
-            }
-
-            return {
-                id: rows[0].id,
-                last_message_id: rows[0].last_message_id,
-                author_of_channel_id: rows[0].author_of_channel_id,
-                receiver_of_channel_id: rows[0].receiver_of_channel_id,
-                is_closed: rows[0].is_closed == 1 ? true : false
-            }
-        } catch (error) {
-            logText(error, "error");
-
-            return null;
-        }
-    },
-    isDMClosed: async (channel_id) => {
-        try {
-            let dmChannel = await database.getDMChannelById(channel_id);
-
-            if (dmChannel == null) {
-                return false;
-            }
-
-            return dmChannel.is_closed;
-        }
-        catch (error) {
-            logText(error, "error");
-
-            return false;
-        }
-    },
-    openDMChannel: async (channel_id) => {
-        try {
-            await database.runQuery(`UPDATE dm_channels SET is_closed = $1 WHERE id = $2`, [0, channel_id]);
-
-            return true;
-        } catch (error) {
-            logText(error, "error");
-
-            return false;
-        }
-    },
-    closeDMChannel: async (channel_id) => {
-        try {
-            await database.runQuery(`UPDATE dm_channels SET is_closed = $1 WHERE id = $2`, [1, channel_id]);
-
-            return true;
-        } catch (error) {
-            logText(error, "error");
-
-            return false;
-        }
-    },
     getUsersMessagesInGuild: async (guild_id, author_id) => {
         try {
             const rows = await database.runQuery(`
@@ -1057,6 +983,10 @@ const database = {
                 SELECT * FROM channels WHERE id = $1
             `, [id]);
 
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+
             const row = rows[0];
 
             let overwrites = [];
@@ -1094,7 +1024,7 @@ const database = {
                 guild_id: row.guild_id == 'NULL' ? null : row.guild_id,
                 type: parseInt(row.type),
                 topic: row.topic == 'NULL' ? null : row.topic,
-                last_message_id: row.last_message_id,
+                last_message_id: row.last_message_id ?? "0",
                 permission_overwrites: overwrites,
                 position: row.position
             }
@@ -1851,21 +1781,6 @@ const database = {
             logText(error, "error");
 
             return false;
-        }
-    },
-    createDMChannel: async (sender_id, recipient_id) => {
-        try {
-            const channel_id = Snowflake.generate();
-
-            await database.runQuery(`INSERT INTO dm_channels (id, last_message_id, author_of_channel_id, receiver_of_channel_id, is_closed) VALUES ($1, $2, $3, $4, $5)`, [channel_id, '0', sender_id, recipient_id, 0])
-
-            const channel = await database.getDMChannelById(channel_id);
-
-            return channel;
-        } catch(error) {
-            logText(error, "error");
-
-            return null;
         }
     },
     createRole: async (guild_id, name, permissions, position) => {

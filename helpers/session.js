@@ -347,6 +347,7 @@ class session {
                 ]
             }
 
+            /*
             let dms = await global.database.getDMChannels(this.user.id);
             
             for (var dm of dms) {
@@ -384,6 +385,8 @@ class session {
 
                 this.dm_list.push(dmChannelObj);
             }
+            */
+            this.dm_list = [];
 
             let connectedAccounts = await global.database.getConnectedAccounts(this.user.id);
             let guildSettings = await global.database.getUsersGuildSettings(this.user.id);

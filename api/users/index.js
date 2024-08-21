@@ -18,6 +18,11 @@ router.get("/:userid", userMiddleware, async (req, res) => {
     return res.status(200).json(globalUtils.miniUserObject(req.user));
 });
 
+router.post("/:userid/channels", async (req, res) => {
+    return res.status(204).send();
+});
+
+/*
 router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
     try {
         const account = req.account;
@@ -122,6 +127,15 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
+        const regularChannel = await global.database.createChannel(null, "", req.channel_types_are_ints ? 0 : "text", 0);
+
+        if (!regularChannel) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+
         const channel = await global.database.createDMChannel(account.id, user.id);
 
         if (channel == null) {
@@ -178,6 +192,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
         });
     }
 });
+*/
 
 router.get("/:userid/profile", userMiddleware, async (req, res) => {
     try {

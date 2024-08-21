@@ -195,6 +195,7 @@ router.post("/login", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) 
 });
 
 router.post("/logout", (_, res) => {
+    //to-do dispatch presence update offline to everyone here
     return res.status(204).send();
 });
 
