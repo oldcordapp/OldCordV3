@@ -28,8 +28,6 @@ const database = {
         }
         
         try {
-            console.log(queryString);
-            
             const query = {
                 text: queryString,
                 values: values
