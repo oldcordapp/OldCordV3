@@ -158,11 +158,9 @@ router.put("/:userid", async (req, res) => {
         let ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
         let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
 
-        console.log(type2);
         if (JSON.stringify(type2) == '{}') {
             type = "SEND_FR";
 
-            console.log(ourRelationshipState);
             if (ourRelationshipState && ourRelationshipState.type == 3) {
                 type = "ACCEPT_FR"
             }
