@@ -26,7 +26,7 @@ router.get("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), as
             });  
         }
 
-        let emojis = await global.database.getGuildCustomEmojis(guild.id);
+        let emojis = guild.emojis;
 
         return res.status(200).json(emojis);
     } catch (error) {
@@ -84,7 +84,7 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
             });
         }
 
-        let currentEmojis = await global.database.getGuildCustomEmojis(guild.id);
+        let currentEmojis = guild.emojis;
 
         for(var emoji of currentEmojis) {
             emoji.roles = [];
@@ -120,8 +120,6 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
 
 router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), async (req, res) => {
     try {
-        //getGuildCustomEmojiById
-
         let account = req.account;
         
         if (!account) {
@@ -142,7 +140,7 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
 
         let emoji_id = req.params.emoji;
         
-        let emoji = await global.database.getGuildCustomEmojiById(guild.id, emoji_id);
+        let emoji = req.guild.emojis.find(x => x.id === emoji_id);
 
         if (emoji == null) {
             return res.status(404).json({
@@ -172,7 +170,7 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
             });    
         }
 
-        let tryUpdate = await global.database.updateCustomEmoji(guild.id, emoji_id, req.body.name);
+        let tryUpdate = await global.database.updateCustomEmoji(guild, emoji_id, req.body.name);
 
         if (!tryUpdate) {
             return res.status(500).json({
@@ -181,7 +179,7 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
             });
         }
 
-        let currentEmojis = await global.database.getGuildCustomEmojis(guild.id);
+        let currentEmojis = guild.emojis;
 
         for(var emoji2 of currentEmojis) {
             emoji2.roles = [];
@@ -208,8 +206,6 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
 
 router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), async (req, res) => {
     try {
-        //getGuildCustomEmojiById
-
         let account = req.account;
         
         if (!account) {
@@ -230,7 +226,7 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
 
         let emoji_id = req.params.emoji;
         
-        let emoji = await global.database.getGuildCustomEmojiById(guild.id, emoji_id);
+        let emoji = req.guild.emojis.find(x => x.id === emoji_id);
 
         if (emoji == null) {
             return res.status(404).json({
@@ -239,7 +235,7 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
             });  
         }
 
-        let tryDelete = await global.database.deleteCustomEmoji(guild.id, emoji_id);
+        let tryDelete = await global.database.deleteCustomEmoji(guild, emoji_id);
 
         if (!tryDelete) {
             return res.status(500).json({
@@ -248,7 +244,7 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
             });
         }
 
-        let currentEmojis = await global.database.getGuildCustomEmojis(guild.id);
+        let currentEmojis = guild.emojis;
 
         for(var emoji2 of currentEmojis) {
             emoji2.roles = [];

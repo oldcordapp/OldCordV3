@@ -5,6 +5,17 @@ const { instanceMiddleware, rateLimitMiddleware } = require('../helpers/middlewa
 
 const router = express.Router({ mergeParams: true });
 
+router.param('code', async (req, res, next, memberid) => {
+    req.invite = await global.database.getInvite(req.params.code);
+    
+
+    if (!req.guild && req.invite && req.invite.channel.guild_id) {
+        req.guild = await global.database.getGuildById(req.invite.channel.guild_id);
+    }
+
+    next();
+});
+
 router.get("/:code", async (req, res) => {
     try {
         const sender = req.account;
@@ -16,9 +27,9 @@ router.get("/:code", async (req, res) => {
             });
         }
 
-        const invite = await global.database.getInvite(req.params.code);
+        const invite = req.invite;
 
-        if (invite == null) {
+        if (!invite) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Invite"
@@ -47,7 +58,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
             });
         }
 
-        const invite = await global.database.getInvite(req.params.code);
+        const invite = req.invite;
 
         if (invite == null) {
             return res.status(404).json({
@@ -65,14 +76,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
             });
         }
 
-        const guild = await global.database.getGuildById(channel.guild_id);
-
-        if (guild == null) {
-            return res.status(404).json({
-                code: 404,
-                message: "Unknown Guild"
-            }); 
-        }
+        const guild = req.guild;
 
         const hasPermission = await global.permissions.hasChannelPermissionTo(channel, guild, sender.id, "MANAGE_CHANNELS");
 
@@ -107,14 +111,14 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
     try {
         const sender = req.account;
 
-        if (!sender || !sender.token) {
+        if (!sender) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
             });
         }
 
-        const invite = await global.database.getInvite(req.params.code);
+        const invite = req.invite;
 
         if (invite == null) {
             return res.status(404).json({
@@ -123,7 +127,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
             });
         }
 
-        const guild = await global.database.getGuildById(invite.guild.id);
+        let guild = req.guild;
 
         if (guild == null) {
             return res.status(404).json({
@@ -140,6 +144,8 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
                 message: "Invalid Invite"
             });
         }
+
+        guild = await global.database.getGuildById(guild.id); //update to keep in sync?
 
         await global.dispatcher.dispatchEventTo(sender.id, "GUILD_CREATE", guild);
 

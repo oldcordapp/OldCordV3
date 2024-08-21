@@ -461,7 +461,7 @@ const database = {
             return false;
         }
     },
-    createCustomEmoji: async (guild_id, user_id, emoji_id, emoji_name) => {
+    createCustomEmoji: async (guild, user_id, emoji_id, emoji_name) => {
         try {
             let user = await database.getAccountByUserId(user_id);
 
@@ -469,7 +469,7 @@ const database = {
                 return false;
             }
 
-            let custom_emojis = await database.getGuildCustomEmojis(guild_id);
+            let custom_emojis = guild.emojis;
 
             custom_emojis.push({
                 id: emoji_id,
@@ -486,9 +486,9 @@ const database = {
             return false;
         }
     },
-    updateCustomEmoji: async (guild_id, emoji_id, new_name) => {
+    updateCustomEmoji: async (guild, emoji_id, new_name) => {
         try {
-            let custom_emojis = await database.getGuildCustomEmojis(guild_id);
+            let custom_emojis = guild.emojis;
 
             let customEmoji = custom_emojis.find(x => x.id == emoji_id);
 
@@ -507,9 +507,9 @@ const database = {
             return false;
         }
     },
-    deleteCustomEmoji: async (guild_id, emoji_id) => {
+    deleteCustomEmoji: async (guild, emoji_id) => {
         try {
-            let custom_emojis = await database.getGuildCustomEmojis(guild_id);
+            let custom_emojis = guild.emojis;
 
             custom_emojis = custom_emojis.filter(x => x.id != emoji_id);
 
