@@ -224,10 +224,10 @@ const gateway = {
 
                             return await socket.session.resume(sesh.seq, socket);
                         } else {
-                            socket.send(JSON.stringify({
+                            sesh.send({
                                 op: 9,
                                 d: false
-                            }));
+                            });
                         }
                     }
                 }

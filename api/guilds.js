@@ -122,7 +122,7 @@ router.post("/:guildid/delete", guildMiddleware, rateLimitMiddleware(50, 1000 * 
             });
         }
 
-        await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
+        await global.dispatcher.dispatchEventInGuild(guild, "GUILD_DELETE", {
             id: req.params.guildid
         });
         
@@ -167,7 +167,7 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
         }
 
         if (guild.owner_id == user.id) {
-            await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
+            await global.dispatcher.dispatchEventInGuild(guild, "GUILD_DELETE", {
                 id: req.params.guildid
             });
             
@@ -195,7 +195,7 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
                 id: req.params.guildid
             });
 
-            await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
+            await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_MEMBER_REMOVE", {
                 type: "leave",
                 roles: [],
                 user: globalUtils.miniUserObject(user),
@@ -309,7 +309,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
                 }); 
             }
     
-            await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_UPDATE", what);
+            await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_UPDATE", what);
     
             return res.status(200).json(what);
         }
@@ -332,7 +332,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             }); 
         }
 
-        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_UPDATE", what);
+        await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_UPDATE", what);
 
         return res.status(200).json(what);
       } catch (error) {
@@ -458,10 +458,17 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
                 message: "Unauthorized"
             });
         }
+        
+        if (!req.guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });
+        }
 
-        const member = await global.database.getGuildMemberById(req.params.guildid, sender.id);
+        const member = req.guild.members.find(x => x.id === sender.id);
 
-        if (member == null) {
+        if (!member) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Member"
@@ -474,7 +481,7 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
             number_type = req.body.type == "text" ? 0 : 1;
         } else number_type = req.body.type;
 
-        const channel = await global.database.createChannel(req.params.guildid, req.body.name, number_type);
+        const channel = await global.database.createChannel(req.params.guildid, req.body.name, number_type, req.guild.channels.length + 1);
 
         if (channel == null) {
             return res.status(500).json({
@@ -485,7 +492,7 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
 
         channel.type = typeof req.body.type === 'string' ? req.body.type : number_type;
 
-        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "CHANNEL_CREATE", channel);
+        await global.dispatcher.dispatchEventInGuild(req.guild, "CHANNEL_CREATE", channel);
 
         return res.status(200).json(channel);
     } catch(error) {
@@ -515,7 +522,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
             var channel_id = shit.id;
             var position = shit.position;
 
-            const channel = await global.database.getChannelById(channel_id)
+            const channel = req.guild.channels.find(x => x.id === channel_id);
 
             if (channel == null) {
                 return res.status(500).json({

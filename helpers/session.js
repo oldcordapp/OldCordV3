@@ -148,7 +148,7 @@ class session {
                 else if (this.presence.status == "invisible") this.presence.status = "offline"; 
             }
 
-            await global.dispatcher.dispatchEventInGuild(guild.id, "PRESENCE_UPDATE", this.presence);
+            await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", this.presence);
         }
     }
     async dispatchSelfUpdate() {
@@ -167,17 +167,17 @@ class session {
 
             if (guild.members.length == 0 || !guild.members) continue;
 
-            let our_member = await global.database.getGuildMemberById(guild.id, this.user.id);
+            let our_member = guild.members.find(x => x.id === this.user.id);
 
             if (!our_member) continue;
 
-            await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_MEMBER_UPDATE", {
+            await global.dispatcher.dispatchEventInGuild(guild, "GUILD_MEMBER_UPDATE", {
                 roles: our_member.roles,
                 user: our_member.user,
                 guild_id: guild.id
             });
 
-            await global.dispatcher.dispatchEventInGuild(guild.id, "USER_UPDATE", our_member);
+            await global.dispatcher.dispatchEventInGuild(guild, "USER_UPDATE", our_member);
         }
     }
     async terminate(code = 1006) {
@@ -271,6 +271,15 @@ class session {
 			this.dispatch(k.type, k.payload);
 		}
 
+        this.send({
+            op: 10,
+            s: ++this.seq,
+            d: {
+                heartbeat_interval: 45 * 1000,
+                _trace: ["oldcord-v3"]
+            }
+        });
+
         this.dispatch("RESUMED", {
             __trace: ['oldcordv3']
         });
@@ -283,7 +292,7 @@ class session {
             this.guilds = await global.database.getUsersGuilds(this.user.id);
 
             for(var guild of this.guilds) {
-                let guild_presences = await global.database.getGuildPresences(guild.id);
+                let guild_presences = guild.presences;
 
                 if (guild_presences.length == 0) continue;
 

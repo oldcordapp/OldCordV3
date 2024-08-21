@@ -444,7 +444,7 @@ router.delete("/guilds/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 
             }
     
             if (guild.owner_id == user.id) {
-                await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_DELETE", {
+                await global.dispatcher.dispatchEventInGuild(guild, "GUILD_DELETE", {
                     id: req.params.guildid
                 });
                 
@@ -472,7 +472,7 @@ router.delete("/guilds/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 
                     id: req.params.guildid
                 });
     
-                await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
+                await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_MEMBER_REMOVE", {
                     type: "leave",
                     roles: [],
                     user: globalUtils.miniUserObject(user),

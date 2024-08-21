@@ -49,7 +49,7 @@ const permissions = {
             const gatheredRoles = []
     
             for(var role2 of roles) {
-                var role = await global.database.getRoleById(role2)
+                var role = guild.roles.find(x => x.id === role2)
     
                 if (role != null) {
                     gatheredRoles.push(role);
@@ -83,7 +83,7 @@ const permissions = {
             let memberRoles = [];
     
             for(var role2 of member.roles) {
-                var role = await global.database.getRoleById(role2)
+                var role = guild.roles.find(x => x.id === role2)
     
                 if (role != null) {
                     memberRoles.push(role);

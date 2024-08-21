@@ -336,11 +336,15 @@ async function channelMiddleware(req, res, next) {
 
     const sender = req.account;
 
-    if (sender == null) {
+    if (!sender) {
         return res.status(500).json({
             code: 500,
             message: "Internal Server Error"
         });
+    }
+
+    if (!req.guild) {
+        req.guild = await global.database.getGuildById(req.params.guildid); //hate this also
     }
 
     let member = req.guild.members.find(y => y.id == sender.id);

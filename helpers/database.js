@@ -99,11 +99,15 @@ const database = {
                 avatar TEXT DEFAULT NULL,
                 bot INTEGER DEFAULT 0,
                 relationships TEXT DEFAULT '[]',
+                flags INTEGER DEFAULT 0,
+                private_channels TEXT DEFAULT '[]',
                 settings TEXT DEFAULT '{"show_current_game":false,"inline_attachment_media":true,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"online"}',
                 guild_settings TEXT DEFAULT '[]',
                 disabled_until TEXT DEFAULT NULL,
                 disabled_reason TEXT DEFAULT NULL
            );`, []); // 4 = Everyone, 3 = Friends of Friends & Server Members, 2 = Friends of Friends, 1 = Server Members, 0 = No one
+
+           //[{id, open, recipients, group_dm}]
 
            await database.runQuery(`
             CREATE TABLE IF NOT EXISTS staff (
@@ -138,15 +142,6 @@ const database = {
            );`, []); //type 0, aka "text", 1 for "dm", 2 for "voice" - and so on and so forth
 
             await database.runQuery(`
-            CREATE TABLE IF NOT EXISTS dm_channels (
-                id TEXT,
-                last_message_id TEXT DEFAULT '0',
-                author_of_channel_id TEXT,
-                receiver_of_channel_id TEXT,
-                is_closed INTEGER DEFAULT 0
-           );`, []);
-
-            await database.runQuery(`
             CREATE TABLE IF NOT EXISTS permissions (
                 channel_id TEXT,
                 overwrite TEXT DEFAULT NULL
@@ -164,6 +159,8 @@ const database = {
                 creation_date TEXT,
                 exclusions TEXT DEFAULT '[]',
                 custom_emojis TEXT DEFAULT '[]',
+                flags TEXT DEFAULT '[]',
+                vanity_url TEXT DEFAULT NULL,
                 default_message_notifications INTEGER DEFAULT 0,
                 verification_level INTEGER DEFAULT 0
            );`, []);
@@ -257,42 +254,6 @@ const database = {
             return false;
         }
     },
-    getUserCount: async () => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM users
-            `, []);
-
-            if (rows != null && rows.length > 0) {
-                return rows.length;
-            }
-
-            return 0;
-        }
-        catch (error) {
-            logText(error, "error");
-
-            return 0;
-        }
-    },
-    getServerCount: async () => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM guilds
-            `, []);
-
-            if (rows != null && rows.length > 0) {
-                return rows.length;
-            }
-
-            return 0;
-        }
-        catch (error) {
-            logText(error, "error");
-
-            return 0;
-        }
-    },
     getLatestAcknowledgement: async (user_id, channel_id) => {
         try {
             const rows = await database.runQuery(`
@@ -351,93 +312,6 @@ const database = {
             return false;
         }
     },
-    getMessageCount: async () => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM messages
-            `, []);
-
-            if (rows != null && rows.length > 0) {
-                return rows.length;
-            }
-
-            return 0;
-        }
-        catch (error) {
-            logText(error, "error");
-
-            return 0;
-        }
-    },
-    getNewUsersToday: async () => {
-        try {
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
-            const formattedTimestamp = twentyFourHoursAgo.toISOString();
-    
-            const rows = await database.runQuery(`
-                SELECT * FROM users
-                WHERE created_at >= $1
-            `, [formattedTimestamp]);
-    
-            if (rows != null && rows.length > 0) {
-                return rows.length;
-            }
-    
-            return 0;
-        }
-        catch (error) {
-            logText(error, "error");
-    
-            return 0;
-        }
-    },
-    getNewServersToday: async () => {
-        try {
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
-            const formattedTimestamp = twentyFourHoursAgo.toISOString();
-    
-            const rows = await database.runQuery(`
-                SELECT * FROM guilds
-                WHERE creation_date >= $1
-            `, [formattedTimestamp]);
-    
-            if (rows != null && rows.length > 0) {
-                return rows.length;
-            }
-    
-            return 0;
-        }
-        catch (error) {
-            logText(error, "error");
-    
-            return 0;
-        }
-    },
-    getNewMessagesToday: async () => {
-        try {
-            const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
-            const formattedTimestamp = twentyFourHoursAgo.toISOString();
-    
-            const rows = await database.runQuery(`
-                SELECT * FROM messages
-                WHERE timestamp >= $1
-            `, [formattedTimestamp]);
-    
-            if (rows != null && rows.length > 0) {
-                return rows.length;
-            }
-    
-            return 0;
-        }
-        catch (error) {
-            logText(error, "error");
-    
-            return 0;
-        }
-    },
     getUsersGuildSettings: async (user_id) => {
         try {
             const rows = await database.runQuery(`
@@ -479,6 +353,88 @@ const database = {
             return null;
         }
     },
+    getAccountByToken: async (token) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM users WHERE token = $1
+            `, [token]);
+
+            return globalUtils.prepareAccountObject(rows); 
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    getAccountsByUsername: async (username) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM users WHERE username = $1
+            `, [username]);
+
+            if (rows === null || rows.length === 0) {
+                return [];
+            }
+
+            let ret = [];
+
+            if (Array.isArray(rows)) {
+                for(var row of rows) {
+                    ret.push({
+                        id: row.id,
+                        username: row.username,
+                        discriminator: row.discriminator,
+                        avatar: row.avatar == 'NULL' ? null : row.avatar,
+                        email: row.email,
+                        password: row.password,
+                        token: row.token,
+                        verified: true,
+                        flags: row.flags ?? 0,
+                        bot: row.bot == 1 ? true : false,
+                        created_at: row.created_at,
+                        settings: JSON.parse(row.settings)
+                    })
+                }
+            } else {
+                const row = rows[0];
+
+                ret.push({
+                        id: row.id,
+                        username: row.username,
+                        discriminator: row.discriminator,
+                        avatar: row.avatar == 'NULL' ? null : row.avatar,
+                        email: row.email,
+                        password: row.password,
+                        token: row.token,
+                        verified: true,
+                        flags: row.flags ?? 0,
+                        bot: row.bot == 1 ? true : false,
+                        created_at: row.created_at,
+                        settings: JSON.parse(row.settings)
+                    })
+            }
+            
+
+            return ret;
+        } catch (error) {  
+            logText(error, "error");
+
+            return [];
+        }
+    },
+    getAccountByUserId: async (id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM users WHERE id = $1
+            `, [id]);
+
+            return globalUtils.prepareAccountObject(rows);
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
     banMember: async (guild_id, user_id) => {
         try {
             await database.runQuery(`
@@ -492,42 +448,17 @@ const database = {
             return false;
         }
     },
-    getGuildCustomEmojis: async (guild_id) => {
+    unbanMember: async (guild_id, user_id) => {
         try {
-            const rows = await database.runQuery(`
-                SELECT * FROM guilds WHERE id = $1
-            `, [guild_id]);
+            await database.runQuery(`
+                DELETE FROM bans WHERE guild_id = $1 AND user_id = $2
+            `, [guild_id, user_id]);
 
-            if (rows != null && rows.length > 0) {
-                return JSON.parse(rows[0].custom_emojis) ?? [];
-            } else {
-                return [];
-            }
+            return true;
         } catch (error) {
             logText(error, "error");
 
-            return [];
-        }
-    },
-    getGuildCustomEmojiById: async (guild_id, emoji_id) => {
-        try {
-            let guild_emojis = await database.getGuildCustomEmojis(guild_id);
-
-            if (guild_emojis.length == 0) {
-                return null;
-            }
-
-            let tryFind = guild_emojis.find(x => x.id == emoji_id);
-
-            if (!tryFind) {
-                return null;
-            }
-
-            return tryFind;
-        } catch (error) {
-            logText(error, "error");
-
-            return null;
+            return false;
         }
     },
     createCustomEmoji: async (guild_id, user_id, emoji_id, emoji_name) => {
@@ -589,81 +520,6 @@ const database = {
             logText(error, "error");
 
             return false;
-        }
-    },
-    unbanMember: async (guild_id, user_id) => {
-        try {
-            await database.runQuery(`
-                DELETE FROM bans WHERE guild_id = $1 AND user_id = $2
-            `, [guild_id, user_id]);
-
-            return true;
-        } catch (error) {
-            logText(error, "error");
-
-            return false;
-        }
-    },
-    getAccountByToken: async (token) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM users WHERE token = $1
-            `, [token]);
-
-            return globalUtils.prepareAccountObject(rows); 
-        } catch (error) {
-            logText(error, "error");
-
-            return null;
-        }
-    },
-    getAccountsByUsername: async (username) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM users WHERE username = $1
-            `, [username]);
-
-            if (rows != null && rows.length > 0) {
-                const ret = [];
-
-                for(var row of rows) {
-                    ret.push({
-                        id: row.id,
-                        username: row.username,
-                        discriminator: row.discriminator,
-                        avatar: row.avatar == 'NULL' ? null : row.avatar,
-                        email: row.email,
-                        password: row.password,
-                        token: row.token,
-                        verified: true,
-                        bot: rows[0].bot == 1 ? true : false,
-                        //verified: rows[0].verified == 1 ? true : false,
-                        created_at: row.created_at,
-                        settings: JSON.parse(row.settings)
-                    })
-                }
-
-                return ret;
-            } else {
-                return [];
-            }
-        } catch (error) {  
-            logText(error, "error");
-
-            return [];
-        }
-    },
-    getAccountByUserId: async (id) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM users WHERE id = $1
-            `, [id]);
-
-            return globalUtils.prepareAccountObject(rows);
-        } catch (error) {
-            logText(error, "error");
-
-            return null;
         }
     },
     getConnectedAccounts: async (user_id) => {
@@ -770,65 +626,6 @@ const database = {
             return false;
         }
     },
-    getGuildChannels: async (id) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM channels WHERE guild_id = $1
-            `, [id]);
-
-            if (rows != null && rows.length > 0) {
-                const ret = [];
-
-                for(var row of rows) {
-                    const perms = await database.getChannelPermissionOverwrites(row.id);
-
-                    ret.push({
-                        id: row.id,
-                        name: row.name,
-                        guild_id: row.guild_id == 'NULL' ? null : row.guild_id,
-                        type: row.type,
-                        topic: row.topic == 'NULL' ? null : row.topic,
-                        last_message_id: row.last_message_id,
-                        permission_overwrites: perms,
-                        position: row.position
-                    })
-                }
-
-                return ret;
-            } else {
-                return [];
-            }
-        } catch (error) {
-            logText(error, "error");
-
-            return [];
-        }
-    },
-    getRoleById: async (id) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM roles WHERE role_id = $1
-            `, [id]);
-
-            if (rows != null && rows.length > 0) {
-                return {
-                    id: rows[0].role_id,
-                    name: rows[0].name,
-                    permissions: rows[0].permissions,
-                    position: rows[0].position,
-                    color: rows[0].color,
-                    hoist: rows[0].hoist == 1 ? true : false,
-                    mentionable: rows[0].mentionable == 1 ? true : false
-                }
-            } else {
-                return null;
-            }
-        } catch (error) {
-            logText(error, "error");
-
-            return null;
-        }
-    },
     getRelationshipsByUserId: async(user_id) => {
         try {
             const rows = await database.runQuery(`
@@ -886,99 +683,6 @@ const database = {
             return [];
         }
     },
-    getGuildRoles: async (id) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM roles WHERE guild_id = $1
-            `, [id]);
-
-            if (rows != null && rows.length > 0) {
-                const ret = [];
-
-                for(var row of rows) {
-                    const role = await database.getRoleById(row.role_id);
-
-                    if (role != null) {
-                        ret.push(role);
-                    }
-                }
-
-                return ret;
-            } else {
-                return [];
-            }
-        } catch (error) {
-            logText(error, "error");
-
-            return [];
-        }
-    },
-    getGuildPresences: async (id) => {
-        try {
-            const guildMembers = await database.getGuildMembers(id);
-
-            if (guildMembers == null || guildMembers.length == 0) {
-                return [];
-            }
-
-            const ret = [];
-
-            for(var member of guildMembers) {
-                let sessions = global.userSessions.get(member.id);
-
-                if (global.userSessions.size === 0 || !sessions) {
-                    ret.push({                             
-                        game: null,
-                        status: 'offline',
-                        user: globalUtils.miniUserObject(member.user)
-                    });
-                } else {
-                    let session = sessions[sessions.length - 1]
-    
-                    if (!session.presence) {
-                        ret.push({                             
-                            game: null,
-                            status: 'offline',
-                            user: globalUtils.miniUserObject(member.user)
-                        });
-                    } else ret.push(session.presence);
-                }
-            }
-
-            return ret;
-        } catch (error) {
-            logText(error, "error");
-
-            return [];
-        }
-    },
-    getMessageReactions: async (message_id) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM messages WHERE message_id = $1
-            `, [message_id]);
-
-            if (rows != null && rows.length > 0) {
-                const ret = [];
-                const msgReactions = JSON.parse(rows[0].reactions);
-
-                for(var row of msgReactions) {
-                    ret.push({
-                        user_id: row.user_id,
-                        emoji: row.emoji
-                    });
-                }
-
-                return ret;
-            } else {
-                return [];
-            }
-        } catch (error) {
-            logText(error, "error");
-
-            return [];
-        }
-    },
     addMessageReaction: async (message_id, user_id, emoji_id, emoji_name) => {
         try {
             let reactions = await database.getMessageReactions(message_id);
@@ -1019,19 +723,22 @@ const database = {
             return false;
         }
     },
-    createChannel: async (guild_id, name, type) => {
+    createChannel: async (guild_id, name, type, position) => {
         try {
             const channel_id = Snowflake.generate();
 
             await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [channel_id, type, guild_id, 'NULL', '0', 'NULL', name, 0])
 
-            const channel = await database.getChannelById(channel_id);
-
-            if (channel == null) {
-                return null;
-            }
-
-            return channel;
+            return {
+                id: channel_id,
+                name: name,
+                guild_id: guild_id,
+                type: type,
+                topic: null,
+                last_message_id: "0",
+                permission_overwrites: [],
+                position: position
+            };
         } catch(error) {
             logText(error, "error");
 
@@ -1072,68 +779,19 @@ const database = {
             return false;
         }
     },
-    getGuildMembers: async (id) => {
+    getChannelById: async (guild, id) => {
         try {
-            const rows = await database.runQuery(`
-                SELECT * FROM members WHERE guild_id = $1
-            `, [id]);
+            let channel = guild.channels.find(x => x.id === id);
 
-            let guild_roles = await database.getGuildRoles(id);
-
-            if (rows != null && rows.length > 0) {
-                const ret = [];
-
-                for(var row of rows) {
-                    const roles = [];
-                    
-                    if (row.roles.includes(':')) {
-                        const db_roles = row.roles.split(':');
-                        
-                        for(var db_role of db_roles) {
-                            const role = await database.getRoleById(db_role);
-
-                            if (role != null && guild_roles.find(x => x.id == role.id)) {
-                                roles.push(role.id);
-                            }
-                        }
-                    } else {
-                        const role = await database.getRoleById(row.roles);
-
-                        if (role != null && guild_roles.find(x => x.id == role.id)) {
-                            roles.push(role.id);
-                        }
-                    }
-
-                    const user = await database.getAccountByUserId(row.user_id);
-
-                    if (user == null) {
-                        continue;
-                    }
-
-                    let everyoneRole = guild_roles.find(x => x.name == '@everyone');
-
-                    if (everyoneRole != null && !roles.includes(everyoneRole.id)) {
-                        roles.push(everyoneRole.id);
-                    }
-
-                    ret.push({
-                        id: user.id,
-                        nick: row.nick == 'NULL' ? null : row.nick,
-                        deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
-                        mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
-                        roles: roles,
-                        user: globalUtils.miniUserObject(user)
-                    })
-                }
-
-                return ret;
-            } else {
-                return [];
+            if (!channel) {
+                return null;
             }
-        } catch (error) {
+
+            return channel;
+        } catch(error) {
             logText(error, "error");
 
-            return [];
+            return null;
         }
     },
     getDMChannelById: async (id) => {
@@ -1195,27 +853,6 @@ const database = {
             logText(error, "error");
 
             return false;
-        }
-    },
-    getGuildMemberById: async (guild_id, id) => {
-        try {
-            const members = await database.getGuildMembers(guild_id);
-
-            if (members.length == 0 || members == null) {
-                return null;
-            }
-
-            const member = members.find(x => x.id == id);
-
-            if (!member) {
-                return null;
-            }
-
-            return member;
-        } catch (error) {
-            logText(error, "error");
-
-            return null;
         }
     },
     getUsersMessagesInGuild: async (guild_id, author_id) => {
@@ -1306,6 +943,16 @@ const database = {
                 }
             }
 
+            const reactionRet = [];
+            const msgReactions = JSON.parse(rows[0].reactions);
+
+            for (var row of msgReactions) {
+                reactionRet.push({
+                    user_id: row.user_id,
+                    emoji: row.emoji
+                });
+            }
+
             return {
                 id: rows[0].message_id,
                 content: rows[0].content,
@@ -1319,53 +966,13 @@ const database = {
                 edited_timestamp: rows[0].edited_timestamp == 'NULL' ? null : rows[0].edited_timestamp,
                 timestamp: rows[0].timestamp,
                 mention_roles: [],
+                reactions: reactionRet,
                 tts: rows[0].tts == 1 ? true : false
             }
         } catch (error) {
             logText(error, "error");
 
             return null;
-        }
-    },
-    getDMChannelMessages: async (id, limit, before_id) => {
-        try {
-            let query = `SELECT * FROM messages WHERE channel_id = $1 `;
-            const params = [id];
-
-            if (before_id) {
-                query += 'AND message_id < $2 ';
-                params.push(before_id);
-            }
-
-            if (before_id) {
-                query += 'ORDER BY timestamp DESC LIMIT $3';
-            } else query += 'ORDER BY timestamp DESC LIMIT $2';
-
-            params.push(limit);
-
-            const rows = await database.runQuery(query, params);
-
-            if (rows == null || rows.length == 0) {
-                return [];
-            }
-
-            const ret = [];
-
-            for (const row of rows) {
-                const message = await database.getMessageById(row.message_id);
-
-                if (message != null) {
-                    ret.push(message);
-                }
-            }
-
-            return ret;
-        } catch (error) {
-            console.log(error);
-
-            logText(error, "error");
-
-            return [];
         }
     },
     getChannelMessages: async (id, limit, before_id, after_id, includeReactions) => {
@@ -1399,7 +1006,7 @@ const database = {
                 const message = await database.getMessageById(row.message_id);
                 
                 if (includeReactions) {
-                    const reactions = await database.getMessageReactions(row.message_id);
+                    const reactions = message.reactions;
                     const fixedReactions = [];
 
                     const reactionMap = reactions.reduce((acc, reaction) => {
@@ -1439,8 +1046,6 @@ const database = {
 
             return ret;
         } catch (error) {
-            console.log(error);
-
             logText(error, "error");
 
             return [];
@@ -1452,14 +1057,12 @@ const database = {
                 SELECT * FROM channels WHERE id = $1
             `, [id]);
 
-            if (rows == null || rows.length == 0) {
-                return null;
-            }
+            const row = rows[0];
 
-            const overwrites = [];
+            let overwrites = [];
 
-            if (rows[0].permission_overwrites.includes(":")) {
-                for(let overwrite of rows[0].permission_overwrites.split(":")) {
+            if (row.permission_overwrites && row.permission_overwrites.includes(":")) {
+                for (var overwrite of row.permission_overwrites.split(':')) {
                     let role_id = overwrite.split('_')[0];
                     let allow_value = overwrite.split('_')[1];
                     let deny_value = overwrite.split('_')[2];
@@ -1471,7 +1074,7 @@ const database = {
                         type: overwrite.split('_')[3] ? overwrite.split('_')[3] : 'role'
                     });
                 }
-            } else if (rows[0].permission_overwrites != "NULL") {
+            } else if (row.permission_overwrites && row.permission_overwrites != "NULL") {
                 let overwrite = rows[0].permission_overwrites;
                 let role_id = overwrite.split('_')[0];
                 let allow_value = overwrite.split('_')[1];
@@ -1486,14 +1089,14 @@ const database = {
             }
 
             return {
-                id: rows[0].id,
-                name: rows[0].name,
-                guild_id: rows[0].guild_id == 'NULL' ? null : rows[0].guild_id,
-                type: parseInt(rows[0].type),
-                topic: rows[0].topic == 'NULL' ? null : rows[0].topic,
-                last_message_id: rows[0].last_message_id,
+                id: row.id,
+                name: row.name,
+                guild_id: row.guild_id == 'NULL' ? null : row.guild_id,
+                type: parseInt(row.type),
+                topic: row.topic == 'NULL' ? null : row.topic,
+                last_message_id: row.last_message_id,
                 permission_overwrites: overwrites,
-                position: rows[0].position
+                position: row.position
             }
         } catch (error) {
             logText(error, "error");
@@ -1532,29 +1135,143 @@ const database = {
                 SELECT * FROM guilds WHERE id = $1
             `, [id]);
 
-            if (rows == null || rows.length == 0) {
+            if (rows === null || rows.length === 0) {
                 return null;
             }
 
-            let channels = await database.getGuildChannels(id);
+            //#region Channels Logic
+            const channelRows = await database.runQuery(`
+                SELECT * FROM channels WHERE guild_id = $1
+            `, [id]);
 
-            if (channels == null || channels.length == 0) {
+            if (channelRows === null || channelRows.length === 0) {
                 return null;
             }
 
-            let members = await database.getGuildMembers(id);
+            let channels = [];
 
-            if (members == null || members.length == 0) {
+            for (var row of channelRows) {
+                if (!row) continue;
+    
+                let overwrites = [];
+    
+                if (row.permission_overwrites && row.permission_overwrites.includes(":")) {
+                    for (var overwrite of row.permission_overwrites.split(':')) {
+                        let role_id = overwrite.split('_')[0];
+                        let allow_value = overwrite.split('_')[1];
+                        let deny_value = overwrite.split('_')[2];
+    
+                        overwrites.push({
+                            id: role_id,
+                            allow: parseInt(allow_value),
+                            deny: parseInt(deny_value),
+                            type: overwrite.split('_')[3] ? overwrite.split('_')[3] : 'role'
+                        });
+                    }
+                } else if (row.permission_overwrites && row.permission_overwrites != "NULL") {
+                    let overwrite = rows[0].permission_overwrites;
+                    let role_id = overwrite.split('_')[0];
+                    let allow_value = overwrite.split('_')[1];
+                    let deny_value = overwrite.split('_')[2];
+    
+                    overwrites.push({
+                        id: role_id,
+                        allow: parseInt(allow_value),
+                        deny: parseInt(deny_value),
+                        type: overwrite.split('_')[3] ? overwrite.split('_')[3] : 'role'
+                    });
+                }
+    
+                channels.push({
+                    id: row.id,
+                    name: row.name,
+                    guild_id: row.guild_id == 'NULL' ? null : row.guild_id,
+                    type: parseInt(row.type),
+                    topic: row.topic == 'NULL' ? null : row.topic,
+                    last_message_id: row.last_message_id,
+                    permission_overwrites: overwrites,
+                    position: row.position
+                })
+            }
+
+            //#endregion
+
+            //#region Roles Logic
+
+            const roleRows = await database.runQuery(`
+                SELECT * FROM roles WHERE guild_id = $1
+            `, [id]);
+
+            if (roleRows === null || roleRows.length === 0) {
                 return null;
             }
 
-            let roles = await database.getGuildRoles(id);
+            let roles = [];
 
-            if (roles == null || roles.length == 0) {
+            for(var row of roleRows) {
+                roles.push({
+                    id: row.role_id,
+                    name: row.name,
+                    permissions: row.permissions,
+                    position: row.position,
+                    color: row.color,
+                    hoist: row.hoist == 1,
+                    mentionable: row.mentionable == 1
+                });
+            }
+
+            //#endregion
+
+            //#region Guild Members Logic
+
+            const memberRows = await database.runQuery(`
+                SELECT * FROM members WHERE guild_id = $1
+            `, [id]);
+
+            if (memberRows === null || memberRows.length === 0) {
                 return null;
             }
 
-            let emojis = await database.getGuildCustomEmojis(id);
+            let members = [];
+
+            for (var row of memberRows) {
+                const roles = [];
+
+                if (row.roles.includes(':')) {
+                    const db_roles = row.roles.split(':');
+
+                    for (var db_role of db_roles) {
+                        roles.push(db_role);
+                    }
+                } else roles.push(row.roles);
+
+                const user = await database.getAccountByUserId(row.user_id);
+
+                if (user == null) {
+                    continue;
+                }
+
+                let everyoneRole = roles.find(x => x.name == '@everyone');
+
+                if (everyoneRole != null && !roles.includes(everyoneRole.id)) {
+                    roles.push(everyoneRole.id);
+                }
+
+                members.push({
+                    id: user.id,
+                    nick: row.nick == 'NULL' ? null : row.nick,
+                    deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
+                    mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
+                    roles: roles,
+                    user: globalUtils.miniUserObject(user)
+                })
+            }
+
+            //#endregion
+
+            //#region Custom Emojis Logic
+
+            let emojis = JSON.parse(rows[0].custom_emojis); //???
 
             for (var emoji of emojis) {
                 emoji.roles = [];
@@ -1563,21 +1280,35 @@ const database = {
                 emoji.allNamesString = `:${emoji.name}:`
             }
 
-            //let presences[] = [];
-            let presences = await database.getGuildPresences(id);
+            //#endregion
 
-            let fixed_presences= []
+            //#region Guild Presences Logic
 
-            if (presences.length > 0) {
-                for(var pren of presences) {
-                    fixed_presences.push({
-                        guild_id: id,
-                        game_id: pren.game != null ? pren.game : null,
-                        user: globalUtils.miniUserObject(pren.user),
-                        status: pren.status
-                    })
+            let presences = [];
+
+            for(var member of members) {
+                let sessions = global.userSessions.get(member.id);
+
+                if (global.userSessions.size === 0 || !sessions) {
+                    presences.push({                             
+                        game: null,
+                        status: 'offline',
+                        user: globalUtils.miniUserObject(member.user)
+                    });
+                } else {
+                    let session = sessions[sessions.length - 1]
+    
+                    if (!session.presence) {
+                        presences.push({                             
+                            game: null,
+                            status: 'offline',
+                            user: globalUtils.miniUserObject(member.user)
+                        });
+                    } else presences.push(session.presence);
                 }
             }
+
+            //#endregion
 
             return {
                 id: rows[0].id,
@@ -1595,6 +1326,7 @@ const database = {
                 presences: presences,
                 voice_states: [],
                 creation_date: rows[0].creation_date,
+                features: rows[0].features ?? [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
                 verification_level: rows[0].verification_level ?? 0
             }
@@ -1626,17 +1358,7 @@ const database = {
                 for(var member of members) {
                     let guild = await database.getGuildById(member.guild_id);
 
-                    if (guild != null && 'id' in guild) {
-                        let channels = await database.getGuildChannels(member.guild_id);
-
-                        if (channels != null && channels.length > 0) {
-                            guild.channels = channels;
-                        }
-
-                        //to-do; this better
-
-                        guilds.push(guild);
-                    }
+                    if (guild != null) guilds.push(guild);
                 }
 
                 return guilds;
@@ -1682,9 +1404,9 @@ const database = {
             return null;
         }
     },
-    getChannelPermissionOverwrites: async (channel_id) => {
+    getChannelPermissionOverwrites: async (guild, channel_id) => {
         try {
-            const channel = await database.getChannelById(channel_id);
+            const channel = guild.channels.find(x => x.id === channel_id);
 
             if (channel == null || !channel.permission_overwrites) {
                 return [];
@@ -1721,7 +1443,7 @@ const database = {
                 return null;
             }
 
-            const channel = await database.getChannelById(rows[0].channel_id);
+            const channel = guild.channels.find(x => x.id === rows[0].channel_id);
 
             if (channel == null) {
                 return null;
@@ -1775,17 +1497,17 @@ const database = {
         try {
             const invite = await database.getInvite(code);
 
-            if (invite == null || invite.uses == undefined) {
+            if (invite == null) {
                 return false;
             }
 
-            const user = await database.getAccountByUserId(user_id);
+            const guild = await database.getGuildById(invite.guild.id); //hate this
 
-            if (user == null) {
+            if (!guild) {
                 return false;
             }
 
-            const member = await database.getGuildMemberById(invite.guild.id, user_id);
+            const member = guild.members.find(x => x.id === user_id);
 
             if (member != null) {
                 return true;
@@ -1803,7 +1525,7 @@ const database = {
                 return false;
             }
 
-            const joinedGuild = await database.joinGuild(user_id, invite.guild.id);
+            const joinedGuild = await database.joinGuild(user_id, guild);
 
             if (!joinedGuild) {
                 return false;
@@ -1820,9 +1542,9 @@ const database = {
             return false;
         }
     },
-    clearRoles: async (guild_id, user_id) => {
+    clearRoles: async (guild, user_id) => {
         try {
-            const member = await database.getGuildMemberById(guild_id, user_id);
+            const member = guild.members.find(x => x.id === user_id);
 
             if (!member) {
                 return false;
@@ -1841,9 +1563,9 @@ const database = {
             return false;
         }
     },
-    addRole: async (guild_id, role_id, user_id) => {
+    addRole: async (guild, role_id, user_id) => {
         try {
-            const role = await database.getRoleById(role_id);
+            const role = guild.roles.find(x => x.id === role_id);
 
             if (role == null) {
                 return false;
@@ -1859,7 +1581,7 @@ const database = {
                 return false;
             }
 
-            const member = await database.getGuildMemberById(guild_id, user_id);
+            const member = guild.members.find(x => x.id === user_id);
 
             if (member == null) {
                 return false;
@@ -1899,15 +1621,17 @@ const database = {
             return false;
         }
     },
-    setRoles: async (guild_id, role_ids, user_id) => {
+    setRoles: async (guild, role_ids, user_id) => {
         try {
-            if (!user_id || !guild_id)
+            if (!user_id || !guild.id)
                 return false;
+
+            let guild_id = guild.id;
             
             let roleStr = null;
 
             for (var role of role_ids) {
-                if (await database.getRoleById(role) == null) {
+                if (!guild.roles.find(x => x.id === role)) {
                     continue; //Invalid role
                 }
 
@@ -1930,27 +1654,15 @@ const database = {
             return false;
         }
     },
-    joinGuild: async (user_id, guild_id) => {
+    joinGuild: async (user_id, guild) => {
         try {
-            const guild = await database.getGuildById(guild_id);
-
-            if (guild == null) {
-                return false;
-            }
-
-            const user = await database.getAccountByUserId(user_id);
-
-            if (user == null) {
-                return false;
-            }
-
-            const member = await database.getGuildMemberById(guild_id, user_id);
+            const member = guild.members.find(x => x.id === user_id);
 
             if (member != null) {
                 return false;
             }
 
-            const roles = await database.getGuildRoles(guild_id);
+            const roles = guild.roles;
 
             if (!roles || roles.length == 0) {
                 return false;
@@ -1964,7 +1676,7 @@ const database = {
 
             const date = new Date().toISOString();
 
-            await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [guild_id, user_id, 'NULL', everyone_role.id, date, 0, 0]);
+            await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [guild.id, user_id, 'NULL', everyone_role.id, date, 0, 0]);
 
             return true;
         } catch(error) {
@@ -2042,24 +1754,6 @@ const database = {
     },
     createInvite: async (guild_id, channel_id, inviter_id, temporary, maxUses, maxAge, xkcdpass, force_regenerate) => {
         try {
-            const guild = await database.getGuildById(guild_id);
-
-            if (guild == null) {
-                return null;
-            }
-
-            const channel = await database.getChannelById(channel_id);
-
-            if (channel == null || channel.guild_id != guild.id) {
-                return null;
-            }
-
-            const user = await database.getAccountByUserId(inviter_id);
-
-            if (user == null) {
-                return null;
-            }
-
             let code = "";
 
             if (xkcdpass) {
@@ -2180,13 +1874,15 @@ const database = {
 
             await database.runQuery(`INSERT INTO roles (guild_id, role_id, name, permissions, position) VALUES ($1, $2, $3, $4, $5)`, [guild_id, role_id, name, permissions, position]);
 
-            const role = await database.getRoleById(role_id);
-
-            if (role == null) {
-                return null;
-            }
-
-            return role;
+            return {
+                id: role_id,
+                name: name,
+                permissions: permissions,
+                position: position,
+                color: 0,
+                hoist: false,
+                mentionable: false
+            };
         } catch(error) {
             logText(error, "error");
 
@@ -2195,11 +1891,7 @@ const database = {
     },
     updateRole: async (role_id, name, permissions, position) => {
         try {
-            if (position != null) {
-                await database.runQuery(`UPDATE roles SET name = $1, permissions = $2, position = $3 WHERE role_id = $4`, [name, permissions, position, role_id]);
-            } else {
-                await database.runQuery(`UPDATE roles SET name = $1, permissions = $2 WHERE role_id = $3`, [name, permissions, role_id]);
-            }
+            await database.runQuery(`UPDATE roles SET name = $1, permissions = $2, position = $3 WHERE role_id = $4`, [name, permissions, position, role_id]);
 
             return true;
         } catch(error) {
@@ -2208,9 +1900,9 @@ const database = {
             return false;
         }
     },
-    deleteChannelPermissionOverwrite: async (channel_id, overwrite) => {
+    deleteChannelPermissionOverwrite: async (guild, channel_id, overwrite) => {
         try {
-            let current_overwrites = await database.getChannelPermissionOverwrites(channel_id);
+            let current_overwrites = await database.getChannelPermissionOverwrites(guild, channel_id);
 
             let findOverwrite = current_overwrites.findIndex(x => x.id == overwrite.id);
 
@@ -2224,7 +1916,7 @@ const database = {
 
             await database.runQuery(`
                 UPDATE channels SET permission_overwrites = $1 WHERE id = $2
-                `, [serialized, channel_id]);
+            `, [serialized, channel_id]);
 
             return true;
         } catch (error) {
@@ -2233,9 +1925,9 @@ const database = {
             return false;
         }
     },
-    updateChannelPermissionOverwrites: async (channel_id, overwrites) => {
+    updateChannelPermissionOverwrites: async (guild, channel_id, overwrites) => {
         try {
-            let current_overwrites = await database.getChannelPermissionOverwrites(channel_id);
+            let current_overwrites = await database.getChannelPermissionOverwrites(guild, channel_id);
 
             for(var i = 0; i < overwrites.length; i++) {
                 let overwrite = overwrites[i];
@@ -2252,7 +1944,7 @@ const database = {
 
             await database.runQuery(`
                 UPDATE channels SET permission_overwrites = $1 WHERE id = $2
-                `, [serialized, channel_id]);
+            `, [serialized, channel_id]);
 
             return true;
         } catch(error) {
@@ -2272,6 +1964,7 @@ const database = {
             return false;
         }
     },
+    //to-do: make the following below async and batch
     deleteChannel: async (channel_id) => {
         try {
             await database.runQuery(`DELETE FROM invites WHERE channel_id = $1`, [channel_id]);
@@ -2319,6 +2012,7 @@ const database = {
             return false;
         }
     },
+    //to-do: make the following below async and batch
     deleteGuild: async (guild_id) => {
         try {
             await database.runQuery(`DELETE FROM guilds WHERE id = $1`, [guild_id]);
@@ -2393,8 +2087,6 @@ const database = {
 
             return message;
         } catch(error) {
-            console.log(error);
-
             logText(error, "error");
 
             return null;
@@ -2658,7 +2350,7 @@ const database = {
             if (accounts.length >= 9998 && account.username != new_username) {
                 return false;
             }
-            
+
             if (accounts.find(x => x.discriminator == new_discriminator && x.username == new_username)) {
                 new_discriminator = Math.round(Math.random() * 9999);
 

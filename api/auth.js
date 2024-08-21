@@ -75,20 +75,20 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                     });
                 }
 
-                await global.database.joinGuild(account.id, invite.guild.id);
-
                 let guild = await global.database.getGuildById(invite.guild.id);
                 
                 if (guild) {
+                    await global.database.joinGuild(account.id, guild);
+
                     await global.dispatcher.dispatchEventTo(account.id, "GUILD_CREATE", guild);
 
-                    await global.dispatcher.dispatchEventInGuild(invite.guild.id, "GUILD_MEMBER_ADD", {
+                    await global.dispatcher.dispatchEventInGuild(guild, "GUILD_MEMBER_ADD", {
                         roles: [],
                         user: globalUtils.miniUserObject(account),
                         guild_id: invite.guild.id
                     });
     
-                    await global.dispatcher.dispatchEventInGuild(invite.guild.id, "PRESENCE_UPDATE", {
+                    await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", {
                         game_id: null,
                         status: "online",
                         user: globalUtils.miniUserObject(account),
@@ -115,17 +115,17 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                     });
                 }
 
-                await global.database.joinGuild(account.id, guildId);
+                await global.database.joinGuild(account.id, guild);
 
                 await global.dispatcher.dispatchEventTo(account.id, "GUILD_CREATE", guild);
 
-                await global.dispatcher.dispatchEventInGuild(guildId, "GUILD_MEMBER_ADD", {
+                await global.dispatcher.dispatchEventInGuild(guild, "GUILD_MEMBER_ADD", {
                     roles: [],
                     user: globalUtils.miniUserObject(account),
                     guild_id: guildId
                 });
 
-                await global.dispatcher.dispatchEventInGuild(guildId, "PRESENCE_UPDATE", {
+                await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", {
                     game_id: null,
                     status: "online",
                     user: globalUtils.miniUserObject(account),

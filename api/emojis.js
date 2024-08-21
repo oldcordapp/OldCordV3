@@ -93,7 +93,7 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
             emoji.allNamesString = `:${emoji.name}:`
         }
 
-        await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_EMOJIS_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(guild, "GUILD_EMOJIS_UPDATE", {
             guild_id: guild.id,
             emojis: currentEmojis
         });
@@ -190,7 +190,7 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
             emoji2.allNamesString = `:${emoji.name}:`
         }
 
-        await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_EMOJIS_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(guild, "GUILD_EMOJIS_UPDATE", {
             guild_id: guild.id,
             emojis: currentEmojis
         });
@@ -257,7 +257,7 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
             emoji2.allNamesString = `:${emoji.name}:`
         }
 
-        await global.dispatcher.dispatchEventInGuild(guild.id, "GUILD_EMOJIS_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(guild, "GUILD_EMOJIS_UPDATE", {
             guild_id: guild.id,
             emojis: currentEmojis
         });

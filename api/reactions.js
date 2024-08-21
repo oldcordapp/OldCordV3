@@ -75,7 +75,7 @@ router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"),
             }); 
         }
 
-        await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_REACTION_REMOVE", {
+        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_REACTION_REMOVE", {
             channel_id: channel.id,
             message_id: message.id,
             user_id: account.id,
@@ -169,7 +169,7 @@ router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSA
             }); 
         }
 
-        await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_REACTION_REMOVE", {
+        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_REACTION_REMOVE", {
             channel_id: channel.id,
             message_id: message.id,
             user_id: user.id,
@@ -254,7 +254,7 @@ router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), ra
             }); 
         }
 
-        await global.dispatcher.dispatchEventInChannel(channel.id, "MESSAGE_REACTION_ADD", {
+        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_REACTION_ADD", {
             channel_id: channel.id,
             message_id: message.id,
             user_id: account.id,

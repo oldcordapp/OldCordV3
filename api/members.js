@@ -6,7 +6,7 @@ const { rateLimitMiddleware, guildPermissionsMiddleware } = require('../helpers/
 const router = express.Router({ mergeParams: true });
 
 router.param('memberid', async (req, res, next, memberid) => {
-    req.member = await global.database.getGuildMemberById(req.params.guildid, memberid);
+    req.member = req.guild.members.find(x => x.id === memberid);
 
     next();
 });
@@ -48,7 +48,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
             id: req.params.guildid
         });
 
-        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
+        await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_MEMBER_REMOVE", {
             type: "kick",
             moderator: globalUtils.miniUserObject(sender),
             roles: [],
@@ -67,8 +67,9 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
     }
 });
 
-async function updateMember(member, guild_id, roles, nick) {
+async function updateMember(member, guild, roles, nick) {
     let rolesChanged = false;
+    let guild_id = guild.id;
     if (!roles) {
         //No change
         roles = member.roles;
@@ -104,7 +105,7 @@ async function updateMember(member, guild_id, roles, nick) {
         if (rolesChanged) {
             roles = newRoles;
             
-            if (!await global.database.setRoles(guild_id, roles, member.id)) {
+            if (!await global.database.setRoles(guild, roles, member.id)) {
                 return res.status(500).json({
                     code: 500,
                     message: "Internal Server Error"
@@ -160,7 +161,7 @@ async function updateMember(member, guild_id, roles, nick) {
     };
 
     if (rolesChanged || newMember.nick !== member.nick)
-        await global.dispatcher.dispatchEventInGuild(guild_id, "GUILD_MEMBER_UPDATE", newMember);
+        await global.dispatcher.dispatchEventInGuild(guild, "GUILD_MEMBER_UPDATE", newMember);
     
     return newMember;
 }
@@ -183,7 +184,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
             });
         }
 
-        let newMember = await updateMember(req.member, req.guild.id, req.body.roles, req.body.nick);
+        let newMember = await updateMember(req.member, req.guild, req.body.roles, req.body.nick);
 
         return res.status(200).json({
             user: newMember.user,
@@ -223,9 +224,9 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
             });
         }
         
-        let newMember = await updateMember(member, req.guild.id, null, req.body.nick);
+        let newMember = await updateMember(member, req.guild, null, req.body.nick);
 
-        await global.dispatcher.dispatchEventInGuild(req.guild.id, "GUILD_MEMBER_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_MEMBER_UPDATE", {
             roles: newMember.roles,
             user: newMember.user,
             guild_id: req.guild.id,

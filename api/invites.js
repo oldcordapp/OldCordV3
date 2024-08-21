@@ -56,7 +56,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
             });
         }
 
-        const channel = await global.database.getChannelById(invite.channel.id);
+        const channel = req.guild.channels.find(x => x.id === invite.channel.id);
 
         if (channel == null) {
             return res.status(404).json({
@@ -143,13 +143,13 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(5
 
         await global.dispatcher.dispatchEventTo(sender.id, "GUILD_CREATE", guild);
 
-        await global.dispatcher.dispatchEventInGuild(invite.guild.id, "GUILD_MEMBER_ADD", {
+        await global.dispatcher.dispatchEventInGuild(guild, "GUILD_MEMBER_ADD", {
             roles: [],
             user: globalUtils.miniUserObject(sender),
             guild_id: invite.guild.id
         });
 
-        await global.dispatcher.dispatchEventInGuild(invite.guild.id, "PRESENCE_UPDATE", {
+        await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", {
             game_id: null,
             status: "online",
             user: globalUtils.miniUserObject(sender),

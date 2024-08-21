@@ -6,7 +6,7 @@ const { rateLimitMiddleware, guildPermissionsMiddleware } = require('../helpers/
 const router = express.Router({ mergeParams: true });
 
 router.param('memberid', async (req, res, next, memberid) => {
-    req.member = await global.database.getGuildMemberById(req.params.guildid, memberid);
+    req.member = req.guild.members.find(x => x.id === memberid);
     
     next();
 });
@@ -76,7 +76,7 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
             id: req.params.guildid
         });
 
-        await global.dispatcher.dispatchEventInGuild(req.params.guildid, "GUILD_MEMBER_REMOVE", {
+        await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_MEMBER_REMOVE", {
             type: "ban",
             moderator: globalUtils.miniUserObject(sender),
             user: globalUtils.miniUserObject(member.user),
@@ -109,7 +109,7 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
                         let tryDelete = await global.database.deleteMessage(message.id);
 
                         if (tryDelete) {
-                            await global.dispatcher.dispatchEventInChannel(message.channel_id, "MESSAGE_DELETE", {
+                            await global.dispatcher.dispatchEventInChannel(req.guild, message.channel_id, "MESSAGE_DELETE", {
                                 id: message.id,
                                 guild_id: req.params.guildid,
                                 channel_id: message.channel_id

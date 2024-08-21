@@ -46,14 +46,15 @@ const dispatcher = {
         if (guild == null) return false;
 
         let channel;
+
         if (channel_id) {
-            channel = await global.database.getChannelById(channel_id);
+            channel = guild.channels.find(x => x.id === channel_id);
             
             if (!channel)
                 return false;
         }
 
-        const members = await global.database.getGuildMembers(guild_id);
+        const members = guild.members;
 
         if (members.length == 0) return false;
 
@@ -67,7 +68,7 @@ const dispatcher = {
             for (let z = 0; z < uSessions.length; z++) {
                 let uSession = uSessions[z];
                 
-                if (guild.owner_id != member.id) { //Skip checks if owner
+                if (guild.owner_id != member.id && uSession && uSession.socket) { //Skip checks if owner
                     let guildPermCheck = await global.permissions.hasGuildPermissionTo(guild.id, member.id, permission_check, uSession.socket.client_build);
                     
                     if (!guildPermCheck)
@@ -91,13 +92,7 @@ const dispatcher = {
 
         return true;
     },
-    dispatchEventInGuild: async (guild_id, type, payload) => {
-        const guild = await global.database.getGuildById(guild_id);
-
-        if (guild == null) {
-            return false;
-        }
-
+    dispatchEventInGuild: async (guild, type, payload) => {
         for(let i = 0; i < guild.members.length; i++) {
             let member = guild.members[i];
 
@@ -124,14 +119,12 @@ const dispatcher = {
 
         return true;
     },
-    dispatchEventInChannel: async (channel_id, type, payload) => {
-        const channel = await global.database.getChannelById(channel_id);
+    dispatchEventInChannel: async (guild, channel_id, type, payload) => {
+        if (guild === null) return false;
 
-        if (channel == null || !channel.guild_id) return false;
+        const channel = guild.channels.find(x => x.id === channel_id);
 
-        const guild = await global.database.getGuildById(channel.guild_id);
-
-        if (guild == null) return false;
+        if (channel == null) return false;
 
         for(let i = 0; i < guild.members.length; i++) {
             let member = guild.members[i];
