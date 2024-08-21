@@ -1,6 +1,13 @@
 const express = require('express');
 const { logText } = require('../../helpers/logger');
+const globalUtils = require('../../helpers/globalutils');
 const router = express.Router();
+
+router.param('userid', async (req, _, next, userid) => {
+    req.user = await global.database.getAccountByUserId(userid);
+
+    next();
+});
 
 router.get("/", async (req, res) => {
   try {
@@ -27,10 +34,10 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.put("/:userid", async (req, res) => {
+router.delete("/:userid", async (req, res) => {
     try {
         let account = req.account;
-    
+
         if (!account) {
             return res.status(401).json({
                 code: 401,
@@ -43,195 +50,263 @@ router.put("/:userid", async (req, res) => {
         if (!user) {
             return res.status(404).json({
                 code: 404,
+                message: "Unknown User"
+            });
+        }
+
+        let ourFriends = await global.database.getRelationshipsByUserId(account.id);
+        let theirFriends = await global.database.getRelationshipsByUserId(user.id);
+        let ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
+        let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
+
+        if (!ourRelationshipState) {
+            ourFriends.push({
+                id: user.id,
+                type: 0,
+                user: globalUtils.miniUserObject(user)
+            });
+
+            ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
+        }
+
+        if (!theirRelationshipState) {
+            theirFriends.push({
+                id: account.id,
+                type: 0,
+                user: globalUtils.miniUserObject(account)
+            })
+
+            theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
+        }
+
+        if (ourRelationshipState.type === 1 && theirRelationshipState.type === 1) {
+            // Unfriend scenario
+            ourRelationshipState.type = 0;
+            theirRelationshipState.type = 0;
+
+            await global.database.modifyRelationships(account.id, ourFriends);
+            await global.database.modifyRelationships(user.id, theirFriends);
+
+            await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_REMOVE", {
+                id: user.id
+            });
+
+            await global.dispatcher.dispatchEventTo(user.id, "RELATIONSHIP_REMOVE", {
+                id: account.id
+            });
+
+            return res.status(204).send();
+        } else if (ourRelationshipState.type === 2) {
+            ourRelationshipState.type = 0;
+
+            await global.database.modifyRelationships(account.id, ourFriends);
+
+            await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_REMOVE", {
+                id: user.id
+            });
+
+            return res.status(204).send();
+        } else if (ourRelationshipState.type === 3) {
+            // Declining a friend request
+            ourRelationshipState.type = 0;
+            theirRelationshipState.type = 0;
+
+            await global.database.modifyRelationships(account.id, ourFriends);
+            await global.database.modifyRelationships(user.id, theirFriends);
+
+            await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_REMOVE", {
+                id: user.id
+            });
+
+            return res.status(204).send();
+        } else return res.status(204).send();
+    } catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
+router.put("/:userid", async (req, res) => {
+    try {
+        let account = req.account;
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
                 message: "Unauthorized"
-            }); 
+            });
         }
 
-        let type = req.body;
+        let user = req.user;
 
-        if (JSON.stringify(type) == '{}') {
-            type = "SEND_FR"
-        } else if (type.type == 2) {
-            type = "BLOCK"
+        if (!user) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown User"
+            });
         }
 
-        if (type == 'SEND_FR') {
-            let friend_flags = user.settings.friend_source_flags;
+        let type2 = req.body;
+        let type = "SEND_FR";
 
-            if (friend_flags.all == false && friend_flags.mutual_friends == false && friend_flags.mutual_guilds == false) {
+        let ourFriends = await global.database.getRelationshipsByUserId(account.id);
+        let theirFriends = await global.database.getRelationshipsByUserId(user.id);
+        let ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
+        let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
+
+        console.log(type2);
+        if (JSON.stringify(type2) == '{}') {
+            type = "SEND_FR";
+
+            console.log(ourRelationshipState);
+            if (ourRelationshipState && ourRelationshipState.type == 3) {
+                type = "ACCEPT_FR"
+            }
+        } else if (type2.type == 2) {
+            type = "BLOCK";
+        }
+
+        if (!ourRelationshipState) {
+            ourFriends.push({
+                id: user.id,
+                type: 0,
+                user: globalUtils.miniUserObject(user)
+            });
+
+            ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
+        }
+
+        if (!theirRelationshipState) {
+            theirFriends.push({
+                id: account.id,
+                type: 0,
+                user: globalUtils.miniUserObject(account)
+            })
+
+            theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
+        }
+
+        if (type === "SEND_FR") {
+            if (ourRelationshipState && ourRelationshipState.type === 2) {
                 return res.status(403).json({
                     code: 403,
-                    message: "Missing Permissions"
+                    message: "Failed to send friend request"
                 });
             }
-            
-            let canFrGuilds = false;
-            let canFrFriends = false;
-            let ourFriends = [];
-            let theirFriends = [];
+
+            if (theirRelationshipState && theirRelationshipState.type === 2) {
+                return res.status(403).json({
+                    code: 403,
+                    message: "Failed to send friend request"
+                });
+            }
+
+            if (!user.settings.friend_source_flags) {
+                return res.status(403).json({
+                    code: 403,
+                    message: "Failed to send friend request"
+                });
+            }
+
+            if (!user.settings.friend_source_flags.all && !user.settings.friend_source_flags.mutual_friends && !user.settings.friend_source_flags.mutual_guilds) {
+                return res.status(403).json({
+                    code: 403,
+                    message: "Failed to send friend request"
+                }); 
+            }
+
+            if (!user.settings.friend_source_flags.all) {
+                //to-do: handle mutual_guilds, mutual_friends case
+
+                return res.status(403).json({
+                    code: 403,
+                    message: "Failed to send friend request"
+                }); 
+            } else {
+                ourRelationshipState.type = 4;
+                theirRelationshipState.type = 3;
     
-            if (friend_flags.all == false) {
-                if (friend_flags.mutual_guilds == true) {
-                    let guilds = await global.database.getUsersGuilds(user.id);
+                await global.database.modifyRelationships(account.id, ourFriends);
+                await global.database.modifyRelationships(user.id, theirFriends);
     
-                    canFrGuilds = guilds.length > 0 && guilds.some(guild => guild.members != null && guild.members.length > 0 && guild.members.some(member => member.id === account.id));
-                }
-    
-                if (friend_flags.mutual_friends == true) {
-                    ourFriends = await global.database.getRelationshipsByUserId(account.id);
-                    theirFriends = await global.database.getRelationshipsByUserId(user.id);
-        
-                    let sharedFriends = [];
-                    
-                    if (ourFriends.length > 0 && theirFriends.length > 0) {
-                        let theirFriendsSet = new Set(theirFriends.map(friend => friend.user.id && friend.type == 1));
-                    
-                        for (let ourFriend of ourFriends) {
-                            if (theirFriendsSet.has(ourFriend.user.id) && ourFriend.type == 1) {
-                                sharedFriends.push(ourFriend.user);
-                            }
-                        }
-                    }
-    
-                    canFrFriends = sharedFriends.length > 0;
-                }
-    
-                if (!canFrGuilds && !canFrFriends) {
-                    return res.status(403).json({
-                        code: 403,
-                        message: "Missing Permissions"
-                    });
-                }
-
-                //type 0 for none, 1 for friend, 2 for blocked, 3 for pending incoming, 4 for pending outgoing
-
-                let relationships = ourFriends;
-                let theirRelationships = theirFriends;
-                let hasPreviousFr1 = relationships.find(x => x.id == user.id);
-                let hasPreviousFr2 = relationships.find(y => y.id == account.id);
-
-                if (hasPreviousFr1 && hasPreviousFr1.type == 2) {
-                    return res.status(400).json({
-                        code: 400,
-                        message: "You have this user blocked. Unblock them first before sending a friend request."
-                    });
-                }
-
-                if (hasPreviousFr2 && hasPreviousFr2.type == 2) {
-                    return res.status(403).json({
-                        code: 403,
-                        message: "Missing Permissions"
-                    });
-                }
-
-                if (hasPreviousFr1) {
-                    return res.status(204).send();
-                }
-
-                if (hasPreviousFr2) {
-                    return res.status(204).send();
-                }
-
-                relationships.push({
+                await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_ADD", {
                     id: user.id,
-                    type: 4
+                    type: 4,
+                    user: globalUtils.miniUserObject(user)
                 });
-
-                theirRelationships.push({
+    
+                await global.dispatcher.dispatchEventTo(user.id, "RELATIONSHIP_ADD", {
                     id: account.id,
-                    type: 3
+                    type: 3,
+                    user: globalUtils.miniUserObject(account)
                 });
-    
-                let trySetOutgoing = await global.database.modifyRelationships(account.id, relationships);
-                let trySetIncoming = await global.database.modifyRelationships(user.id, theirRelationships);
-    
-                if (!trySetOutgoing) {
-                    return res.status(500).json({
-                        code: 500,
-                        message: "Internal Server Error"
-                    });
-                }
-    
-                if (!trySetIncoming) {
-                    return res.status(500).json({
-                        code: 500,
-                        message: "Internal Server Error"
-                    });
-                }
     
                 return res.status(204).send();
-            }
-    
-            ourFriends = await global.database.getRelationshipsByUserId(account.id);
-            theirFriends = await global.database.getRelationshipsByUserId(user.id);
+            }   
+        } else if (type === "ACCEPT_FR") {
+            if (ourRelationshipState && ourRelationshipState.type === 3) {
+                ourRelationshipState.type = 1;
+                theirRelationshipState.type = 1;
 
-            let relationships = ourFriends;
-            let theirRelationships = theirFriends;
-            let hasPreviousFr1 = relationships.find(x => x.id == user.id);
-            let hasPreviousFr2 = relationships.find(y => y.id == account.id);
+                await global.database.modifyRelationships(account.id, ourFriends);
+                await global.database.modifyRelationships(user.id, theirFriends);
 
-            if (hasPreviousFr1 && hasPreviousFr1.type == 2) {
+                await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_ADD", {
+                    id: user.id,
+                    type: 1,
+                    user: globalUtils.miniUserObject(user)
+                });
+
+                await global.dispatcher.dispatchEventTo(user.id, "RELATIONSHIP_ADD", {
+                    id: account.id,
+                    type: 1,
+                    user: globalUtils.miniUserObject(account)
+                });
+
+                return res.status(204).send();
+            } else {
                 return res.status(400).json({
                     code: 400,
-                    message: "You have this user blocked. Unblock them first before sending a friend request."
+                    message: "No pending friend request"
+                });
+            }
+        } else if (type === "BLOCK") {
+            ourRelationshipState.type = 2;
+
+            if (theirRelationshipState === 1) {
+                //ex-friend
+
+                theirRelationshipState.type = 0;
+
+                await global.database.modifyRelationships(user.id, theirFriends);
+
+                await global.dispatcher.dispatchEventTo(user.id, "RELATIONSHIP_REMOVE", {
+                    id: account.id
                 });
             }
 
-            if (hasPreviousFr2 && hasPreviousFr2.type == 2) {
-                return res.status(403).json({
-                    code: 403,
-                    message: "Missing Permissions"
-                });
-            }
-
-            if (hasPreviousFr1) {
-                return res.status(204).send();
-            }
-
-            if (hasPreviousFr2) {
-                return res.status(204).send();
-            }
-
-            relationships.push({
+            await global.database.modifyRelationships(account.id, ourFriends);
+            
+            await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_ADD", {
                 id: user.id,
-                type: 4
+                type: 2,
+                user: globalUtils.miniUserObject(user)
             });
 
-            theirRelationships.push({
-                id: account.id,
-                type: 3
-            });
-
-            let trySetOutgoing = await global.database.modifyRelationships(account.id, relationships);
-            let trySetIncoming = await global.database.modifyRelationships(user.id, theirRelationships);
-    
-            if (!trySetOutgoing) {
-                return res.status(500).json({
-                    code: 500,
-                    message: "Internal Server Error"
-                });
-            }
-    
-            if (!trySetIncoming) {
-                return res.status(500).json({
-                    code: 500,
-                    message: "Internal Server Error"
-                });
-            }
-    
-            return res.status(204).send();
-        } else if (type == 'BLOCK') { 
             return res.status(204).send();
         }
-      }
-      catch (error) {
+    } catch (error) {
         logText(error, "error");
-    
+
         return res.status(500).json({
-          code: 500,
-          message: "Internal Server Error"
+            code: 500,
+            message: "Internal Server Error"
         });
-      }
+    }
 });
 
 module.exports = router;

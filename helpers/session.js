@@ -390,12 +390,14 @@ class session {
 
             let connectedAccounts = await global.database.getConnectedAccounts(this.user.id);
             let guildSettings = await global.database.getUsersGuildSettings(this.user.id);
+            
+            this.relationships = await global.database.getRelationshipsByUserId(this.user.id);
 
             this.readyUp({
                 guilds: this.guilds ?? [],
                 presences: this.presences ?? [],
                 private_channels: this.dm_list ?? [],
-                relationships: this.relationships,
+                relationships: this.relationships ?? [],
                 read_state: this.read_states ?? [],
                 tutorial: tutorial,
                 user: {

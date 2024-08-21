@@ -632,11 +632,29 @@ const database = {
                 SELECT * FROM users WHERE id = $1
             `, [user_id]);
 
-            if (rows != null && rows.length > 0) {
-                return JSON.parse(rows[0].relationships) ?? [];
-            } else {
+            if (rows === null || rows.length === 0) {
                 return [];
             }
+
+            let ret = [];
+
+            let contents = JSON.parse(rows[0].relationships);
+            
+            if (contents && contents.length > 0) {
+                for(var relationship of contents) {
+                    let user = await database.getAccountByUserId(relationship.id);
+
+                    if (!user) continue;
+
+                    ret.push({
+                        id: relationship.id,
+                        type: relationship.type,
+                        user: globalUtils.miniUserObject(user)
+                    })
+                }
+
+                return ret;
+            } else return [];
         } catch (error) {
             logText(error, "error");
 
