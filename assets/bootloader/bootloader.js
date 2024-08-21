@@ -286,7 +286,7 @@ function monkeyPatcher() {
             path = new URL(path).pathname;
         }
         
-        //console.log("Patching and executing " + path);
+        console.log("Patching and executing " + path);
         let script = await (await fetch(`${cdn_url}${path}`)).text();
         eval?.(patchJS(script));
         
@@ -321,7 +321,7 @@ function monkeyPatcher() {
     for (let styleUrl of head.matchAll(/<link rel="stylesheet" href="([^"]+)"[^>]*>/g)) {
         let style = await (await fetch(`${cdn_url}${styleUrl[1]}`)).text();
         
-        //console.log("Installing stylesheet " + styleUrl[1]);
+        console.log("Installing stylesheet " + styleUrl[1]);
         let elm = document.createElement("style");
         elm.innerText = patchCSS(style);
         document.head.appendChild(elm);
