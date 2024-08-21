@@ -297,7 +297,7 @@ function monkeyPatcher() {
     let icon = document.getElementById("icon");
     if (icon) {
         let newIcon = head.match(/<link rel="icon" href="([^"]+)"[^>]*>/i);
-        if (newIcon[1])
+        if (newIcon && newIcon[1])
             icon.href = newIcon[1];
     }
 
