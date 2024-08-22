@@ -12,6 +12,7 @@ const invites = require('./invites');
 const channels = require('./channels');
 const connections = require('./connections');
 const admin = require('./admin');
+const webhooks = require('./webhooks');
 
 app.use("/auth", auth);
 app.use("/connections", connections);
@@ -53,6 +54,7 @@ app.use("/voice", voice);
 app.use("/guilds", guilds);
 app.use("/channels", channels);
 app.use("/invite", invites);
+app.use("/webhooks", webhooks);
 
 app.use("/track", (_, res) => {
     return res.status(204).send();

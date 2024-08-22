@@ -5,6 +5,7 @@ const roles = require('./roles');
 const members = require('./members');
 const bans = require('./bans');
 const emojis = require('./emojis');
+
 const { instanceMiddleware, rateLimitMiddleware, guildMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
 
 const router = express.Router();
@@ -566,6 +567,41 @@ router.use("/:guildid/roles", roles);
 router.use("/:guildid/members", members);
 router.use("/:guildid/bans", bans);
 router.use("/:guildid/emojis", emojis);
+
+//too little to make a route for it,
+
+router.get("/:guildid/webhooks", guildMiddleware, guildPermissionsMiddleware("MANAGE_WEBHOOKS"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
+    try {
+        let account = req.account;
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        let guild = req.guild;
+
+        if (!guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });  
+        }
+
+        let webhooks = guild.webhooks;
+
+        return res.status(200).json(webhooks);
+    } catch (error) {
+        logText(error, "error");
+    
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        });
+    }
+});
 
 router.get("/:guildid/regions", (_, res) => {
     return res.status(200).json(globalUtils.getRegions());

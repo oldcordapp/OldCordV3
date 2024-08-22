@@ -159,6 +159,7 @@ const database = {
                 creation_date TEXT,
                 exclusions TEXT DEFAULT '[]',
                 custom_emojis TEXT DEFAULT '[]',
+                webhooks TEXT DEFAULT '[]',
                 flags TEXT DEFAULT '[]',
                 vanity_url TEXT DEFAULT NULL,
                 default_message_notifications INTEGER DEFAULT 0,
@@ -246,6 +247,16 @@ const database = {
                 guild_id TEXT,
                 user_id TEXT
            );`, []);
+
+           await database.runQuery(`CREATE TABLE IF NOT EXISTS webhooks (
+                guild_id TEXT,
+                channel_id TEXT,
+                id TEXT,
+                token TEXT,
+                avatar TEXT DEFAULT NULL,
+                name TEXT DEFAULT 'Captain Hook',
+                creator_id TEXT
+            );`, []);
 
             return true;
         } catch (error) {
@@ -651,6 +662,143 @@ const database = {
             logText(error, "error");
 
             return false;
+        }
+    },
+    updateWebhook: async (webhook_id, channel_id, name, avatar = null) => {
+        try {
+            if (!channel_id) {
+                channel_id = guild.id; //default channel fallback
+            }
+
+            if (!name) {
+                name = "Captain Hook"; //no name fallback
+            }
+
+            avatar = 'NULL';
+
+            if (avatar != null && avatar.includes("data:image/")) {
+                var extension = avatar.split('/')[1].split(';')[0];
+                var imgData = avatar.replace(`data:image/${extension};base64,`, "");
+                var name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                var name_hash = md5(name);
+
+                if (extension == "jpeg") {
+                    extension = "jpg";
+                }
+
+                avatar = name_hash;
+    
+                if (!fs.existsSync(`./user_assets/avatars/${webhook_id}`)) {
+                    fs.mkdirSync(`./user_assets/avatars/${webhook_id}`, { recursive: true });
+                }
+ 
+                fs.writeFileSync(`./user_assets/avatars/${webhook_id}/${name_hash}.${extension}`, imgData, "base64");
+            }
+
+            await database.runQuery(`UPDATE webhooks SET channel_id = $1, name = $2, avatar = $3 WHERE id = $4`, [channel_id, name, avatar, webhook_id]);
+
+            let webhook = await database.getWebhookById(webhook_id);
+
+            if (!webhook) {
+                return false;
+            }
+
+            return webhook;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    deleteWebhook: async (webhook_id) => {
+        try {
+            await database.runQuery(`DELETE FROM webhooks WHERE id = $1`, [webhook_id]);
+           
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    createWebhook: async (guild, user, channel_id, name, avatar) => {
+        try {
+            let webhook_id = Snowflake.generate();
+            let avatarHash = null;
+
+            if (avatar != null && avatar.includes("data:image/")) {
+                var extension = avatar.split('/')[1].split(';')[0];
+                var imgData = avatar.replace(`data:image/${extension};base64,`, "");
+                var name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                var name_hash = md5(name);
+
+                avatarHash = name_hash;
+    
+                if (extension == "jpeg") {
+                    extension = "jpg";
+                }
+
+                if (!fs.existsSync(`./user_assets/avatars/${webhook_id}`)) {
+                    fs.mkdirSync(`./user_assets/avatars/${webhook_id}`, { recursive: true });
+                }
+ 
+                fs.writeFileSync(`./user_assets/avatars/${webhook_id}/${name_hash}.${extension}`, imgData, "base64");
+            }
+
+            let token = globalUtils.generateString(60);
+
+            await database.runQuery(`INSERT INTO webhooks (guild_id, channel_id, id, token, avatar, name, creator_id) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [guild.id, channel_id, webhook_id, token, avatarHash == null ? 'NULL' : avatarHash, name, user.id]);
+            
+            return {
+                application_id: null,
+                id: webhook_id,
+                token: token,
+                avatar: avatarHash,
+                name: name,
+                channel_id: channel_id,
+                guild_id: guild.id,
+                type: 1,
+                user: globalUtils.miniUserObject(user)
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    getWebhookById: async (webhook_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM webhooks WHERE id = $1
+            `, [webhook_id]);
+
+            if (rows != null && rows.length > 0) {
+                let row = rows[0];
+
+                let webhookAuthor = await database.getAccountByUserId(row.creator_id);
+
+                if (!webhookAuthor) {
+                    return null;
+                }
+
+                return {
+                    guild_id: row.guild_id,
+                    channel_id: row.channel_id,
+                    id: row.id,
+                    token: row.token,
+                    avatar: row.avatar == 'NULL' ? null : row.avatar,
+                    name: row.name,
+                    user: globalUtils.miniUserObject(webhookAuthor),
+                    type: 1,
+                    application_id: null
+                };
+            } else {
+                return null;
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
         }
     },
     getConnectedAccounts: async (user_id) => {
@@ -1387,6 +1535,35 @@ const database = {
 
             //#endregion
 
+            //#region Guild Webhooks Logic
+            const webhookRows = await database.runQuery(`
+                SELECT * FROM webhooks WHERE guild_id = $1
+            `, [id]);
+
+            let webhooks = [];
+
+            if (webhookRows !== null) {
+                for (var row of webhookRows) {
+                    let webhookAuthor = await database.getAccountByUserId(row.creator_id);
+
+                    if (!webhookAuthor) continue;
+
+                    webhooks.push({
+                        guild_id: id,
+                        channel_id: row.channel_id,
+                        id: row.id,
+                        token: row.token,
+                        avatar: row.avatar == 'NULL' ? null : row.avatar,
+                        name: row.name,
+                        user: globalUtils.miniUserObject(webhookAuthor),
+                        type: 1,
+                        application_id: null
+                    })
+                }
+            }
+
+            //#endregion
+
             return {
                 id: rows[0].id,
                 name: rows[0].name,
@@ -1400,6 +1577,7 @@ const database = {
                 members: members,
                 roles: roles,
                 emojis: emojis,
+                webhooks: webhooks,
                 presences: presences,
                 voice_states: [],
                 creation_date: rows[0].creation_date,

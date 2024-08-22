@@ -1,6 +1,7 @@
 const express = require('express');
 const { logText } = require('../helpers/logger');
 const messages = require('./messages');
+const webhooks = require("./webhooks");
 const { channelPermissionsMiddleware, rateLimitMiddleware, guildPermissionsMiddleware, channelMiddleware } = require('../helpers/middlewares');
 const globalUtils = require('../helpers/globalutils');
 
@@ -294,6 +295,105 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
 });
 
 router.use("/:channelid/messages", channelMiddleware, messages);
+
+router.get("/:channelid/webhooks", channelMiddleware, channelPermissionsMiddleware("MANAGE_WEBHOOKS"), async (req, res) => {
+    try {
+        let account = req.account;
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        let guild = req.guild;
+
+        if (!guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });  
+        }
+
+        let channel = req.channel;
+        
+        if (!channel) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
+            });  
+        }
+
+        let webhooks = guild.webhooks.filter(x => x.channel_id === req.channel.id);
+
+        return res.status(200).json(webhooks);
+    } catch (error) {
+        logText(error, "error");
+    
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        });
+
+        //updateGuildWebhook:
+    } 
+});
+
+router.post("/:channelid/webhooks",  channelMiddleware, channelPermissionsMiddleware("MANAGE_WEBHOOKS"), async (req, res) => {
+    try {
+        let account = req.account;
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        } 
+
+        let guild = req.guild;
+
+        if (!guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });  
+        }
+
+        let channel = req.channel;
+
+        if (!channel) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
+            });  
+        }
+
+        if (!req.body.name) {
+            req.body.name = "Captain Hook"; //fuck you 
+        }
+
+        let name = req.body.name;
+
+        let webhook = await global.database.createWebhook(guild, account, req.channel.id, name, null);
+
+        if (!webhook) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+
+        return res.status(200).json(webhook);
+    } catch (error) {
+        logText(error, "error");
+    
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        });
+    }
+});
 
 router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMiddleware("MANAGE_ROLES"), async (req, res) => {
     try {
