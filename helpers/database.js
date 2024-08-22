@@ -160,7 +160,7 @@ const database = {
                 exclusions TEXT DEFAULT '[]',
                 custom_emojis TEXT DEFAULT '[]',
                 webhooks TEXT DEFAULT '[]',
-                flags TEXT DEFAULT '[]',
+                features TEXT DEFAULT '[]',
                 vanity_url TEXT DEFAULT NULL,
                 default_message_notifications INTEGER DEFAULT 0,
                 verification_level INTEGER DEFAULT 0
