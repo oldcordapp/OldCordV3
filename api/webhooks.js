@@ -200,8 +200,6 @@ router.post("/:webhookid/:webhooktoken", async (req, res) => {
 
         return res.status(204).send();
     } catch (error) {
-        console.log("error within here?");
-
         logText(error, "error");
     
         return res.status(500).json({
@@ -212,6 +210,8 @@ router.post("/:webhookid/:webhooktoken", async (req, res) => {
 });
 
 router.post("/:webhookid/:webhooktoken/github", async (req, res) => {
+    console.log(req.body);
+    console.log(JSON.stringify(req.body));
     try {
         let webhook = req.webhook;
 
@@ -288,8 +288,6 @@ router.post("/:webhookid/:webhooktoken/github", async (req, res) => {
 
         return res.status(204).send();
     } catch (error) {
-        console.log("error within here?");
-
         logText(error, "error");
     
         return res.status(500).json({

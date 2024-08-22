@@ -16,7 +16,7 @@ router.param('channelid', async (req, res, next, channelid) => {
 
         req.channel = await global.database.getChannelById(channelid); 
 
-        if (!req.guild && req.channel.guild_id != null) {
+        if (!req.guild && req.channel && req.channel.guild_id != null) {
             req.guild = await global.database.getGuildById(req.channel.guild_id);
         } //idk some weird scenario
 

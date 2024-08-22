@@ -362,6 +362,15 @@ const database = {
             `, [user_id]);
 
             let ret = [];
+
+            if (rows == null || rows.length == 0) {
+                return [];
+            }
+
+            if (rows[0].private_channels === 'NULL') {
+                return []; 
+            }
+
             let chans = JSON.parse(rows[0].private_channels);
 
             if (chans && chans.length > 0) {
@@ -1394,7 +1403,7 @@ const database = {
             for (var row of channelRows) {
                 if (!row) continue;
     
-                let overwrites = [];
+                let overwrites = [];    
     
                 if (row.permission_overwrites && row.permission_overwrites.includes(":")) {
                     for (var overwrite of row.permission_overwrites.split(':')) {
@@ -1410,7 +1419,7 @@ const database = {
                         });
                     }
                 } else if (row.permission_overwrites && row.permission_overwrites != "NULL") {
-                    let overwrite = rows[0].permission_overwrites;
+                    let overwrite = row.permission_overwrites;
                     let role_id = overwrite.split('_')[0];
                     let allow_value = overwrite.split('_')[1];
                     let deny_value = overwrite.split('_')[2];
@@ -1589,7 +1598,7 @@ const database = {
                 afk_channel_id: rows[0].afk_channel_id == 'NULL' ? null : rows[0].afk_channel_id,
                 afk_timeout: rows[0].afk_timeout,
                 channels: channels,
-                exclusions: rows[0].exclusions ? JSON.parse(rows[0].exclusions) : [],
+                exclusions: JSON.parse(rows[0].exclusions) ?? [],
                 members: members,
                 roles: roles,
                 emojis: emojis,
@@ -1597,7 +1606,7 @@ const database = {
                 presences: presences,
                 voice_states: [],
                 creation_date: rows[0].creation_date,
-                features: rows[0].features ?? [],
+                features: JSON.parse(rows[0].features) ?? [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
                 verification_level: rows[0].verification_level ?? 0
             }
@@ -2296,16 +2305,12 @@ const database = {
             let author = null;
 
             if (author_id.startsWith("WEBHOOK_")) {
-                console.log('webhook case');
-
                 let webhookId = author_id.split('_')[1];
                 let webhook = await database.getWebhookById(webhookId);
 
                 if (!webhook) {
                     return null;
                 }
-
-                console.log(webhook);
 
                 //webhookProps.avatar_url - todo
 
@@ -2341,8 +2346,6 @@ const database = {
                 embeds = webhook_embeds;   
             }
 
-            console.log('here bro');
-
             await database.runQuery(`INSERT INTO messages (guild_id, message_id, channel_id, author_id, content, edited_timestamp, mention_everyone, nonce, timestamp, tts, embeds) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [
                 guild_id == null ? 'NULL' : guild_id,
                 id,
@@ -2360,8 +2363,6 @@ const database = {
             await database.runQuery(`UPDATE channels SET last_message_id = $1 WHERE id = $2`, [id, channel_id]);
 
             if (attachment != null) {
-                console.log(attachment);
-
                 await database.runQuery(`INSERT INTO attachments (attachment_id, message_id, filename, height, width, size, url) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [
                     attachment.id,
                     id,

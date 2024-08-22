@@ -19,7 +19,7 @@ if (config.gcs_config && config.gcs_config.autoUploadBucket && config.gcs_config
 
 async function clientMiddleware(req, res, next) {
     try {
-        if (req.url.includes("/selector") || req.url.includes("/launch") || req.url.includes("/api/admin")) return next();
+        if (req.url.includes("/selector") || req.url.includes("/launch") || req.url.includes("/api/admin") || req.url.includes("/webhooks")) return next();
 
         let cookies = req.cookies;
 
