@@ -210,9 +210,9 @@ router.post("/:webhookid/:webhooktoken", async (req, res) => {
 });
 
 router.post("/:webhookid/:webhooktoken/github", async (req, res) => {
-    console.log(req.body);
-    console.log(JSON.stringify(req.body));
     try {
+        //console.log(JSON.stringify(req.body)); -- uncomment for github's weird webhook payloads
+    
         let webhook = req.webhook;
 
         if (!webhook) {
@@ -249,14 +249,14 @@ router.post("/:webhookid/:webhooktoken/github", async (req, res) => {
             if (req.body.commits.length == 1) {
                 commit_url = `${req.body.repository.html_url}/commit/${req.body.commits[0].id}`
 
-                description = "[`" + req.body.commits[0].id.slice(0, 7) + "`]" + `(${commit_url}) ${req.body.commits[0].message} - ${req.body.commits[0].author.name}`
+                description = "[`" + req.body.commits[0].id.slice(0, 7) + "`]" + `(${commit_url}) ${req.body.commits[0].message} - ${req.body.commits[0].author.username}`
             } else {
                 commit_url = `${req.body.repository.html_url}/compare/${req.body.commits[0].id.slice(0, 7)}...${req.body.commits[req.body.commits.length - 1].id.slice(0, 7)}`
 
                 for(var commit of req.body.commits) {
                    let c_url = `${req.body.repository.html_url}/commit/${commit.id}`;
 
-                   description += `\n` + "[`" + commit.id.slice(0, 7) + "`]" + `(${c_url}) ${commit.message} - ${commit.author.name}`
+                   description += `\n` + "[`" + commit.id.slice(0, 7) + "`]" + `(${c_url}) ${commit.message} - ${commit.author.username}`
                 }
             }
 
