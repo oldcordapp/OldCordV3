@@ -1598,7 +1598,7 @@ const database = {
                 afk_channel_id: rows[0].afk_channel_id == 'NULL' ? null : rows[0].afk_channel_id,
                 afk_timeout: rows[0].afk_timeout,
                 channels: channels,
-                exclusions: JSON.parse(rows[0].exclusions) ?? [],
+                exclusions: rows[0].exclusions ? JSON.parse(rows[0].exclusions) : [],
                 members: members,
                 roles: roles,
                 emojis: emojis,
@@ -1606,7 +1606,7 @@ const database = {
                 presences: presences,
                 voice_states: [],
                 creation_date: rows[0].creation_date,
-                features: JSON.parse(rows[0].features) ?? [],
+                features: [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
                 verification_level: rows[0].verification_level ?? 0
             }
