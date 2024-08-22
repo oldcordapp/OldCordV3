@@ -923,7 +923,7 @@ const database = {
                 for(var relationship of contents) {
                     let user = await database.getAccountByUserId(relationship.id);
 
-                    if (!user) continue;
+                    if (!user || user.id === user_id) continue;
 
                     ret.push({
                         id: relationship.id,

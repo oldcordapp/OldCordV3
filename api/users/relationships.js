@@ -119,6 +119,20 @@ router.delete("/:userid", async (req, res) => {
             });
 
             return res.status(204).send();
+        } else if (ourRelationshipState.type === 4) {
+            //cancelling outgoing friend request
+
+            ourRelationshipState.type = 0;
+            theirRelationshipState.type = 0;
+
+            await global.database.modifyRelationships(account.id, ourFriends);
+            await global.database.modifyRelationships(user.id, theirFriends);
+
+            await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_REMOVE", {
+                id: user.id
+            });
+
+            return res.status(204).send();
         } else return res.status(204).send();
     } catch (error) {
         logText(error, "error");
@@ -220,10 +234,81 @@ router.put("/:userid", async (req, res) => {
             if (!user.settings.friend_source_flags.all) {
                 //to-do: handle mutual_guilds, mutual_friends case
 
-                return res.status(403).json({
-                    code: 403,
-                    message: "Failed to send friend request"
-                }); 
+                if (user.settings.friend_source_flags.mutual_guilds) {
+                    let ourGuilds = await global.database.getUsersGuilds(account.id);
+
+                    if (!ourGuilds) {
+                        return res.status(403).json({
+                            code: 403,
+                            message: "Failed to send friend request"
+                        }); 
+                    }
+    
+                    let theirGuilds = await global.database.getUsersGuilds(user.id);
+    
+                    if (!theirGuilds) {
+                        return res.status(403).json({
+                            code: 403,
+                            message: "Failed to send friend request"
+                        }); 
+                    }
+
+                    let sharedGuilds = [];
+
+                    for(var ourGuild of ourGuilds) {
+                        for(var theirGuild of theirGuilds) {
+                            if (theirGuild.members.find(x => x.id === account.id) && ourGuild.members.find(x => x.id === account.id)) {
+                                sharedGuilds.push(theirGuild.id);
+                            }
+                        }
+                    }
+
+                    if (sharedGuilds.length === 0) {
+                        return res.status(403).json({
+                            code: 403,
+                            message: "Failed to send friend request"
+                        });  
+                    }
+                }
+                
+                if (user.settings.friend_source_flags.mutual_friends) {
+                    let sharedFriends = [];
+
+                    for (var ourFriend of ourFriends) {
+                        for (var theirFriend of theirFriends) {
+                            if (theirFriend.user.id === ourFriend.user.id && theirFriend.type === 1 && ourFriend.type === 1) {
+                                sharedFriends.push(theirFriend.user);
+                            }
+                        }
+                    }
+
+                    if (sharedFriends.length === 0) {
+                        return res.status(403).json({
+                            code: 403,
+                            message: "Failed to send friend request"
+                        }); 
+                    }
+                }
+
+                ourRelationshipState.type = 4;
+                theirRelationshipState.type = 3;
+    
+                await global.database.modifyRelationships(account.id, ourFriends);
+                await global.database.modifyRelationships(user.id, theirFriends);
+    
+                await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_ADD", {
+                    id: user.id,
+                    type: 4,
+                    user: globalUtils.miniUserObject(user)
+                });
+    
+                await global.dispatcher.dispatchEventTo(user.id, "RELATIONSHIP_ADD", {
+                    id: account.id,
+                    type: 3,
+                    user: globalUtils.miniUserObject(account)
+                });
+    
+                return res.status(204).send();
             } else {
                 ourRelationshipState.type = 4;
                 theirRelationshipState.type = 3;

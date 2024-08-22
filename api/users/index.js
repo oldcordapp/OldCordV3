@@ -434,13 +434,11 @@ router.get("/:userid/relationships", userMiddleware, async (req, res) => {
         let theirFriends = await global.database.getRelationshipsByUserId(user.id);
 
         let sharedFriends = [];
-        
-        if (ourFriends.length > 0 && theirFriends.length > 0) {
-            let theirFriendsSet = new Set(theirFriends.map(friend => friend.user.id && friend.type == 1));
-        
-            for (let ourFriend of ourFriends) {
-                if (theirFriendsSet.has(ourFriend.user.id) && ourFriend.type == 1) {
-                    sharedFriends.push(ourFriend.user);
+
+        for (var ourFriend of ourFriends) {
+            for (var theirFriend of theirFriends) {
+                if (theirFriend.user.id === ourFriend.user.id && theirFriend.type === 1 && ourFriend.type === 1) {
+                    sharedFriends.push(theirFriend.user);
                 }
             }
         }
