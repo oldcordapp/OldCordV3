@@ -566,6 +566,22 @@ const database = {
     },
     getAccountByUserId: async (id) => {
         try {
+            if (id.startsWith("WEBHOOK_")) {
+                let webhookId = id.split('_')[1];
+                let webhook = await database.getWebhookById(webhookId);
+
+                if (!webhook) return null;
+
+                return {
+                    username: webhook.name,
+                    discriminator: "0000",
+                    id: webhookId,
+                    bot: true,
+                    webhook: true,
+                    avatar: null
+                }
+            }
+
             const rows = await database.runQuery(`
                 SELECT * FROM users WHERE id = $1
             `, [id]);
@@ -2272,12 +2288,42 @@ const database = {
             return false;
         }
     },
-    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone) => {
+    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone, webhookProps = null, webhook_embeds = []) => {
         try {
             const id = Snowflake.generate();
             const date = new Date().toISOString();
 
-            const author = await database.getAccountByUserId(author_id);
+            let author = null;
+
+            if (author_id.startsWith("WEBHOOK_")) {
+                console.log('webhook case');
+
+                let webhookId = author_id.split('_')[1];
+                let webhook = await database.getWebhookById(webhookId);
+
+                if (!webhook) {
+                    return null;
+                }
+
+                console.log(webhook);
+
+                //webhookProps.avatar_url - todo
+
+                if (webhookProps == null) {
+                    webhookProps = {
+                        username: webhook.name
+                    }
+                }
+
+                author = {
+                    username: webhookProps.username,
+                    discriminator: "0000",
+                    id: webhookId,
+                    bot: true,
+                    webhook: true,
+                    avatar: null
+                }
+            } else author = await database.getAccountByUserId(author_id);
 
             if (author == null) {
                 return null;
@@ -2290,6 +2336,12 @@ const database = {
             let mentions_everyone = mention_everyone == true ? 1 : 0;
 
             let embeds = await embedder.generateMsgEmbeds(content);
+
+            if (webhook_embeds) {
+                embeds = webhook_embeds;   
+            }
+
+            console.log('here bro');
 
             await database.runQuery(`INSERT INTO messages (guild_id, message_id, channel_id, author_id, content, edited_timestamp, mention_everyone, nonce, timestamp, tts, embeds) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [
                 guild_id == null ? 'NULL' : guild_id,
