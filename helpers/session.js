@@ -347,47 +347,24 @@ class session {
                 ]
             }
 
-            /*
-            let dms = await global.database.getDMChannels(this.user.id);
-            
-            for (var dm of dms) {
-                let closed = await global.database.isDMClosed(dm.id);
+            this.dm_list = await global.database.getPrivateChannels(this.user.id);
 
-                if (closed) {
-                    dms = dms.filter(x => x.id !== dm.id);
-
-                    continue;
+            for(var dm of this.dm_list) {
+                if (dm.open) {
+                    if (year == 2015 || (month <= 8 && year == 2016)) {
+                        if (dm.recipients.length > 1) {
+                            this.dm_list = this.dm_list.filter(x => x.id !== dm.id); //remove group dms on older clients temporarily
+                        } else {
+                            dm.recipient = dm.recipients[0];
+    
+                            delete dm.recipients;
+                         } //also this is like an only user object kinda deal
+                    }
+    
+                    delete dm.open;
                 }
-
-                let correct_id = dm.author_of_channel_id == this.user.id ? dm.receiver_of_channel_id : dm.author_of_channel_id;
-                let user2 = await global.database.getAccountByUserId(correct_id);
-
-                if (user2 == null) {
-                    continue;
-                }
-
-                let dmChannelObj = {
-                    id: dm.id,
-                    type: this.socket.channel_types_are_ints ? 1 : "text",
-                    recipient: globalUtils.miniUserObject(user2),
-                    guild_id: null,
-                    is_private: true,
-                    last_message_id: dm.last_message_id
-                }
-
-                if ((month >= 6 && year == 2016) || year >= 2017) {
-                    dmChannelObj.recipients = [
-                        dmChannelObj.recipient
-                    ];
-
-                    dmChannelObj = globalUtils.sanitizeObject(dmChannelObj, ['recipient', 'is_private']);
-                }
-
-                this.dm_list.push(dmChannelObj);
             }
-            */
-            this.dm_list = [];
-
+            
             let connectedAccounts = await global.database.getConnectedAccounts(this.user.id);
             let guildSettings = await global.database.getUsersGuildSettings(this.user.id);
             

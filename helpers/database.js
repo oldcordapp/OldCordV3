@@ -254,6 +254,137 @@ const database = {
             return false;
         }
     },
+    createPrivateChannel: async (owner_id, to_ids, dont_add_for_them) => {
+        try {
+            await database.runQuery(`INSERT INTO channels (id, type, guild_id, name) VALUES ($1, $2, $3, $4)`, [owner_id, to_ids.length > 1 ? 3 : 1, 'NULL', ''])
+
+            let recipients = [];
+            let owner = await database.getAccountByEmail(owner_id);
+
+            if (!owner) return false;
+
+            for(var to_id of to_ids) {
+                let user = await database.getAccountByUserId(to_id);
+
+                if (!user) continue;
+
+                recipients.push(globalUtils.miniUserObject(user));
+            }
+
+            if (to_ids.length === 1 && !dont_add_for_them) {
+                let priv_channels = await database.getPrivateChannels(to_ids[0]);
+
+                if (!priv_channels || priv_channels.find(x => x.id == owner_id)) return false;
+
+                priv_channels.push({
+                    id: owner_id,
+                    open: false,
+                    recipients: [
+                        globalUtils.miniUserObject(owner)
+                    ]
+                });
+
+                await database.setPrivateChannels(to_ids[0], priv_channels);
+            } else if (!dont_add_for_them) {
+                for(var to_id2 of to_ids) {
+                    let priv_channels = await database.getPrivateChannels(to_id2);
+
+                    if (!priv_channels || priv_channels.find(x => x.id == owner_id)) continue;
+
+                    priv_channels.push({
+                        id: owner_id,
+                        open: false,
+                        recipients: recipients
+                    });
+                }
+            }
+
+            let id = owner_id;
+
+            let ourPrivateChannels = await database.getPrivateChannels(id);
+
+            if (!ourPrivateChannels) return false;
+            
+            ourPrivateChannels.push({
+                id: owner_id,
+                open: true,
+                recipients: recipients
+            });
+
+            await database.setPrivateChannels(id, ourPrivateChannels);
+            
+            return {
+                id: id, //Because we're the owner of the dm channel, the id is ours
+                name: "",
+                guild_id: guild_id,
+                type: to_ids.length > 1 ? 3 : 1,
+                topic: null,
+                last_message_id: "0",
+                permission_overwrites: [],
+                position: 0,
+                is_private: true,
+                recipients: recipients
+            };
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    setPrivateChannels: async (user_id, private_channels) => {
+        try {
+            await database.runQuery(`
+                UPDATE users SET private_channels = $1 WHERE id = $2
+            `, [JSON.stringify(private_channels), user_id]);
+
+            return true;
+        } catch(error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    getPrivateChannels: async (user_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM users WHERE id = $1
+            `, [user_id]);
+
+            let ret = [];
+            let chans = JSON.parse(rows[0].private_channels);
+
+            if (chans && chans.length > 0) {
+                for(var chan of chans) {
+                    let owner_id = chan.id; //guy who made the channel, also the group owner, whatever
+                    let actual_channel = await database.getChannelById(owner_id);
+
+                    if (!actual_channel) continue;
+
+                    let recipients = chan.recipients; //people in the channel, user objects
+
+                    ret.push({
+                        id: owner_id,
+                        name: "",
+                        guild_id: guild_id,
+                        type: to_ids.length > 1 ? 3 : 1,
+                        topic: null,
+                        last_message_id: actual_channel.last_message_id ?? "0",
+                        permission_overwrites: [],
+                        position: 0,
+                        is_private: true,
+                        recipients: recipients,
+                        open: chan.open
+                    });
+                }
+
+                return ret;
+            } else return [];
+        } catch (error) {  
+            logText(error, "error");
+
+            return [];
+        }
+    },
     getLatestAcknowledgement: async (user_id, channel_id) => {
         try {
             const rows = await database.runQuery(`
@@ -903,7 +1034,7 @@ const database = {
                 attachments: messageAttachments,
                 embeds: rows[0].embeds == 'NULL' ? [] : JSON.parse(rows[0].embeds),
                 mentions: mentions,
-                mention_everyone: rows[0].content.includes("@everyone"),
+                mention_everyone: rows[0].mention_everyone,
                 nonce: rows[0].nonce,
                 edited_timestamp: rows[0].edited_timestamp == 'NULL' ? null : rows[0].edited_timestamp,
                 timestamp: rows[0].timestamp,
@@ -1963,7 +2094,7 @@ const database = {
             return false;
         }
     },
-    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts) => {
+    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone) => {
         try {
             const id = Snowflake.generate();
             const date = new Date().toISOString();
@@ -1978,7 +2109,7 @@ const database = {
                 content = "";
             }
 
-            let mentions_everyone = content.includes('@everyone') ? 1 : 0;
+            let mentions_everyone = mention_everyone == true ? 1 : 0;
 
             let embeds = await embedder.generateMsgEmbeds(content);
 
@@ -1999,6 +2130,8 @@ const database = {
             await database.runQuery(`UPDATE channels SET last_message_id = $1 WHERE id = $2`, [id, channel_id]);
 
             if (attachment != null) {
+                console.log(attachment);
+
                 await database.runQuery(`INSERT INTO attachments (attachment_id, message_id, filename, height, width, size, url) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [
                     attachment.id,
                     id,

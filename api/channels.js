@@ -11,67 +11,34 @@ router.param('channelid', async (req, res, next, channelid) => {
     const guild = req.guild;
 
     if (!guild) {
-        //fallback for old system - only dm channels will trigger this
+        //fallback for dm channels & group dms
 
         req.channel = await global.database.getChannelById(channelid); 
-    } else {
-        const channel = req.guild.channels.find(y => y.id === channelid);
 
-        if (channel == null) {
-            //let dmChannel = await global.database.getDMChannelById(channelid);
-    
-            //if (dmChannel == null) {
-                req.channel = null;
-            //} 
-            /*
-            else {
-                let user = req.account;
-    
-                if (user != null) {
-                    if (dmChannel.author_of_channel_id == user.id) {
-                        req.channel = {
-                            id: dmChannel.id,
-                            name: "",
-                            topic: "",
-                            position: 0,
-                            type: req.channel_types_are_ints ? 1 : "text",
-                            recipient: globalUtils.miniUserObject(user),
-                            guild_id: null,
-                            is_private: true,
-                            permission_overwrites: [] 
-                        }
-                    } else {
-                        let dmUser = await global.database.getAccountByUserId(dmChannel.author_of_channel_id);
+        if (!req.guild && req.channel.guild_id != null) {
+            req.guild = await global.database.getGuildById(req.channel.guild_id);
+        } //idk some weird scenario
 
-                        if (dmUser) {
-                            req.channel = {
-                                id: dmChannel.id,
-                                name: "",
-                                topic: "",
-                                position: 0,
-                                type: req.channel_types_are_ints ? 1 : "text",
-                                recipient: globalUtils.miniUserObject(dmUser),
-                                guild_id: null,
-                                is_private: true,
-                                permission_overwrites: [] 
-                            }
-                        }
-                    }
-                } else req.channel = null;
-            }
-            */
-        } else {
-            if (req.channel_types_are_ints) {
-                channel.type = parseInt(channel.type);
-            } else channel.type = parseInt(channel.type) == 2 ? "voice" : "text"
-    
-            req.channel = channel;
-
-            if (!req.guild && req.channel.guild_id != null) {
-                req.guild = await global.database.getGuildById(req.channel.guild_id);
-            }
-        }
+        return next();
     }
+
+    const channel = req.guild.channels.find(y => y.id === channelid);
+
+    if (channel == null) {
+        req.channel = null;
+        
+        return next(); //no channel let's wrap it up - try not to use getChannelById when not necessary
+    }
+
+    if (req.channel_types_are_ints) {
+        channel.type = parseInt(channel.type);
+    } else channel.type = parseInt(channel.type) == 2 ? "voice" : "text"
+    
+    req.channel = channel;
+
+    if (!req.guild && req.channel.guild_id != null) {
+        req.guild = await global.database.getGuildById(req.channel.guild_id);
+    } //just in case there is a guild and it's not resolved yet - for future use
 
     next();
 });
@@ -100,7 +67,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
             });
         }
 
-        if (channel.recipient != null) {
+        if (channel.recipient) { //legacy support
             await global.dispatcher.dispatchEventInDM(typer.id, channel.recipient.id, "TYPING_START", {
                 channel_id: req.params.channelid,
                 guild_id: channel.guild_id,
@@ -110,30 +77,47 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
             })
     
             return res.status(204).send();
-        } else {
-            if (!channel.guild_id) {
-                return res.status(404).json({
-                    code: 404,
-                    message: "Unknown Channel"
-                });
-            }
-
-            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "TYPING_START", {
-                channel_id: req.params.channelid,
-                guild_id: channel.guild_id,
-                user_id: typer.id,
-                timestamp: new Date(),
-                member: {
-                    id: typer.id,
-                    roles: [],
-                    deaf: false,
-                    mute: false,
-                    user: globalUtils.miniUserObject(typer)
-                }
-            })
-
-            return res.status(204).send();
         }
+
+        if (channel.recipients) {
+            if (channel.recipients.length > 1) {
+                //handle group dm
+                return res.status(204).send();
+            } else {
+                await global.dispatcher.dispatchEventInDM(typer.id, channel.recipients[0].id, "TYPING_START", {
+                    channel_id: req.params.channelid,
+                    guild_id: channel.guild_id,
+                    user_id: typer.id,
+                    timestamp: new Date(),
+                    member: null
+                })
+        
+                return res.status(204).send();
+            }
+        }
+
+        if (!channel.guild_id) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
+            });
+        }
+
+        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "TYPING_START", {
+            channel_id: req.params.channelid,
+            guild_id: channel.guild_id,
+            user_id: typer.id,
+            timestamp: new Date(),
+            member: {
+                id: typer.id,
+                roles: [],
+                deaf: false,
+                mute: false,
+                user: globalUtils.miniUserObject(typer)
+            }
+        })
+
+        return res.status(204).send();
       } catch (error) {
         logText(error, "error");
     
@@ -162,6 +146,13 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
                 code: 404,
                 message: "Unknown Channel"
             });
+        }
+
+        if (!channel.guild_id) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
+            }); //Can only modify guild channels lol
         }
 
         if (!req.body.name) {

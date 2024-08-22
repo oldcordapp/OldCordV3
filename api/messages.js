@@ -102,7 +102,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         let finalContent = req.body.content;
 
         if (req.body.mentions && req.body.mentions.length > 0) {
-            const mentions= req.body.mentions;
+            const mentions = req.body.mentions;
             
             for(let mention of mentions) {
                 const user = await global.database.getAccountByUserId(mention);
@@ -115,70 +115,157 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             req.body.content = finalContent;
         }
 
-        if (finalContent && finalContent.includes("@everyone")) {
+        let mention_everyone = false;
+
+        if (finalContent && (finalContent.includes("@everyone") || finalContent.includes("@here"))) {
             let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "MENTION_EVERYONE");
 
-            if (!pCheck) {
-                finalContent = finalContent.replace(/@everyone/g, "");
-            } 
-
-            req.body.content = finalContent;
+            mention_everyone = pCheck;
         }
 
-        if (channel.recipient != null) {
-            const recipient = await global.database.getAccountByUserId(channel.recipient.id);
+        let file_details = null;
+        let file_path = null;
+        let attachment_id = null;
 
-            if (recipient == null || !recipient.token) {
-                return res.status(404).json({
-                    code: 404,
-                    message: "Unknown Channel"
-                });
+        if (req.file) {
+            attachment_id = Snowflake.generate();
+
+            let name = req.file.originalname.split(".")[0];
+            let extension = req.file.originalname.split(".")[1];
+
+            if (req.body.tts === "false") req.body.tts = false;
+            else if (req.body.tts === "true") req.body.tts = true;
+
+            if (req.guild) {
+                if (req.body.tts) {
+                    let canTts = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
+    
+                    req.body.tts = canTts;
+                }
+            } else if (req.body.tts) req.body.tts = false; //how the fuck do you tts here?
+            
+            if (!fs.existsSync(`./user_assets/attachments/${channel.id}`)) {
+                fs.mkdirSync(`./user_assets/attachments/${channel.id}`, { recursive: true });
             }
 
-            if (req.file) {
-                let attachment_id = Snowflake.generate();
-    
-                let name = req.file.originalname.split(".")[0];
-                let extension = req.file.originalname.split(".")[1];
-                let size = req.file.size;
-                
-                if (!fs.existsSync(`./user_assets/attachments/${channel.id}`)) {
-                    fs.mkdirSync(`./user_assets/attachments/${channel.id}`, { recursive: true });
-                }
-    
-                if (!fs.existsSync(`./user_assets/attachments/${channel.id}/${attachment_id}`)) {
-                    fs.mkdirSync(`./user_assets/attachments/${channel.id}/${attachment_id}`, { recursive: true });
-                }
-    
-                fs.writeFileSync(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`, req.file.buffer);
-    
-                sizeOf(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`, async (err, dimensions) => {
-                    const attachment = {
-                        id: attachment_id,
-                        size: size,
-                        width: dimensions?.width,
-                        height: dimensions?.height,
-                        name: `${name}.${extension}`,
-                        extension: extension
-                    };
-    
-                    const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, false);
+            if (!fs.existsSync(`./user_assets/attachments/${channel.id}/${attachment_id}`)) {
+                fs.mkdirSync(`./user_assets/attachments/${channel.id}/${attachment_id}`, { recursive: true });
+            }
 
-                    if (createMessage == null) {
-                        return res.status(500).json({
-                            code: 500,
-                            message: "Internal Server Error"
+            fs.writeFileSync(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`, req.file.buffer);
+
+            file_path = `./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`;
+        }
+
+        if (channel.recipients || channel.recipient) {
+            //handle dm channel case
+
+            let isDM = channel.recipient || channel.recipients.length === 1;
+
+            if (isDM) {
+                let channelId = null;
+
+                if (channel.recipient && channel.recipient.id) {
+                    channelId = channel.recipient.id;
+                } else if (channel.recipients && channel.recipients.length === 1) {
+                    channelId = channel.recipients[0].id;
+                }
+
+                let recipient = await global.database.getAccountByUserId(channelId);
+
+                if (!recipient) {
+                    return res.status(404).json({
+                        code: 404,
+                        message: "Unknown Channel"
+                    });
+                }
+
+                let dmChannelUs = await global.database.getPrivateChannels(creator.id);
+                let dmChannelThem = await global.database.getPrivateChannels(channelId);
+                let dmChannelThey = dmChannelThem.find(x => x.recipients.find(y => y.user.id === creator.id));
+                let dmChannelMe = dmChannelUs.find(x => x.recipients.find(y => y.user.id === channelId));
+
+                if (!dmChannelMe.open) {
+                    dmChannelMe.open = true;
+
+                    await global.database.setPrivateChannels(creator.id, dmChannelUs); //save open state
+
+                    //now this one becomes a bit trickier, because we have to account for the old and new system at the same time
+
+                    let old_system = req.client_build_date.getFullYear() === 2015 || (req.client_build_date.getMonth() <= 8 && req.client_build_date.getFullYear() === 2016);
+
+                    if (old_system) {
+                        dmChannelMe.recipient = dmChannelMe.recipients[0];
+                        
+                        delete dmChannelMe.recipients;
+
+                        await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
+                            id: account.id,
+                            name: "",
+                            topic: "",
+                            position: 0,
+                            type: req.channel_types_are_ints ? 1 : "text",
+                            recipient: dmChannelMe.recipient,
+                            guild_id: null,
+                            is_private: true,
+                            permission_overwrites: []
+                        });
+                    } else {
+                        await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
+                            id: account.id,
+                            name: "",
+                            topic: "",
+                            position: 0,
+                            type: req.channel_types_are_ints ? 1 : "text", //how? but whatever
+                            recipients: dmChannelMe.recipients,
+                            guild_id: null,
+                            is_private: true,
+                            permission_overwrites: []
                         });
                     }
+                }
 
-                    await global.dispatcher.dispatchEventInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
+                if (!dmChannelThey.open) {
+                    dmChannelThey.open = true; //oh yeah baby its open now
 
-                    return res.status(200).json(createMessage);
-                });
-            } else {
-                const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
+                    await global.database.setPrivateChannels(channelId, dmChannelThem);
+
+                    let old_system = req.client_build_date.getFullYear() === 2015 || (req.client_build_date.getMonth() <= 8 && req.client_build_date.getFullYear() === 2016);
+
+                    if (old_system) {
+                        dmChannelThey.recipient = dmChannelThey.recipients[0];
+                        
+                        delete dmChannelThey.recipients;
+
+                        await global.dispatcher.dispatchEventTo(channelId, "CHANNEL_CREATE", {
+                            id: account.id,
+                            name: "",
+                            topic: "",
+                            position: 0,
+                            type: req.channel_types_are_ints ? 1 : "text",
+                            recipient: dmChannelThey.recipient,
+                            guild_id: null,
+                            is_private: true,
+                            permission_overwrites: []
+                        });
+                    } else {
+                        await global.dispatcher.dispatchEventTo(channelId, "CHANNEL_CREATE", {
+                            id: account.id,
+                            name: "",
+                            topic: "",
+                            position: 0,
+                            type: req.channel_types_are_ints ? 1 : "text", //how? but whatever
+                            recipients: dmChannelThey.recipients,
+                            guild_id: null,
+                            is_private: true,
+                            permission_overwrites: []
+                        });
+                    }
+                }
+
+                let createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
     
-                if (createMessage == null) {
+                if (!createMessage) {
                     return res.status(500).json({
                         code: 500,
                         message: "Internal Server Error"
@@ -188,96 +275,53 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 await global.dispatcher.dispatchEventInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
         
                 return res.status(200).json(createMessage);
-            }
-        } else {
-            if (!channel.guild_id) {
-                return res.status(404).json({
-                    code: 404,
-                    message: "Unknown Channel"
-                });
-            }
+            } 
 
-            let canUseEmojis = !req.guild.exclusions.includes("custom_emoji");
+            //handle group dm case, its pretty similar though
 
-            const emojiPattern = /<:[\w-]+:\d+>/g;
+            return res.status(204).send();
+        }
 
-            const hasEmojiFormat = emojiPattern.test(req.body.content);
+        if (!channel.guild_id || !req.guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
+            });
+        }
 
-            if (hasEmojiFormat && !canUseEmojis) {
-                return res.status(400).json({
-                    code: 400,
-                    message: "Custom emojis are disabled in this server due to its maximum support"
-                });
-            }
+        let canUseEmojis = !req.guild.exclusions.includes("custom_emoji");
 
-            if (req.body.tts == true) {
-                let canTts = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
+        const emojiPattern = /<:[\w-]+:\d+>/g;
 
-                if (!canTts) {
-                    req.body.tts = canTts;
-                }
-            }
-    
-            if (req.file) {
-                let attachment_id = Snowflake.generate();
-    
-                let name = req.file.originalname.split(".")[0];
-                let extension = req.file.originalname.split(".")[1];
-                let size = req.file.size;
-    
-                if (!fs.existsSync(`./user_assets/attachments/${channel.id}`)) {
-                    fs.mkdirSync(`./user_assets/attachments/${channel.id}`, { recursive: true });
-                }
-    
-                if (!fs.existsSync(`./user_assets/attachments/${channel.id}/${attachment_id}`)) {
-                    fs.mkdirSync(`./user_assets/attachments/${channel.id}/${attachment_id}`, { recursive: true });
-                }
-    
-                fs.writeFileSync(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`, req.file.buffer);
-                
-                if (!req.body.tts) {
-                    req.body.tts = "false";
-                }
+        const hasEmojiFormat = emojiPattern.test(req.body.content);
 
-                if (req.body.tts == "true") {
-                    let canTts = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
-    
-                    if (!canTts) {
-                        req.body.tts = "false";
-                    }
-                }
+        if (hasEmojiFormat && !canUseEmojis) {
+            return res.status(400).json({
+                code: 400,
+                message: "Custom emojis are disabled in this server due to its maximum support"
+            });
+        }
 
-                sizeOf(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`, async (err, dimensions) => {
-                    const attachment = {
-                        id: attachment_id,
-                        size: size,
-                        width: dimensions?.width,
-                        height: dimensions?.height,
-                        name: `${name}.${extension}`,
-                        extension: extension
-                    };
-    
-                    const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, attachment, req.body.tts == "false" ? false : true);
+        if (req.body.tts === true) {
+            let canTts = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "SEND_TTS_MESSAGES");
 
-                    if (createMessage == null) {
-                        return res.status(500).json({
-                            code: 500,
-                            message: "Internal Server Error"
-                        });
-                    }
-            
-                    await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_CREATE", createMessage);
-            
-                    return res.status(200).json(createMessage);
-                });
-            } else {
-                if (!req.body.tts) {
-                    req.body.tts = false;
-                }
+            req.body.tts = canTts;
+        } else if (!req.body.tts) req.body.tts = false;
 
-                const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
-    
-                if (createMessage == null) {
+        if (file_path != null) {
+            sizeOf(file_path, async (err, dimensions) => {
+                file_details = {
+                    id: attachment_id,
+                    size: req.file.size,
+                    width: dimensions?.width,
+                    height: dimensions?.height,
+                    name: `${req.file.originalname.split(".")[0]}.${req.file.originalname.split(".")[1]}`,
+                    extension: req.file.originalname.split(".")[1]
+                };
+
+                const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, file_details, req.body.tts, ((channel.recipients || channel.recipient) ? false : mention_everyone));
+
+                if (!createMessage) {
                     return res.status(500).json({
                         code: 500,
                         message: "Internal Server Error"
@@ -287,16 +331,27 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_CREATE", createMessage);
         
                 return res.status(200).json(createMessage);
-            }
-        }
-      } catch (error) {
-        console.log(error);
+            });
+        } else {
+            const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, file_details, req.body.tts, ((channel.recipients || channel.recipient) ? false : mention_everyone));
 
+            if (!createMessage) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+
+            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_CREATE", createMessage);
+
+            return res.status(200).json(createMessage);
+        }
+    }  catch (error) {
         logText(error, "error");
-    
+
         return res.status(500).json({
-          code: 500,
-          message: "Internal Server Error"
+            code: 500,
+            message: "Internal Server Error"
         });
     }
 });
