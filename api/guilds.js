@@ -598,4 +598,68 @@ router.get("/:guildid/regions", (_, res) => {
     return res.status(200).json(globalUtils.getRegions());
 });
 
+router.get("/:guildid/vanity-url", guildMiddleware, guildPermissionsMiddleware("ADMINISTRATOR"), async (req, res) => {
+    try {
+        if (!req.guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });  
+        }
+
+        return res.status(200).json({
+            code: req.guild.vanity_url_code
+        });
+    } catch (error) {
+        logText(error, "error");
+    
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        });
+    }
+});
+
+router.patch("/:guildid/vanity-url", guildMiddleware, guildPermissionsMiddleware("ADMINISTRATOR"), async (req, res) => {
+    try {
+        if (!req.guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });  
+        }
+
+        let code = req.body.code;
+
+        if (!code) code = null;
+
+        let tryUpdate = await global.database.updateGuildVanity(req.guild.id, code);
+
+        if (tryUpdate === 0) {
+            return res.status(400).json({
+                code: 400,
+                code: "Vanity URL is taken or invalid."
+            });
+        } else if (tryUpdate === -1) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        } else {
+            req.guild.vanity_url_code = code;
+
+            return res.status(200).json({
+                code: code
+            })
+        }
+    } catch (error) {
+        logText(error, "error");
+    
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        });
+    }
+});
+
 module.exports = router;
