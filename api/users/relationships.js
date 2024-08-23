@@ -520,6 +520,26 @@ router.post("/", async (req, res) => {
             let ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
             let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
 
+            if (!ourRelationshipState) {
+                ourFriends.push({
+                    id: user.id,
+                    type: 0,
+                    user: globalUtils.miniUserObject(user)
+                });
+    
+                ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
+            }
+    
+            if (!theirRelationshipState) {
+                theirFriends.push({
+                    id: account.id,
+                    type: 0,
+                    user: globalUtils.miniUserObject(account)
+                })
+    
+                theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
+            }
+
             if (ourRelationshipState && (ourRelationshipState.type === 2 || ourRelationshipState.type === 1)) {
                 return res.status(403).json({
                     code: 403,

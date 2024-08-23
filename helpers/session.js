@@ -387,7 +387,7 @@ class session {
                 friend_suggestion_count: 0,
                 notes: [],
                 analytics_token: globalUtils.generateString(20),
-                experiments: [],
+                experiments: (month == 3 && year == 2018) ? ["2018-4_april-fools"] : [], //for 2018 clients
                 connected_accounts: connectedAccounts ?? [],
                 guild_experiments: [],
                 user_guild_settings: guildSettings ?? [],
