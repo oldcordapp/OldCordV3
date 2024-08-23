@@ -31,6 +31,7 @@ function patchJS(script) {
     script = script.replaceAll(/discordcdn.com/g, config.base_url); //??? DISCORDCDN.COM?!!11
     script = script.replaceAll(/discord.gg/g, config.custom_invite_url);
     script = script.replaceAll(/discordapp.com/g, config.base_url);
+    script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true"); //april fools force enable @someone experiment
     
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
 
