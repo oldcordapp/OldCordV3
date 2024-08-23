@@ -1624,6 +1624,7 @@ const database = {
                 webhooks: webhooks,
                 presences: presences,
                 voice_states: [],
+                vanity_url_code: rows[0].vanity_url == 'NULL' ? null : rows[0].vanity_url,
                 creation_date: rows[0].creation_date,
                 features: rows[0].features ? JSON.parse(rows[0].features) : [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,

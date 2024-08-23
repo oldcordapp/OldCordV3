@@ -173,7 +173,7 @@ class session {
 
             await global.dispatcher.dispatchEventInGuild(guild, "GUILD_MEMBER_UPDATE", {
                 roles: our_member.roles,
-                user: our_member.user,
+                user: globalUtils.miniUserObject(our_member.user),
                 guild_id: guild.id
             });
 

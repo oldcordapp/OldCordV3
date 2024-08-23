@@ -171,7 +171,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimit
 
         await global.dispatcher.dispatchEventTo(sender.id, "GUILD_BAN_REMOVE", {
             guild_id: req.params.guildid,
-            user: ban.user,
+            user: globalUtils.miniUserObject(ban.user),
             roles: []
         });
 

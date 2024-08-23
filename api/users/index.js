@@ -394,7 +394,7 @@ router.get("/:userid/profile", userMiddleware, async (req, res) => {
 
         connectedAccounts.forEach(x => x = globalUtils.sanitizeObject(x, ['integrations', 'revoked', 'visibility']));
 
-        ret.user = user;
+        ret.user = globalUtils.miniUserObject(user);
         ret.connected_accounts = connectedAccounts;
         ret.premium_since = new Date();
 

@@ -155,7 +155,7 @@ async function updateMember(member, guild, roles, nick) {
 
     let newMember = {
         roles: roles,
-        user: member.user,
+        user: globalUtils.miniUserObject(member.user),
         guild_id: guild_id,
         nick: nick
     };
@@ -187,7 +187,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
         let newMember = await updateMember(req.member, req.guild, req.body.roles, req.body.nick);
 
         return res.status(200).json({
-            user: newMember.user,
+            user: globalUtils.miniUserObject(newMember.user),
             nick: newMember.nick,
             guild_id: req.guild.id,
             roles: newMember.roles,
@@ -228,7 +228,7 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
 
         await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_MEMBER_UPDATE", {
             roles: newMember.roles,
-            user: newMember.user,
+            user: globalUtils.miniUserObject(newMember.user),
             guild_id: req.guild.id,
             nick: newMember.nick
         });
