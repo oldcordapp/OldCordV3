@@ -330,6 +330,20 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         
                 await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_CREATE", createMessage);
         
+                let tryAck = await global.database.acknowledgeMessage(creator.id, channel.id, createMessage.id, 0);
+
+                if (!tryAck) {
+                    return res.status(500).json({
+                        code: 500,
+                        message: "Internal Server Error"
+                    });
+                }
+    
+                await global.dispatcher.dispatchEventTo(creator.id, "MESSAGE_ACK", {
+                    channel_id: channel.id,
+                    message_id: createMessage.id
+                });
+                
                 return res.status(200).json(createMessage);
             });
         } else {
@@ -344,6 +358,20 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
 
             await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_CREATE", createMessage);
 
+            let tryAck = await global.database.acknowledgeMessage(creator.id, channel.id, createMessage.id, 0);
+
+            if (!tryAck) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+
+            await global.dispatcher.dispatchEventTo(creator.id, "MESSAGE_ACK", {
+                channel_id: channel.id,
+                message_id: createMessage.id
+            });
+        
             return res.status(200).json(createMessage);
         }
     }  catch (error) {

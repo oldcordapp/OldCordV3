@@ -1625,7 +1625,7 @@ const database = {
                 presences: presences,
                 voice_states: [],
                 creation_date: rows[0].creation_date,
-                features: [],
+                features: rows[0].features ? JSON.parse(rows[0].features) : [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
                 verification_level: rows[0].verification_level ?? 0
             }
