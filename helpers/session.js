@@ -57,7 +57,7 @@ class session {
 
         this.timeout = setTimeout(this.terminate.bind(this), SESSION_TIMEOUT);
     }
-    async updatePresence(status, game_id = null) {
+    async updatePresence(status, game_id = null, save_presence = true) {
         try {
             if (status == this.presence.status) return;
 
@@ -71,7 +71,7 @@ class session {
 
             if (!valid_status.includes(status.toLowerCase())) return;
 
-            if (status.toLowerCase() != "offline") {
+            if (status.toLowerCase() != "offline" && save_presence) {
                 this.user.settings.status = status.toLowerCase();
 
                 await global.database.updateSettings(this.user.id, this.user.settings);
@@ -283,6 +283,8 @@ class session {
         this.dispatch("RESUMED", {
             __trace: ['oldcordv3']
         });
+
+        this.updatePresence("online", null, false);
     }
     async prepareReady() {
         try {
