@@ -66,7 +66,7 @@ router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"),
             dispatch_name = encoded;
         }
 
-        let tryUnReact = await global.database.removeMessageReaction(message.id, account.id, id, dispatch_name);
+        let tryUnReact = await global.database.removeMessageReaction(message, account.id, id, dispatch_name);
 
         if (!tryUnReact) {
             return res.status(500).json({
@@ -160,7 +160,7 @@ router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSA
             dispatch_name = encoded;
         }
 
-        let tryUnReact = await global.database.removeMessageReaction(message.id, user.id, id, dispatch_name);
+        let tryUnReact = await global.database.removeMessageReaction(message, user.id, id, dispatch_name);
 
         if (!tryUnReact) {
             return res.status(500).json({
@@ -245,7 +245,7 @@ router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), ra
             dispatch_name = encoded;
         }
 
-        let tryReact = await global.database.addMessageReaction(message.id, account.id, id, encoded);
+        let tryReact = await global.database.addMessageReaction(message, account.id, id, encoded);
 
         if (!tryReact) {
             return res.status(500).json({

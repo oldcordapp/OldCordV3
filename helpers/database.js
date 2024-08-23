@@ -1019,9 +1019,9 @@ const database = {
             return [];
         }
     },
-    addMessageReaction: async (message_id, user_id, emoji_id, emoji_name) => {
+    addMessageReaction: async (message, user_id, emoji_id, emoji_name) => {
         try {
-            let reactions = await database.getMessageReactions(message_id);
+            let reactions = message.reactions;
 
             if (reactions.find(x => x.user_id == user_id && x.emoji.id == emoji_id && x.emoji.name == emoji_name)) {
                 reactions = reactions.filter(x => !(x.user_id == user_id && x.emoji.id === emoji_id && x.emoji.name === emoji_name));
@@ -1038,22 +1038,22 @@ const database = {
             await database.runQuery(`UPDATE messages SET reactions = $1 WHERE message_id = $2`, [JSON.stringify(reactions), message_id]);
 
             return true;
-        } catch {
+        } catch (error) {
             logText(error, "error");
 
             return false;
         }
     },
-    removeMessageReaction: async (message_id, user_id, emoji_id, emoji_name) => {
+    removeMessageReaction: async (message, user_id, emoji_id, emoji_name) => {
         try {
-            let reactions = await database.getMessageReactions(message_id);
+            let reactions = message.reactions;
 
             reactions = reactions.filter(x => !(x.user_id == user_id && x.emoji.id === emoji_id && x.emoji.name === emoji_name));
 
             await database.runQuery(`UPDATE messages SET reactions = $1 WHERE message_id = $2`, [JSON.stringify(reactions), message_id]);
 
             return true;
-        } catch {
+        } catch (error) {
             logText(error, "error");
 
             return false;

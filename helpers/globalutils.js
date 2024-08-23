@@ -206,7 +206,8 @@ const globalUtils = {
             flags: rows[0].flags ?? 0,
             bot: rows[0].bot == 1 ? true : false,
             created_at: rows[0].created_at,
-            settings: JSON.parse(rows[0].settings)
+            settings: JSON.parse(rows[0].settings),
+            claimed: true
         };
 
         if (rows[0].disabled_until != 'NULL') {
