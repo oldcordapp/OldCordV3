@@ -1505,14 +1505,14 @@ const database = {
                     const db_roles = row.roles.split(':');
 
                     for (var db_role of db_roles) {
-                        if (!roles.find(x => x.id === db_role)) continue;
-
-                        member_roles.push(db_role);
+                        if (roles.find(x => x.id === db_role)) {
+                            member_roles.push(db_role);
+                        }
                     }
                 } else {
-                    if (!roles.find(x => x.id === row.roles)) continue;
-
-                    member_roles.push(row.roles);
+                    if (roles.find(x => x.id === row.roles)) {
+                        member_roles.push(row.roles);
+                    }
                 }
 
                 const user = await database.getAccountByUserId(row.user_id);
@@ -1523,7 +1523,7 @@ const database = {
 
                 let everyoneRole = roles.find(x => x.name == '@everyone');
 
-                if (everyoneRole != null && !roles.includes(everyoneRole.id)) {
+                if (everyoneRole != null && !member_roles.includes(everyoneRole.id)) {
                     member_roles.push(everyoneRole.id);
                 }
 
@@ -2129,34 +2129,6 @@ const database = {
             return null;
         }
     },
-    getDMChannels: async (user_id) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM dm_channels WHERE author_of_channel_id = $1 OR receiver_of_channel_id = $2
-            `, [user_id, user_id]);
-
-            if (rows != null && rows.length > 0) {
-                const ret = [];
-
-                for(var row of rows) {
-                    ret.push({
-                        id: row.id,
-                        last_message_id: row.last_message_id,
-                        author_of_channel_id: row.author_of_channel_id,
-                        receiver_of_channel_id: row.receiver_of_channel_id,
-                        is_closed: row.is_closed == 1 ? true : false
-                    });
-                }
-
-                return ret;
-            } else {
-                return [];
-            }
-        } catch (error) {
-            logText(error, "error");
-            return [];
-        }
-    },
     updateSettings: async (user_id, new_settings) => {
         try {
             await database.runQuery(`
@@ -2553,14 +2525,14 @@ const database = {
                     const db_roles = row.roles.split(':');
 
                     for (var db_role of db_roles) {
-                        if (!roles.find(x => x.id === db_role)) continue;
-
-                        member_roles.push(db_role);
+                        if (roles.find(x => x.id === db_role)) {
+                            member_roles.push(db_role);
+                        }
                     }
                 } else {
-                    if (!roles.find(x => x.id === row.roles)) continue;
-
-                    member_roles.push(row.roles);
+                    if (roles.find(x => x.id === row.roles)) {
+                        member_roles.push(row.roles);
+                    }
                 }
 
                 const user = await database.getAccountByUserId(row.user_id);
@@ -2571,7 +2543,7 @@ const database = {
 
                 let everyoneRole = roles.find(x => x.name == '@everyone');
 
-                if (everyoneRole != null && !roles.includes(everyoneRole.id)) {
+                if (everyoneRole != null && !member_roles.includes(everyoneRole.id)) {
                     member_roles.push(everyoneRole.id);
                 }
 
