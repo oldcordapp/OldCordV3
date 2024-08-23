@@ -1498,15 +1498,21 @@ const database = {
             let members = [];
 
             for (var row of memberRows) {
-                const roles = [];
+                const member_roles = [];
 
                 if (row.roles.includes(':')) {
                     const db_roles = row.roles.split(':');
 
                     for (var db_role of db_roles) {
-                        roles.push(db_role);
+                        if (!roles.find(x => x.id === db_role)) continue;
+
+                        member_roles.push(db_role);
                     }
-                } else roles.push(row.roles);
+                } else {
+                    if (!roles.find(x => x.id === row.roles)) continue;
+
+                    member_roles.push(row.roles);
+                }
 
                 const user = await database.getAccountByUserId(row.user_id);
 
@@ -1517,7 +1523,7 @@ const database = {
                 let everyoneRole = roles.find(x => x.name == '@everyone');
 
                 if (everyoneRole != null && !roles.includes(everyoneRole.id)) {
-                    roles.push(everyoneRole.id);
+                    member_roles.push(everyoneRole.id);
                 }
 
                 members.push({
@@ -1525,7 +1531,7 @@ const database = {
                     nick: row.nick == 'NULL' ? null : row.nick,
                     deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                     mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
-                    roles: roles,
+                    roles: member_roles,
                     user: globalUtils.miniUserObject(user)
                 })
             }
@@ -1554,7 +1560,7 @@ const database = {
 
                 if (global.userSessions.size === 0 || !sessions) {
                     presences.push({                             
-                        game: null,
+                        game_id: null,
                         status: 'offline',
                         user: globalUtils.miniUserObject(member.user)
                     });
@@ -1563,7 +1569,7 @@ const database = {
     
                     if (!session.presence) {
                         presences.push({                             
-                            game: null,
+                            game_id: null,
                             status: 'offline',
                             user: globalUtils.miniUserObject(member.user)
                         });
@@ -2507,7 +2513,7 @@ const database = {
                     user: globalUtils.miniUserObject(owner)
                 }],
                 presences: [{
-                    game: null,
+                    game_id: null,
                     status: "online",
                     user: globalUtils.miniUserObject(owner),
                 }],

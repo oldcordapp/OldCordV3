@@ -298,14 +298,8 @@ class session {
 
                 for(var presence of guild_presences) {
                     this.presences.push({
-                        guild_id: guild.id,
                         game_id: null,
-                        user: {
-                            avatar: presence.user.avatar,
-                            discriminator: presence.user.discriminator,
-                            id: presence.user.id,
-                            username: presence.user.username
-                        },
+                        user: globalUtils.miniUserObject(presence.user),
                         status: presence.status
                     })
                 }
