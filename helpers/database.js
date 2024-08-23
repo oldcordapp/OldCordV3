@@ -1035,7 +1035,7 @@ const database = {
                 }
             });
 
-            await database.runQuery(`UPDATE messages SET reactions = $1 WHERE message_id = $2`, [JSON.stringify(reactions), message_id]);
+            await database.runQuery(`UPDATE messages SET reactions = $1 WHERE message_id = $2`, [JSON.stringify(reactions), message.id]);
 
             return true;
         } catch (error) {
@@ -1050,7 +1050,7 @@ const database = {
 
             reactions = reactions.filter(x => !(x.user_id == user_id && x.emoji.id === emoji_id && x.emoji.name === emoji_name));
 
-            await database.runQuery(`UPDATE messages SET reactions = $1 WHERE message_id = $2`, [JSON.stringify(reactions), message_id]);
+            await database.runQuery(`UPDATE messages SET reactions = $1 WHERE message_id = $2`, [JSON.stringify(reactions), message.id]);
 
             return true;
         } catch (error) {
