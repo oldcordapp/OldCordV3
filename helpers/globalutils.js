@@ -224,7 +224,8 @@ const globalUtils = {
             discriminator: user.discriminator,
             id: user.id,
             avatar: user.avatar,
-            bot: user.bot
+            bot: user.bot,
+            flags: user.flags
         };
     }
 };
