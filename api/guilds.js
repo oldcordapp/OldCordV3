@@ -631,7 +631,9 @@ router.patch("/:guildid/vanity-url", guildMiddleware, guildPermissionsMiddleware
 
         let code = req.body.code;
 
-        if (!code || code === "") code = null;
+        if (!code || code === "") {
+            code = null;
+        }
 
         let tryUpdate = await global.database.updateGuildVanity(req.guild.id, code);
 

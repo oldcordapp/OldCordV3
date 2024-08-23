@@ -2668,7 +2668,7 @@ const database = {
 
             let checkGuild = await database.getGuildByVanity(send_vanity);
 
-            if (checkGuild != null) {
+            if (checkGuild != null && vanity_url != null) {
                 return 0; //taken
             }
 
