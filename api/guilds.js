@@ -315,7 +315,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             return res.status(200).json(what);
         }
 
-        const update = await global.database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.name, req.body.default_message_notifications, req.body.verification_level);
+        const update = await global.database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.splash, req.body.name, req.body.default_message_notifications, req.body.verification_level);
 
         if (!update) {
             return res.status(500).json({
@@ -572,15 +572,6 @@ router.use("/:guildid/emojis", emojis);
 
 router.get("/:guildid/webhooks", guildMiddleware, guildPermissionsMiddleware("MANAGE_WEBHOOKS"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
     try {
-        let account = req.account;
-
-        if (!account) {
-            return res.status(401).json({
-                code: 401,
-                message: "Unauthorized"
-            });
-        }
-
         let guild = req.guild;
 
         if (!guild) {

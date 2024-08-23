@@ -152,6 +152,7 @@ const database = {
                 id TEXT PRIMARY KEY,
                 name TEXT,
                 icon TEXT DEFAULT NULL,
+                splash TEXT DEFAULT NULL,
                 region TEXT DEFAULT NULL,
                 owner_id TEXT,
                 afk_channel_id TEXT,
@@ -1612,6 +1613,7 @@ const database = {
                 id: rows[0].id,
                 name: rows[0].name,
                 icon: rows[0].icon == 'NULL' ? null : rows[0].icon,
+                splash: rows[0].splash == 'NULL' ? null : rows[0].splash,
                 region: rows[0].region,
                 owner_id: rows[0].owner_id,
                 afk_channel_id: rows[0].afk_channel_id == 'NULL' ? null : rows[0].afk_channel_id,
@@ -1761,6 +1763,7 @@ const database = {
                     id: guild.id,
                     name: guild.name,
                     icon: guild.icon,
+                    splash: guild.splash,
                     owner_id: guild.owner_id
                 },
                 channel: {
@@ -2407,9 +2410,10 @@ const database = {
             return null;
         }
     },
-    updateGuild: async (guild_id, afk_channel_id, afk_timeout, icon, name, default_message_notifications, verification_level) => {
+    updateGuild: async (guild_id, afk_channel_id, afk_timeout, icon, splash, name, default_message_notifications, verification_level) => {
         try {
             let send_icon  = 'NULL';
+            let send_splash = 'NULL';
 
             if (icon != null) {
                 if (icon.includes("data:image")) {
@@ -2440,7 +2444,36 @@ const database = {
                 }
             }
 
-            await database.runQuery(`UPDATE guilds SET name = $1, icon = $2, afk_channel_id = $3, afk_timeout = $4, default_message_notifications = $5, verification_level = $6 WHERE id = $7`, [name, send_icon, (afk_channel_id == null ? 'NULL' : afk_channel_id), afk_timeout, default_message_notifications, verification_level, guild_id]);
+            if (splash != null) {
+                if (splash.includes("data:image")) {
+                    var extension = splash.split('/')[1].split(';')[0];
+                    var imgData = splash.replace(`data:image/${extension};base64,`, "");
+                    var file_name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var hash = md5(file_name);
+            
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+            
+                    send_splash = hash.toString();
+            
+                    if (!fs.existsSync(`user_assets/splashes`)) {
+                        fs.mkdirSync(`user_assets/splashes`, { recursive: true });
+                    }
+    
+                    if (!fs.existsSync(`user_assets/splashes/${guild_id}`)) {
+                        fs.mkdirSync(`user_assets/splashes/${guild_id}`, { recursive: true });
+            
+                        fs.writeFileSync(`user_assets/splashes/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                    } else {
+                        fs.writeFileSync(`user_assets/splashes/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                    }
+                } else {
+                    send_splash = splash;
+                }
+            }
+
+            await database.runQuery(`UPDATE guilds SET name = $1, icon = $2, splash = $3, afk_channel_id = $4, afk_timeout = $5, default_message_notifications = $6, verification_level = $7 WHERE id = $8`, [name, send_icon, send_splash, (afk_channel_id == null ? 'NULL' : afk_channel_id), afk_timeout, default_message_notifications, verification_level, guild_id]);
 
             return true;
         } catch(error) {
@@ -2519,6 +2552,7 @@ const database = {
                     user: globalUtils.miniUserObject(owner),
                 }],
                 icon: icon,
+                splash: null,
                 id: id,
                 name: name,
                 owner_id: owner_id,
