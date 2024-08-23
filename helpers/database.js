@@ -101,7 +101,7 @@ const database = {
                 relationships TEXT DEFAULT '[]',
                 flags INTEGER DEFAULT 0,
                 private_channels TEXT DEFAULT '[]',
-                settings TEXT DEFAULT '{"show_current_game":false,"inline_attachment_media":true,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"online"}',
+                settings TEXT DEFAULT '{"show_current_game":false,"inline_attachment_media":true,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"allow_email_friend_request":false,"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"online"}',
                 guild_settings TEXT DEFAULT '[]',
                 disabled_until TEXT DEFAULT NULL,
                 disabled_reason TEXT DEFAULT NULL
@@ -509,6 +509,19 @@ const database = {
             const rows = await database.runQuery(`
                 SELECT * FROM users WHERE token = $1
             `, [token]);
+
+            return globalUtils.prepareAccountObject(rows); 
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    getAccountByUsernameTag: async (username, discriminator) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM users WHERE username = $1 AND discriminator = $2
+            `, [username, discriminator]);
 
             return globalUtils.prepareAccountObject(rows); 
         } catch (error) {
