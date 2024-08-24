@@ -6,6 +6,7 @@ const { createServer } = require('http');
 const https = require('https');
 const { logText } = require('./helpers/logger');
 const database = require('./helpers/database');
+const desktop = require('./api/desktop');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const globalUtils = require('./helpers/globalutils');
@@ -14,9 +15,6 @@ const router = require('./api/index');
 const Jimp = require('jimp');
 const dispatcher = require('./helpers/dispatcher');
 const permissions = require('./helpers/permissions');
-const modules = require('./api/modules');
-const download = require('./api/download');
-const updates = require('./api/updates');
 const config = globalUtils.config;
 const app = express();
 
@@ -243,19 +241,7 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 app.use("/assets/:asset", assetsMiddleware);
 
-/* Modern Desktop Client Stuff - START 
- - Credits to deskehs for their work on this
-*/
-
-app.use("/api/updates", updates);
-
-app.use("/api/modules", modules);
-
-app.use("/download", download);
-
-app.use("/api/download", download);
-
-/* Modern Desktop Client Stuff - END */
+app.use(desktop);
 
 app.use(clientMiddleware);
 

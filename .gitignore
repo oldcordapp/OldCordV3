@@ -5,3 +5,5 @@ package.json
 user_assets
 assets/*.*
 assets/clients
+assets/distributions
+assets/distributions/cache

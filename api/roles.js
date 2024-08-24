@@ -50,31 +50,26 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
             });
         }
 
-        if (!req.body.permissions) {
-            req.body.permissions = 0;
-        }
+        req.body.permissions = req.body.permissions ?? role.permissions;
+        req.body.color = req.body.color ?? role.color;
+        req.body.hoist = req.body.hoist ?? role.hoist;
+        req.body.mentionable = req.body.mentionable ?? role.mentionable;
+        req.body.name = req.body.name || "new role";
+        req.body.position = req.body.position ?? role.position;
 
-        if (!req.body.color) {
-            req.body.color = 0;
-        }
-
-        if (!req.body.hoist) {
-            req.body.hoist = false;
-        }
-
-        if (!req.body.mentionable) {
-            req.body.mentionable = false;
-        }
-
-        if (!req.body.name) {
-            req.body.name = "new role";
-        }
-
-        const attempt = await global.database.updateRole(req.params.roleid, req.body.name, req.body.color, req.body.hoist, req.body.permissions, req.body.position ? req.body.position : role.position);
+        const attempt = await global.database.updateRole(
+            req.params.roleid,
+            req.body.name,
+            req.body.color,
+            req.body.hoist,
+            req.body.mentionable,
+            req.body.permissions,
+            req.body.position
+        );
 
         if (attempt) {
             role.name = req.body.name;
-            role.permissions = req.body.permissions;
+            role.permissions = req.body.permissions ?? 0;
             role.position = req.body.position ?? role.position;
             
             await global.dispatcher.dispatchEventTo(sender.id, "GUILD_ROLE_UPDATE", {
