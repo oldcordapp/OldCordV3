@@ -1,7 +1,7 @@
 .auth-copyright::after {
 	font-weight: bold;
 	font-size: 12px;
-	content: " This is not official Discord. Oldcord is a revival project of Old Discord and is not affiliated or endorsed by Discord. Do not login with your discord account."
+	content: " This is not official Discord. Oldcord is an old Discord revival project and is not affiliated or endorsed by Discord, Inc. Do not login with your Discord account."
 }
 .auth-inner .auth-logo {
 	width: 168px !important;
