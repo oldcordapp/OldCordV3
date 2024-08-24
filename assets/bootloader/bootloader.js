@@ -47,6 +47,9 @@ function patchJS(script) {
     script = script.replaceAll(/isEmojiDisabled:function\([^)]*\){/g, "$&return false;");
     script = script.replaceAll(/=t.invalidEmojis/g, "=[]");
     
+    script = script.replaceAll(/track:function\([^)]*\){/g, "$&return;");
+    script = script.replaceAll(/(function .+\(e\)){.*post\({.*url:\w\.Endpoints\.TRACK.*}\)}/g, "$1{}");
+    
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
 
     script = script.replaceAll("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
@@ -142,18 +145,6 @@ function monkeyPatcher() {
     };
 
     //Patches
-    (function() {
-        if (completedPatches.disableTelemetry)
-            return;
-        
-        const mod = findByProps("track");
-        if (mod && mod.track) {
-            console.log("Disabling telemetry");
-            completedPatches.disableTelemetry = true;
-            mod.track = () => {};
-        }
-    })();
-
     (function() {
         const messageModules = findByPropsAll('Messages');
         for (const module of messageModules) {
