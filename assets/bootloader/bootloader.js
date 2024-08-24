@@ -82,87 +82,6 @@ function patchCSS(css) {
     return css;
 }
 
-const completedPatches = {};
-let patcherLock = 0;
-function monkeyPatcher() {
-    if (patcherLock != 0)
-        return;
-
-    patcherLock++;
-
-    if (patcherLock != 1) {
-        patcherLock--;
-        setTimeout(monkeyPatcher, 10);
-        return;
-    }
-
-    if (!window.webpackJsonp)
-        return; //Ran too early
-
-    patcherBusy = true;
-
-    window.wpRequire ??= webpackJsonp([], [(module, exports, require) => { module.exports = require; }]);
-    window.wpRequire ??= webpackJsonp([], {"monkeypatch": (module, exports, require) => { module.exports = require; }}, [["monkeypatch"]]);
-    if (!window.wpRequire) {
-        throw "Failed to patch: Couldn't get webpack require()";
-    }
-
-    const modules = window.wpRequire.c;
-    if (!modules) {
-        console.error("Couldn't get webpack modules cache. Some patches may fail.");
-    }
-
-    function propsFilter(props, module) {
-        return props.every ? props.every((p) => module[p] !== undefined) : module[props] !== undefined;
-    }
-
-    //TODO: DRY
-    window.findByProps ??= function(props) {
-        for (const mod in modules) {
-            if (!modules.hasOwnProperty(mod))
-                continue;
-
-            const module = modules[mod].exports;
-
-            if (!module)
-                continue;
-
-            if (module.default && module.__esModule && propsFilter(props, module.default))
-                return module.default;
-
-            if (propsFilter(props, module))
-                return module;
-        }
-    };
-
-    window.findByPropsAll ??= function(props) {
-        let foundModules = [];
-
-        for (const mod in modules) {
-            if (!modules.hasOwnProperty(mod))
-                continue;
-
-            const module = modules[mod].exports;
-
-            if (!module)
-                continue;
-
-            if (module.default && module.__esModule && propsFilter(props, module.default))
-                foundModules.push(module.default);
-
-            if (propsFilter(props, module))
-                foundModules.push(module);
-        }
-
-        return foundModules;
-    };
-
-    //Patches
-    
-
-    patcherLock--;
-}
-
 (async function() {
     loadLog("Loading bootloader parameters");
     config = await (await fetch("/bootloaderConfig")).json();
@@ -183,8 +102,6 @@ function monkeyPatcher() {
         
         loadLog("Executing script " + path);
         eval?.(patchJS(script));
-        
-        monkeyPatcher();
     }
 
     //Copy icon
@@ -227,9 +144,6 @@ function monkeyPatcher() {
         for (let scriptUrl of body.matchAll(/<script src="([^"]+)"[^>]*>/g)) {
             await patchAndExecute(scriptUrl[1]);
         }
-        
-        //Run patcher again just to be sure
-        setTimeout(monkeyPatcher, 5000);
     } catch (e) {
         loadLog("Error occurred. Check console.");
         throw e;
