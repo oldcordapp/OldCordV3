@@ -14,6 +14,10 @@ function nineteeneightyfour(socket, type, payload) {
                 payload.type = payload.recipients.length > 2 ? 3 : 1; //dm channel / group dm
             }
 
+            if (payload.type === 1 && payload.recipients.length > 1) {
+                payload.recipients = payload.recipients.filter(x => x.id !== socket.user.id);
+            } //fix for self dm channel_create event
+
             if (typeof payload.type == 'string') {
                 payload.type = payload.type == "voice" ? 2 : 0;
             }
