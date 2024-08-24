@@ -4,6 +4,17 @@ window.__OVERLAY__ = window.overlay != null;
 const cdn_url = "https://cdn.oldcordapp.com";
 
 let config;
+function loadLog(text) {
+    console.log(text);
+
+    const loadingTxt = document.getElementById("loadingTxt");
+    if (!loadingTxt)
+        return;
+
+    const elm = document.createElement("div");
+    elm.innerText = text;
+    loadingTxt.appendChild(elm);
+}
 
 function noop() {}
 
@@ -273,10 +284,10 @@ function monkeyPatcher() {
 }
 
 (async function() {
-    console.log("Loading bootloader config");
+    loadLog("Loading bootloader parameters");
     config = await (await fetch("/bootloaderConfig")).json();
 
-    console.log("Loading application");
+    loadLog("Loading application");
     let html = await (await fetch(`${cdn_url}/assets/clients/${release_date}/app.html`)).text();
     let head = /<head>([^]*?)<\/head>/.exec(html)[1];
     let body = /<body>([^]*?)<\/body>/.exec(html)[1];
@@ -287,8 +298,10 @@ function monkeyPatcher() {
             path = new URL(path).pathname;
         }
         
-        console.log("Patching and executing " + path);
+        loadLog("Downloading script " + path);
         let script = await (await fetch(`${cdn_url}${path}`)).text();
+        
+        loadLog("Executing script " + path);
         eval?.(patchJS(script));
         
         monkeyPatcher();
@@ -318,23 +331,30 @@ function monkeyPatcher() {
         document.body.innerHTML += div[0];
     }
 
-    //Patch and install stylesheet
-    for (let styleUrl of head.matchAll(/<link rel="stylesheet" href="([^"]+)"[^>]*>/g)) {
-        let style = await (await fetch(`${cdn_url}${styleUrl[1]}`)).text();
+    try {
+        //Patch and install stylesheets
+        for (let styleUrl of head.matchAll(/<link rel="stylesheet" href="([^"]+)"[^>]*>/g)) {
+            loadLog("Downloading stylesheet " + styleUrl[1]);
+            let style = await (await fetch(`${cdn_url}${styleUrl[1]}`)).text();
+            
+            loadLog("Installing stylesheet " + styleUrl[1]);
+            let elm = document.createElement("style");
+            elm.innerText = patchCSS(style);
+            document.head.appendChild(elm);
+        }
+
+        //Patch and execute scripts
+        for (let scriptUrl of body.matchAll(/<script src="([^"]+)"[^>]*>/g)) {
+            await patchAndExecute(scriptUrl[1]);
+        }
         
-        console.log("Installing stylesheet " + styleUrl[1]);
-        let elm = document.createElement("style");
-        elm.innerText = patchCSS(style);
-        document.head.appendChild(elm);
+        //Run patcher again just to be sure
+        setTimeout(monkeyPatcher, 5000);
+    } catch (e) {
+        loadLog("Error occurred. Check console.");
+        throw e;
     }
 
-    //Patch and execute scripts
-    for (let scriptUrl of body.matchAll(/<script src="([^"]+)"[^>]*>/g)) {
-        await patchAndExecute(scriptUrl[1]);
-    }
-    
-    //Run patcher again just to be sure
-    setTimeout(monkeyPatcher, 5000);
-
+    //Cleanup
     document.getElementById("loadingTxt").remove();
 })();
