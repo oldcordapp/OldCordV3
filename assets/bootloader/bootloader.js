@@ -58,7 +58,6 @@ function patchJS(script) {
     //Enable april fools @someone experiment
     if (release_date == "april_1_2018") {
         script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true");
-        script = script.replaceAll(`return new Worker("https://cdn.oldcordapp.com/assets/25260e763a81c521caee.worker.js")`, `return new Worker("https://staging.oldcordapp.com/assets/8af912e6a77b8193e752.worker.js")`);
     }
         
 
