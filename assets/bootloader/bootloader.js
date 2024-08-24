@@ -56,8 +56,11 @@ function patchJS(script) {
     script = script.replaceAll(/n\.p\+"/g,`"${cdn_url}/assets/`);
 
     //Enable april fools @someone experiment
-    if (release_date == "april_1_2018")
+    if (release_date == "april_1_2018") {
         script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true");
+        script = script.replaceAll(`return new Worker("https://cdn.oldcordapp.com/assets/25260e763a81c521caee.worker.js")`, `return new Worker("https://staging.oldcordapp.com/assets/8af912e6a77b8193e752.worker.js")`);
+    }
+        
 
     //Allow emojis anywhere
     script = script.replace(/isEmojiDisabled:function\([^)]*\){/, "$&return false;");
