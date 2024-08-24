@@ -1122,6 +1122,7 @@ const database = {
                 guild_id: guild_id,
                 type: type,
                 topic: null,
+                nsfw: false,
                 last_message_id: "0",
                 permission_overwrites: [],
                 position: position
@@ -1157,7 +1158,7 @@ const database = {
                 }
             }
 
-            await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, nsfw = $4, permission_overwrites = $5, position = $6 WHERE id = $7`, [channel.last_message_id, channel.name, channel.topic, channel.nsfw, overwrites, channel.position, channel_id]);
+            await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, nsfw = $4, permission_overwrites = $5, position = $6 WHERE id = $7`, [channel.last_message_id, channel.name, channel.topic, channel.nsfw ? 1 : 0, overwrites, channel.position, channel_id]);
 
             return true;    
         } catch(error) {
@@ -1517,6 +1518,7 @@ const database = {
                     guild_id: row.guild_id == 'NULL' ? null : row.guild_id,
                     type: parseInt(row.type),
                     topic: row.topic == 'NULL' ? null : row.topic,
+                    nsfw: row.nsfw == 1 ?? false,
                     last_message_id: row.last_message_id,
                     permission_overwrites: overwrites,
                     position: row.position
@@ -2535,6 +2537,7 @@ const database = {
                     guild_id: row.guild_id == 'NULL' ? null : row.guild_id,
                     type: parseInt(row.type),
                     topic: row.topic == 'NULL' ? null : row.topic,
+                    nsfw: row.nsfw == 1 ?? false,
                     last_message_id: row.last_message_id,
                     permission_overwrites: overwrites,
                     position: row.position
@@ -2857,6 +2860,7 @@ const database = {
                 channels: [{
                     type: 0,
                     topic: null,
+                    nsfw: false,
                     position: 0,
                     permission_overwrites: [],
                     name: 'general',
