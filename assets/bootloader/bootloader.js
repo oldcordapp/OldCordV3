@@ -151,4 +151,5 @@ function patchCSS(css) {
 
     //Cleanup
     document.getElementById("loadingTxt").remove();
+    document.body.style = null;
 })();
