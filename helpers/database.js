@@ -138,6 +138,7 @@ const database = {
                 last_message_id TEXT DEFAULT '0',
                 permission_overwrites TEXT,
                 name TEXT,
+                recipients TEXT DEFAULT '[]',
                 position INTEGER DEFAULT 0
            );`, []); //type 0, aka "text", 1 for "dm", 2 for "voice" - and so on and so forth
 
@@ -269,10 +270,8 @@ const database = {
     },
     createPrivateChannel: async (owner_id, to_ids, dont_add_for_them) => {
         try {
-            await database.runQuery(`INSERT INTO channels (id, type, guild_id, name) VALUES ($1, $2, $3, $4)`, [owner_id, to_ids.length > 1 ? 3 : 1, 'NULL', ''])
-
             let recipients = [];
-            let owner = await database.getAccountByEmail(owner_id);
+            let owner = await database.getAccountByUserId(owner_id);
 
             if (!owner) return null;
 
@@ -281,63 +280,50 @@ const database = {
 
                 if (!user) continue;
 
-                recipients.push(globalUtils.miniUserObject(user));
+                recipients.push({
+                    ...globalUtils.miniUserObject(user),
+                    owner: false
+                });
             }
 
-            if (to_ids.length === 1 && !dont_add_for_them) {
-                let priv_channels = await database.getPrivateChannels(to_ids[0]);
+            recipients.push({
+                ...globalUtils.miniUserObject(owner),
+                owner: true
+            })
 
-                if (!priv_channels || priv_channels.find(x => x.id == owner_id)) return false;
+            let channel = await database.createChannel(null, null, 0, 0, recipients);
 
-                priv_channels.push({
-                    id: owner_id,
-                    open: false,
-                    recipients: [
-                        globalUtils.miniUserObject(owner)
-                    ]
-                });
+            if (!channel) {
+                return null;
+            }
 
-                await database.setPrivateChannels(to_ids[0], priv_channels);
-            } else if (!dont_add_for_them) {
+            if (!dont_add_for_them) {
                 for(var to_id2 of to_ids) {
                     let priv_channels = await database.getPrivateChannels(to_id2);
-
+    
                     if (!priv_channels || priv_channels.find(x => x.id == owner_id)) continue;
-
+    
                     priv_channels.push({
-                        id: owner_id,
-                        open: false,
-                        recipients: recipients
+                        id: dm_id,
+                        open: false
                     });
+
+                    await database.setPrivateChannels(to_id2, priv_channels);
                 }
             }
 
-            let id = owner_id;
-
             let ourPrivateChannels = await database.getPrivateChannels(id);
 
-            if (!ourPrivateChannels) return false;
+            if (!ourPrivateChannels) return null;
             
             ourPrivateChannels.push({
-                id: owner_id,
-                open: true,
-                recipients: recipients
+                id: dm_id,
+                open: true
             });
 
-            await database.setPrivateChannels(id, ourPrivateChannels);
+            await database.setPrivateChannels(owner_id, ourPrivateChannels);
             
-            return {
-                id: id, //Because we're the owner of the dm channel, the id is ours
-                name: "",
-                guild_id: guild_id,
-                type: to_ids.length > 1 ? 3 : 1,
-                topic: null,
-                last_message_id: "0",
-                permission_overwrites: [],
-                position: 0,
-                is_private: true,
-                recipients: recipients
-            };
+            return channel;
         } catch (error) {
             logText(error, "error");
 
@@ -369,31 +355,19 @@ const database = {
                 return [];
             }
 
-            if (rows[0].private_channels === 'NULL') {
-                return []; 
-            }
-
             let chans = JSON.parse(rows[0].private_channels);
 
             if (chans && chans.length > 0) {
                 for(var chan of chans) {
-                    let owner_id = chan.id; //guy who made the channel, also the group owner, whatever
-                    let actual_channel = await database.getChannelById(owner_id);
-
-                    if (!actual_channel) continue;
-
+                    let actual_channel = await database.getChannelById(chan.id);
+    
                     let recipients = chan.recipients; //people in the channel, user objects
 
                     ret.push({
-                        id: owner_id,
-                        name: "",
-                        guild_id: guild_id,
-                        type: to_ids.length > 1 ? 3 : 1,
-                        topic: null,
+                        guild_id: null,
+                        id: chan.id,
+                        type: actual_channel.type,
                         last_message_id: actual_channel.last_message_id ?? "0",
-                        permission_overwrites: [],
-                        position: 0,
-                        is_private: true,
                         recipients: recipients,
                         open: chan.open
                     });
@@ -1060,9 +1034,23 @@ const database = {
             return false;
         }
     },
-    createChannel: async (guild_id, name, type, position) => {
+    createChannel: async (guild_id, name, type, position, recipients = []) => {
         try {
             const channel_id = Snowflake.generate();
+
+            if (guild_id === null && recipients.length > 0) {
+                //create dm channel / group dm
+
+                await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position, recipients) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [channel_id, recipients.length > 1 ? 3 : 1, 'NULL', 'NULL', '0', 'NULL', 'NULL', 0, JSON.stringify(recipients)]);
+
+                return {
+                    id: channel_id,
+                    guild_id: null,
+                    type: recipients.length > 1 ? 3 : 1,
+                    last_message_id: "0",
+                    recipients: JSON.parse(recipients) ?? []
+                };
+            }
 
             await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [channel_id, type, guild_id, 'NULL', '0', 'NULL', name, 0])
 
@@ -1324,6 +1312,18 @@ const database = {
             }
 
             const row = rows[0];
+
+            if (row.guild_id === 'NULL') {
+                //dm channel / group dm
+
+                return {
+                    id: row.id,
+                    guild_id: null,
+                    type: JSON.parse(row.recipients).length > 1 ? 3 : 1,
+                    last_message_id: row.last_message_id ?? "0",
+                    recipients: JSON.parse(row.recipients)
+                }
+            }
 
             let overwrites = [];
 
@@ -2541,12 +2541,6 @@ const database = {
                     continue;
                 }
 
-                let everyoneRole = roles.find(x => x.name == '@everyone');
-
-                if (everyoneRole != null && !member_roles.includes(everyoneRole.id)) {
-                    member_roles.push(everyoneRole.id);
-                }
-
                 members.push({
                     id: user.id,
                     nick: row.nick == 'NULL' ? null : row.nick,
@@ -2805,8 +2799,7 @@ const database = {
                     name: 'general',
                     last_message_id: '0',
                     id: id,
-                    guild_id: id,
-                    recipient: null
+                    guild_id: id
                 }],
                 members: [{
                     deaf: false,

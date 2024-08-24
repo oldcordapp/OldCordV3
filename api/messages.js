@@ -201,26 +201,16 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
 
                         await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
                             id: account.id,
-                            name: "",
-                            topic: "",
-                            position: 0,
                             type: req.channel_types_are_ints ? 1 : "text",
                             recipient: dmChannelMe.recipient,
                             guild_id: null,
-                            is_private: true,
-                            permission_overwrites: []
                         });
                     } else {
                         await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
                             id: account.id,
-                            name: "",
-                            topic: "",
-                            position: 0,
                             type: req.channel_types_are_ints ? 1 : "text", //how? but whatever
                             recipients: dmChannelMe.recipients,
                             guild_id: null,
-                            is_private: true,
-                            permission_overwrites: []
                         });
                     }
                 }
@@ -239,26 +229,16 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
 
                         await global.dispatcher.dispatchEventTo(channelId, "CHANNEL_CREATE", {
                             id: account.id,
-                            name: "",
-                            topic: "",
-                            position: 0,
                             type: req.channel_types_are_ints ? 1 : "text",
                             recipient: dmChannelThey.recipient,
-                            guild_id: null,
-                            is_private: true,
-                            permission_overwrites: []
+                            guild_id: null
                         });
                     } else {
                         await global.dispatcher.dispatchEventTo(channelId, "CHANNEL_CREATE", {
                             id: account.id,
-                            name: "",
-                            topic: "",
-                            position: 0,
                             type: req.channel_types_are_ints ? 1 : "text", //how? but whatever
                             recipients: dmChannelThey.recipients,
-                            guild_id: null,
-                            is_private: true,
-                            permission_overwrites: []
+                            guild_id: null
                         });
                     }
                 }
@@ -343,7 +323,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     channel_id: channel.id,
                     message_id: createMessage.id
                 });
-                
+
                 return res.status(200).json(createMessage);
             });
         } else {

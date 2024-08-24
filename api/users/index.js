@@ -40,7 +40,9 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             return res.status(204).send();
         }
 
-        let existingChannel = accountChannels.find(x => x.recipients && x.recipients.find(y => y.user.id === recipients[0]));
+        console.log(accountChannels);
+
+        let existingChannel = accountChannels.find(x => x.recipients && x.recipients.find(y => y.id === recipients[0]));
 
         if (existingChannel) {
             delete existingChannel.open;
@@ -96,18 +98,20 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
 
             let createPrivateChannel = await global.database.createPrivateChannel(account.id, [user.id], true); //true because theyve turned off dms, so dont create the channel for them
 
+            if (!createPrivateChannel) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+
             await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
                 id: account.id,
-                name: "",
-                topic: "",
-                position: 0,
                 type: 1,
                 recipients: [
                     globalUtils.miniUserObject(user)
                 ], //Since we're in a mid 2016 - 2017+ route, we can assume to use recipients here as otherwise the user doesnt know what the fuck theyre doing
                 guild_id: null,
-                is_private: true,
-                permission_overwrites: []
             });
 
             return res.status(200).json(createPrivateChannel);
@@ -131,18 +135,20 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
 
         let createPrivateChannel = await global.database.createPrivateChannel(account.id, [user.id], false);
 
+        if (!createPrivateChannel) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+
         await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
             id: account.id,
-            name: "",
-            topic: "",
-            position: 0,
             type: 1,
             recipients: [
                 globalUtils.miniUserObject(user)
             ], //Since we're in a mid 2016 - 2017+ route, we can assume to use recipients here as otherwise the user doesnt know what the fuck theyre doing
             guild_id: null,
-            is_private: true,
-            permission_overwrites: []
         });
 
         return res.status(200).json(createPrivateChannel);

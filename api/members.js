@@ -86,11 +86,6 @@ async function updateMember(member, guild, roles, nick) {
             }
         }
         
-        if (!newRoles.includes(guild_id)) {
-            //Ensure @everyone is in the member's role list
-            newRoles.push(guild_id);
-        }
-        
         if (member.roles.length != newRoles.length) {
             rolesChanged = true;
         } else {

@@ -345,16 +345,18 @@ class session {
 
             this.dm_list = await global.database.getPrivateChannels(this.user.id);
 
+            console.log(this.dm_list);
+            
             for(var dm of this.dm_list) {
                 if (dm.open) {
                     if (year == 2015 || (month <= 8 && year == 2016)) {
                         if (dm.recipients.length > 1) {
                             this.dm_list = this.dm_list.filter(x => x.id !== dm.id); //remove group dms on older clients temporarily
-                        } else {
-                            dm.recipient = dm.recipients[0];
+                        } //else {
+                            //dm.recipient = dm.recipients[0];
     
-                            delete dm.recipients;
-                         } //also this is like an only user object kinda deal
+                            //delete dm.recipients;
+                         //} //also this is like an only user object kinda deal
                     }
     
                     delete dm.open;
