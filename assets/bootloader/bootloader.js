@@ -1,7 +1,7 @@
 window.__require = window.require;
 window.__OVERLAY__ = window.overlay != null;
 
-const cdn_url = "https://cdn.oldcordapp.com";
+window.cdn_url = "https://cdn.oldcordapp.com";
 
 let config;
 function loadLog(text) {
@@ -58,6 +58,10 @@ function patchJS(script) {
     replaceMessage("REGION_SELECT_HEADER", "Select a server era");
     replaceMessage("REGION_SELECT_FOOTER", "Select which year was this server is created for. The features enabled in the server will be limited to this year.");
     replaceMessage("NOTIFICATION_TITLE_DISCORD", "Oldcord");
+    
+    if (!release_date.endsWith("_2015")) {
+        script = script.replace(/("\.\/sydney\.png".*?e\.exports=)\w/, "$1(f)=>`${window.cdn_url}/flags/${f.substring(2)}`");
+    }
 
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
 
@@ -154,93 +158,7 @@ function monkeyPatcher() {
     };
 
     //Patches
-    (function() {
-        if (completedPatches.flagsPatch)
-            return;
-        
-        if (release_date.endsWith("_2015")) {
-            completedPatches.flagsPatch = true;
-            return; //Patch not needed; 2015 builds do not have region flags.
-        }
-        
-        //Known builds
-        let modId = {
-            "january_22_2016": 1973,
-            "february_9_2016": 1870,
-            "february_18_2016": 1866,
-            "march_4_2016": 1888,
-            "march_18_2016": 1975,
-            "april_8_2016": 2783,
-            "may_5_2016": 2964,
-            "may_19_2016": 2959,
-            "june_3_2016": 2971,
-            "june_23_2016": 2973,
-            "july_11_2016": 3087,
-            "july_28_2016": 2971,
-            "august_24_2016": 3041,
-            "september_8_2016": 3325,
-            "september_26_2016": 3279,
-            "october_13_2016": 3275,
-            "november_3_2016": 3281,
-            "november_22_2016": 3399,
-            "december_22_2016": 3457,
-            "january_8_2017": 3456,
-            "january_12_2017": 4103,
-            "january_25_2017": 4186,
-            "january_23_2017": 4191,
-            "january_31_2017": 4191,
-            "februrary_1_2017": 4191,
-            "februrary_21_2017": 4199,
-            "februrary_25_2017": 4158,
-            "march_14_2017": 1124,
-            "march_30_2017": 706,
-            "may_3_2017": 670,
-            "may_17_2017": 724,
-            "july_20_2017": 698,
-            "august_17_2017": 700,
-            "september_28_2017": 764,
-            "october_5_2017": 1270,
-            "november_16_2017": 1662,
-            "december_21_2017": 1787,
-            "december_24_2017": 1787,
-            "april_1_2018": 2357,
-        }[release_date];
-
-        if (!modId) {
-            //Unknown build. Fallback: Search for the module.
-            function bruteFindFlagsResolver(min, max) {
-                for (let i = max; i >= min; i--) { //Start from end of the range as it tends to be there
-                    try {
-                        let mod = modules[i];
-                        if (mod && mod.id && mod.keys && mod.resolve) {
-                            let keys = mod.keys();
-                            if (keys && keys.includes('./sydney.png')) {
-                                return mod; //Found it
-                            }
-                        }
-                    } catch (e) {
-                        //Ignore exceptions. If it breaks, it's not what we're looking for.
-                    }
-                }
-            }
-
-            let result = bruteFindFlagsResolver(1000, 4000);
-            if (result)
-                modId = result.id;
-        }
-
-        if (!modId)
-            return; //Failed
-
-        //Apply patch
-        console.log("Applying region flag patch");
-        completedPatches.flagsPatch = true;
-        modules[modId] = {
-            exports: (file) => `${cdn_url}/flags/${file.substring(2)}`,
-            id: modId,
-            loaded: true
-        };
-    })();
+    
 
     patcherLock--;
 }
