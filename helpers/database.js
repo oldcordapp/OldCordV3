@@ -217,7 +217,8 @@ const database = {
                 timestamp TEXT,
                 tts INTEGER DEFAULT 0,
                 embeds TEXT DEFAULT '[]',
-                reactions TEXT DEFAULT '[]'
+                reactions TEXT DEFAULT '[]',
+                overrides TEXT DEFAULT NULL
            );`, []);
 
             await database.runQuery(`CREATE TABLE IF NOT EXISTS acknowledgements (
@@ -273,7 +274,7 @@ const database = {
             let recipients = [];
             let owner = await database.getAccountByEmail(owner_id);
 
-            if (!owner) return false;
+            if (!owner) return null;
 
             for(var to_id of to_ids) {
                 let user = await database.getAccountByUserId(to_id);
@@ -340,7 +341,7 @@ const database = {
         } catch (error) {
             logText(error, "error");
 
-            return false;
+            return null;
         }
     },
     setPrivateChannels: async (user_id, private_channels) => {
@@ -1227,7 +1228,8 @@ const database = {
                 timestamp: rows[0].timestamp,
                 mention_roles: [],
                 reactions: reactionRet,
-                tts: rows[0].tts == 1
+                tts: rows[0].tts == 1,
+                overrides: (!rows[0].overrides ? null : rows[0].overrides == 'NULL' ? null : JSON.parse(rows[0].overrides))
             }
         } catch (error) {
             logText(error, "error");

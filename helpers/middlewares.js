@@ -87,6 +87,7 @@ async function assetsMiddleware(req, res) {
     }
 
     const filePath = `./assets/${req.params.asset}`;
+
     if (!fs.existsSync(filePath)) {
         logText(`[LOG] Saving ${req.params.asset} -> https://discordapp.com/assets/${req.params.asset}...`, 'debug');
 
