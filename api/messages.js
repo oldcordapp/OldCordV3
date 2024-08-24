@@ -132,8 +132,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         if (req.file) {
             attachment_id = Snowflake.generate();
 
-            let name = req.file.originalname.split(".")[0];
-            let extension = req.file.originalname.split(".")[1];
+            let name = req.file.originalname;
 
             if (req.body.tts === "false") req.body.tts = false;
             else if (req.body.tts === "true") req.body.tts = true;
@@ -154,9 +153,9 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 fs.mkdirSync(`./user_assets/attachments/${channel.id}/${attachment_id}`, { recursive: true });
             }
 
-            fs.writeFileSync(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`, req.file.buffer);
+            fs.writeFileSync(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}`, req.file.buffer);
 
-            file_path = `./user_assets/attachments/${channel.id}/${attachment_id}/${name}.${extension}`;
+            file_path = `./user_assets/attachments/${channel.id}/${attachment_id}/${name}`;
         }
 
         if (channel.recipients || channel.recipient) {
@@ -441,8 +440,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     size: req.file.size,
                     width: dimensions?.width,
                     height: dimensions?.height,
-                    name: `${req.file.originalname.split(".")[0]}.${req.file.originalname.split(".")[1]}`,
-                    extension: req.file.originalname.split(".")[1]
+                    name: `${req.file.originalname}`,
                 };
 
                 const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, file_details, req.body.tts, ((channel.recipients || channel.recipient) ? false : mention_everyone));
