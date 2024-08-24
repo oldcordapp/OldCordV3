@@ -44,20 +44,22 @@ function patchJS(script) {
     script = script.replaceAll(/discordapp.com/g, config.base_url);
     if (release_date == "april_1_2018")
         script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true"); //april fools force enable @someone experiment
-    script = script.replaceAll(/isEmojiDisabled:function\([^)]*\){/g, "$&return false;");
+    script = script.replace(/isEmojiDisabled:function\([^)]*\){/, "$&return false;");
     script = script.replaceAll(/=t.invalidEmojis/g, "=[]");
     
-    script = script.replaceAll(/track:function\([^)]*\){/g, "$&return;");
-    script = script.replaceAll(/(function .+\(e\)){.*?post\({.*url:\w\.Endpoints\.TRACK.*?}\)}/g, "$1{}");
+    script = script.replace(/track:function\([^)]*\){/, "$&return;");
+    script = script.replace(/(function \w+\(e\)){[^p]*post\({.*url:\w\.Endpoints\.TRACK[^}]*}\)}/, "$1{}");
     
-    function replaceMessage(name, value) {
+    function replaceMessage(name, oldValue, value) {
         script = script.replaceAll(new RegExp(`${name}:".*?"`, "g"), `${name}:"${value}"`);
+        if (oldValue)
+            script = script.replaceAll(new RegExp(`"${oldValue}"`, "gi"), `"${value}"`);
     }
-    replaceMessage("FORM_LABEL_SERVER_REGION", "Server Era");
-    replaceMessage("ONBOARDING_GUILD_SETTINGS_SERVER_REGION", "Server Era");
-    replaceMessage("REGION_SELECT_HEADER", "Select a server era");
-    replaceMessage("REGION_SELECT_FOOTER", "Select which year was this server is created for. The features enabled in the server will be limited to this year.");
-    replaceMessage("NOTIFICATION_TITLE_DISCORD", "Oldcord");
+    replaceMessage("FORM_LABEL_SERVER_REGION", "Server Region", "Server Era");
+    replaceMessage("ONBOARDING_GUILD_SETTINGS_SERVER_REGION", "Server Region", "Server Era");
+    replaceMessage("REGION_SELECT_HEADER", null, "Select a server era");
+    replaceMessage("REGION_SELECT_FOOTER", null, "Select which year was this server is created for. The features enabled in the server will be limited to this year.");
+    replaceMessage("NOTIFICATION_TITLE_DISCORD", null, "Oldcord");
     
     if (!release_date.endsWith("_2015")) {
         script = script.replace(/("\.\/sydney\.png".*?e\.exports=)\w/, "$1(f)=>`${window.cdn_url}/assets/flags/${f.substring(2)}`");
