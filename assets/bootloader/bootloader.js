@@ -5,7 +5,8 @@ window.cdn_url = "https://cdn.oldcordapp.com";
 
 let config;
 function loadLog(text, error) {
-    console.log(text);
+    if (!error)
+        console.log(text);
 
     const loadingTxt = document.getElementById("loadingTxt");
     if (!loadingTxt)
