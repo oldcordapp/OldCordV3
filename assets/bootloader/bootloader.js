@@ -52,6 +52,13 @@ function patchJS(script) {
     script = script.replaceAll(/discordapp.com/g, config.base_url);
     
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
+    
+    //Use unified UserSearch worker script
+    window.userSearchWorker = function(url) {
+        const wwScript = `importScripts("${cdn_url}/assets/UserSearch.worker.js");`;
+        return URL.createObjectURL(new Blob([ wwScript ], { type: "text/javascript" }));
+    }
+    script = script.replace(/n\.p\+"[a-z0-9]+\.worker\.js"/, `window.userSearchWorker()`);
 
     //Enable april fools @someone experiment
     if (release_date == "april_1_2018")
