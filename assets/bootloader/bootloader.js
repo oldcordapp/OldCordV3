@@ -139,7 +139,7 @@ function patchCSS(css) {
 
     //Copy react roots
     for (let div of body.matchAll(/<div[^>]*><\/div>/g)) {
-        document.body.innerHTML += div[0];
+        document.body.innerHTML = div[0] + document.body.innerHTML;
     }
 
     try {
@@ -164,6 +164,17 @@ function patchCSS(css) {
     }
 
     //Cleanup
-    document.getElementById("loadingTxt").remove();
     document.body.style = null;
+    let appMount = document.getElementById("app-mount");
+    if (!appMount) {
+        document.getElementById("loadingTxt").remove();
+    } else {
+        let interval = setInterval(function() {
+            if (document.getElementsByClassName("guilds").length == 0)
+                return;
+
+            document.getElementById("loadingTxt").remove();
+            clearInterval(interval);
+        }, 100);
+    }
 })();
