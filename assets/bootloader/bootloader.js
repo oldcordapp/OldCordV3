@@ -53,13 +53,10 @@ function patchJS(script) {
     script = script.replaceAll(/discordapp.com/g, config.base_url);
     
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
-    script = script.replaceAll(/n\.p\+"/g,`"${cdn_url}/assets/`);
 
     //Enable april fools @someone experiment
-    if (release_date == "april_1_2018") {
+    if (release_date == "april_1_2018")
         script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true");
-    }
-        
 
     //Allow emojis anywhere
     script = script.replace(/isEmojiDisabled:function\([^)]*\){/, "$&return false;");
