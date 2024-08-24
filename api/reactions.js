@@ -336,7 +336,7 @@ router.get("/:urlencoded", async (req, res) => {
             limit = 100;
         }
 
-        let reactions = await global.database.getMessageReactions(message.id);
+        let reactions = message.reactions;
 
         let filteredReactions = reactions.filter(x => x.emoji.name == dispatch_name && x.emoji.id == id);
 
