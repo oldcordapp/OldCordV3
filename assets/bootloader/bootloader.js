@@ -40,12 +40,11 @@ function patchJS(script) {
         script = script.replaceAll("https://", location.protocol + "//");
 
     //Make fields consistent
-    if (release_date.endsWith("2015")) {
+    if (release_date.endsWith("2015"))
         script = script.replaceAll(".presence.", ".presences.");
-        script = script.replaceAll(/d3dsisomax34re.cloudfront.net/g, config.base_url);
-    }
 
     //Set URLs
+    script = script.replaceAll(/d3dsisomax34re.cloudfront.net/g, config.base_url);
     script = script.replaceAll(/status.discordapp.com/g, config.base_url);
     script = script.replaceAll(/cdn.discordapp.com/g, config.base_url);
     script = script.replaceAll(/discordcdn.com/g, config.base_url); //??? DISCORDCDN.COM?!!11
