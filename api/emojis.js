@@ -75,7 +75,7 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
 
         fs.writeFileSync(filePath, imageBuffer);
 
-        let tryCreateEmoji = await global.database.createCustomEmoji(guild.id, account.id, emoji_id, req.body.name);
+        let tryCreateEmoji = await global.database.createCustomEmoji(guild, account.id, emoji_id, req.body.name);
 
         if (!tryCreateEmoji) {
             return res.status(500).json({

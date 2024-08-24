@@ -59,18 +59,21 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
 
     if (!req.body.username || req.body.username == "") req.body.username = null;
 
+    if (!req.body.discriminator || req.body.discriminator == "") req.body.discriminator = null;
+
     let update_object = {
       avatar: req.body.avatar == ("" || null || undefined) ? null : req.body.avatar,
       email: req.body.email == ("" || null || undefined) ? null : req.body.email,
       new_password: req.body.new_password == ("" || null || undefined) ? null : req.body.new_password,
       password: req.body.password == ("" || null || undefined) ? null : req.body.password,
-      username: req.body.username == ("" || null || undefined) ? null : req.body.username
+      username: req.body.username == ("" || null || undefined) ? null : req.body.username,
+      discriminator: req.body.discriminator == ("" || null || undefined) ? null : req.body.discriminator
     };
 
-    if (update_object.email == account.email && update_object.new_password == null && update_object.password == null && update_object.username == account.username) {
+    if (update_object.email == account.email && update_object.new_password == null && update_object.password == null && update_object.username == account.username && update_object.discriminator == account.discriminator) {
        //avatar change
 
-      const attemptToUpdateAvi = await global.database.updateAccount(update_object.avatar, account.email, account.username, null, null, null);
+      const attemptToUpdateAvi = await global.database.updateAccount(update_object.avatar, account.email, account.username, null, null, null, null);
 
       if (attemptToUpdateAvi) {
         let account2 = await global.database.getAccountByEmail(account.email);
@@ -140,7 +143,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           })
         }
 
-      if ((update_object.email != account.email || update_object.username != account.username) || (update_object.email != account.email && update_object.username != account.username)) {
+      if ((update_object.email != account.email || update_object.username != account.username || update_object.discriminator != account.discriminator) || (update_object.email != account.email && update_object.username != account.username && update_object.discriminator != account.discriminator)) {
         const correctPassword = await global.database.doesThisMatchPassword(update_object.password, account.password);
 
         if (!correctPassword) {
@@ -150,7 +153,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           })
         }
 
-        const update = await global.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
+        const update = await global.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.discriminator, update_object.password, update_object.new_password, update_object.email);
 
         if (update) {
           let account2 = await global.database.getAccountByEmail(update_object.email);
@@ -175,7 +178,7 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
           })
         }
 
-        const update = await global.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.password, update_object.new_password, update_object.email);
+        const update = await global.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.discriminator, update_object.password, update_object.new_password, update_object.email);
 
         if (update) {
           let account2 = await global.database.getAccountByEmail(update_object.email);

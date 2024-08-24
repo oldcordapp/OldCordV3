@@ -658,7 +658,7 @@ const database = {
                 user: globalUtils.miniUserObject(user)
             });
 
-            await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild_id]);
+            await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild.id]);
 
             return true;
         } catch (error) {
@@ -679,7 +679,7 @@ const database = {
 
             customEmoji.name = new_name;
 
-            await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild_id]);
+            await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild.id]);
 
             return true;
         } catch (error) {
@@ -694,7 +694,7 @@ const database = {
 
             custom_emojis = custom_emojis.filter(x => x.id != emoji_id);
 
-            await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild_id]);
+            await database.runQuery(`UPDATE guilds SET custom_emojis = $1 WHERE id = $2`, [JSON.stringify(custom_emojis), guild.id]);
 
             return true;
         } catch (error) {
@@ -2915,7 +2915,7 @@ const database = {
             return false;
         }
     },
-    updateAccount: async (avatar , email , username , password , new_password , new_email ) => {
+    updateAccount: async (avatar , email , username , discriminator, password , new_password , new_email ) => {
         try {
             if (email == null) {
                 return false;
@@ -2935,6 +2935,18 @@ const database = {
             let new_email2 = email;
             let new_username = username;
             let new_discriminator = account.discriminator;
+
+            if (discriminator && parseInt(discriminator) >= 1000 && parseInt(discriminator) < 10000 && discriminator != account.discriminator) {
+                let existingUsers = await global.database.getAccountByUsernameTag(new_username, discriminator);
+
+                if (existingUsers === null) {
+                    new_discriminator = discriminator;
+                } else {
+                    return false;  // Discriminator is already taken
+                }
+            }
+
+            
 
             if (new_email != null) {
                 new_email2 = new_email;
@@ -2977,6 +2989,8 @@ const database = {
                 }
             }
 
+            console.log(new_discriminator);
+
             if (new_password != null) {
                 const checkPassword = await database.doesThisMatchPassword(new_password, account.password);
 
@@ -2987,6 +3001,8 @@ const database = {
                 let salt = await genSalt(10);
                 let newPwHash = await hash(new_password, salt);
                 let token = globalUtils.generateToken(account.id, newPwHash);
+
+                console.log(new_discriminator);
 
                 await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3, password = $4, token = $5 WHERE id = $6`, [new_username, new_discriminator, new_email2, newPwHash, token, account.id]);
 
@@ -3004,6 +3020,8 @@ const database = {
                     return false;
                 }
 
+                console.log(new_discriminator);
+                
                 await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3 WHERE id = $4`, [new_username, new_discriminator, new_email2, account.id]);
             }
             

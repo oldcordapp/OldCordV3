@@ -199,9 +199,9 @@ async function authMiddleware(req, res, next) {
         let token = req.headers['authorization'];
         
         if (!token) {
-            return res.status(401).json({
-                code: 401,
-                message: "Unauthorized"
+            return res.status(404).json({
+                code: 404,
+                message: "Not Found"
             });
         }
 
