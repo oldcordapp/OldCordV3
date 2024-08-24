@@ -25,31 +25,46 @@ const release_date = (function() {
 })();
 
 function patchJS(script) {
+    //Fix client misidentification
     script = script.replace('__[STANDALONE]__', '');
     
+    //Branding
     script = script.replaceAll("\"Discord\"", "\"Oldcord\"");
     script = script.replaceAll("'Discord'", "'Oldcord'");
     
-    script = script.replaceAll("https://", location.protocol + "//");
+    //Disable HTTPS in insecure mode (for local testing)
+    if (location.protocol != "https")
+        script = script.replaceAll("https://", location.protocol + "//");
 
+    //Make fields consistent
     if (release_date.endsWith("2015")) {
         script = script.replaceAll(".presence.", ".presences.");
         script = script.replaceAll(/d3dsisomax34re.cloudfront.net/g, config.base_url);
     }
 
+    //Set URLs
     script = script.replaceAll(/status.discordapp.com/g, config.base_url);
     script = script.replaceAll(/cdn.discordapp.com/g, config.base_url);
     script = script.replaceAll(/discordcdn.com/g, config.base_url); //??? DISCORDCDN.COM?!!11
     script = script.replaceAll(/discord.gg/g, config.custom_invite_url);
     script = script.replaceAll(/discordapp.com/g, config.base_url);
+    
+    script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
+    script = script.replaceAll(/n\.p\+"/g,`"${cdn_url}/assets/`);
+
+    //Enable april fools @someone experiment
     if (release_date == "april_1_2018")
-        script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true"); //april fools force enable @someone experiment
+        script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true");
+
+    //Allow emojis anywhere
     script = script.replace(/isEmojiDisabled:function\([^)]*\){/, "$&return false;");
     script = script.replaceAll(/=t.invalidEmojis/g, "=[]");
-    
+
+    //Disable telemetry
     script = script.replace(/track:function\([^)]*\){/, "$&return;");
     script = script.replace(/(function \w+\(e\)){[^p]*post\({.*url:\w\.Endpoints\.TRACK[^}]*}\)}/, "$1{}");
-    
+
+    //Replace text
     function replaceMessage(name, oldValue, value) {
         script = script.replaceAll(new RegExp(`${name}:".*?"`, "g"), `${name}:"${value}"`);
         if (oldValue)
@@ -60,19 +75,14 @@ function patchJS(script) {
     replaceMessage("REGION_SELECT_HEADER", null, "Select a server era");
     replaceMessage("REGION_SELECT_FOOTER", null, "Select which year was this server is created for. The features enabled in the server will be limited to this year.");
     replaceMessage("NOTIFICATION_TITLE_DISCORD", null, "Oldcord");
-    
+
+    //Custom flags patch
     if (!release_date.endsWith("_2015")) {
         script = script.replace(/("\.\/sydney\.png".*?e\.exports=)\w/, "$1(f)=>`${window.cdn_url}/assets/flags/${f.substring(2)}`");
     }
 
-    script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
-    script = script.replaceAll(/n\.p\+"/g,`"${cdn_url}/assets/`);
-
+    //Remove useless unknown-field error
     script = script.replaceAll("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
-
-    if (release_date.endsWith("2016")) {
-        script = script.replaceAll("QFusd4xbRKo", "gNEr6tM9Zgc");
-    }
 
     return script;
 }
