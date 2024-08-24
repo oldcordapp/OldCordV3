@@ -66,6 +66,7 @@ function patchJS(script) {
     }
 
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
+    script = script.replaceAll(/n\.p\+"/g,`"${cdn_url}/assets/`);
 
     script = script.replaceAll("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
 
