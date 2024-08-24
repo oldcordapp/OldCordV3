@@ -4,8 +4,8 @@ window.__OVERLAY__ = window.overlay != null;
 window.cdn_url = "https://cdn.oldcordapp.com";
 
 let config;
-function loadLog(text, error) {
-    if (!error)
+function loadLog(text, error, noLog) {
+    if (!noLog)
         console.log(text);
 
     const loadingTxt = document.getElementById("loadingTxt");
@@ -114,10 +114,19 @@ function patchCSS(css) {
             path = new URL(path).pathname;
         }
         
-        loadLog("Downloading script " + path);
-        let script = await (await fetch(`${cdn_url}${path}`)).text();
+        loadLog("Downloading script: " + path);
+        let response = await fetch(`${cdn_url}${path}`);
+        if (!response.ok) {
+            if (response.status == 404)
+                loadLog("Script is missing: " + path, true);
+            else
+                loadLog(`Failed to download script (HTTP ${response.status}): ${path}`, true);
+            return;
+        }
         
-        loadLog("Executing script " + path);
+        let script = await response.text();
+        
+        loadLog("Executing script: " + path);
         eval?.(patchJS(script));
     }
 
@@ -148,10 +157,10 @@ function patchCSS(css) {
     try {
         //Patch and install stylesheets
         for (let styleUrl of head.matchAll(/<link rel="stylesheet" href="([^"]+)"[^>]*>/g)) {
-            loadLog("Downloading stylesheet " + styleUrl[1]);
+            loadLog("Downloading stylesheet: " + styleUrl[1]);
             let style = await (await fetch(`${cdn_url}${styleUrl[1]}`)).text();
             
-            loadLog("Installing stylesheet " + styleUrl[1]);
+            loadLog("Installing stylesheet: " + styleUrl[1]);
             let elm = document.createElement("style");
             elm.innerText = patchCSS(style);
             document.head.appendChild(elm);
@@ -162,7 +171,7 @@ function patchCSS(css) {
             await patchAndExecute(scriptUrl[1]);
         }
     } catch (e) {
-        loadLog("Error occurred. Please check the console.", true);
+        loadLog("Error occurred. Please check the console.", true, true);
     }
 
     //Cleanup
