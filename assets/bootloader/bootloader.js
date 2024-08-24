@@ -4,7 +4,7 @@ window.__OVERLAY__ = window.overlay != null;
 window.cdn_url = "https://cdn.oldcordapp.com";
 
 let config;
-function loadLog(text) {
+function loadLog(text, error) {
     console.log(text);
 
     const loadingTxt = document.getElementById("loadingTxt");
@@ -13,6 +13,8 @@ function loadLog(text) {
 
     const elm = document.createElement("div");
     elm.innerText = text;
+    if (error)
+        elm.style.color = "#ff4141";
     loadingTxt.appendChild(elm);
 }
 
@@ -159,8 +161,7 @@ function patchCSS(css) {
             await patchAndExecute(scriptUrl[1]);
         }
     } catch (e) {
-        loadLog("Error occurred. Check console.");
-        throw e;
+        loadLog("Error occurred. Please check the console.", true);
     }
 
     //Cleanup
