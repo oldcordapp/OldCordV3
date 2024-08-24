@@ -45,6 +45,7 @@ function patchJS(script) {
     if (release_date == "april_1_2018")
         script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true"); //april fools force enable @someone experiment
     script = script.replaceAll(/isEmojiDisabled:function\([^)]*\){/g, "$&return false;");
+    script = script.replaceAll(/=t.invalidEmojis/g, "=[]");
     
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
 
@@ -254,22 +255,6 @@ function monkeyPatcher() {
         };
     })();
 
-    (function() {
-        if (completedPatches.fixEmojiWarning)
-            return;
-        
-        let module = findByProps("_sendMessage");
-        if (module) {
-            completedPatches.fixEmojiWarning = true;
-            console.log("Fixing \"emoji doesn\'t work here\" error");
-            let originalFunc = module._sendMessage.bind(module);
-            findByProps("_sendMessage")._sendMessage = (channelId, _ref2) => {
-                _ref2.invalidEmojis = [];
-                originalFunc(channelId, _ref2);
-            }
-        }
-    })();
-    
     patcherLock--;
 }
 
