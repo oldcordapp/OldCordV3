@@ -1221,13 +1221,13 @@ const database = {
                 attachments: messageAttachments,
                 embeds: rows[0].embeds == 'NULL' ? [] : JSON.parse(rows[0].embeds),
                 mentions: mentions,
-                mention_everyone: rows[0].mention_everyone,
+                mention_everyone: rows[0].mention_everyone == 1,
                 nonce: rows[0].nonce,
                 edited_timestamp: rows[0].edited_timestamp == 'NULL' ? null : rows[0].edited_timestamp,
                 timestamp: rows[0].timestamp,
                 mention_roles: [],
                 reactions: reactionRet,
-                tts: rows[0].tts == 1 ? true : false
+                tts: rows[0].tts == 1
             }
         } catch (error) {
             logText(error, "error");
@@ -2358,8 +2358,6 @@ const database = {
                 content = "";
             }
 
-            let mentions_everyone = mention_everyone == true ? 1 : 0;
-
             let embeds = await embedder.generateMsgEmbeds(content);
 
             if (webhook_embeds) {
@@ -2373,7 +2371,7 @@ const database = {
                 author_id,
                 content,
                 'NULL',
-                mentions_everyone,
+                mention_everyone == true ? 1 : 0,
                 nonce,
                 date,
                 (tts ? 1 : 0),
