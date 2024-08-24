@@ -63,6 +63,7 @@ function patchJS(script) {
     //Disable telemetry
     script = script.replace(/track:function\([^)]*\){/, "$&return;");
     script = script.replace(/(function \w+\(e\)){[^p]*post\({.*url:\w\.Endpoints\.TRACK[^}]*}\)}/, "$1{}");
+    script = script.replace(/t\.analyticsTrackingStoreMaker=function\(e\){/, "t\.analyticsTrackingStoreMaker=function(e){return;");
 
     //Replace text
     function replaceMessage(name, oldValue, value) {
