@@ -6,7 +6,6 @@ const { createServer } = require('http');
 const https = require('https');
 const { logText } = require('./helpers/logger');
 const database = require('./helpers/database');
-const desktop = require('./api/desktop');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const globalUtils = require('./helpers/globalutils');
@@ -241,7 +240,13 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 app.use("/assets/:asset", assetsMiddleware);
 
-app.use(desktop);
+let handleClient = true;
+
+if (handleClient) {
+    const desktop = require('./api/desktop');
+
+    app.use(desktop);
+}
 
 app.use(clientMiddleware);
 
