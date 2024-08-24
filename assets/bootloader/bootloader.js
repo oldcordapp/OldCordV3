@@ -154,9 +154,9 @@ function patchCSS(css) {
         document.body.innerHTML = div[0] + document.body.innerHTML;
     }
 
-    try {
-        //Patch and install stylesheets
-        for (let styleUrl of head.matchAll(/<link rel="stylesheet" href="([^"]+)"[^>]*>/g)) {
+    //Patch and install stylesheets
+    for (let styleUrl of head.matchAll(/<link rel="stylesheet" href="([^"]+)"[^>]*>/g)) {
+        try {
             loadLog("Downloading stylesheet: " + styleUrl[1]);
             let style = await (await fetch(`${cdn_url}${styleUrl[1]}`)).text();
             
@@ -164,14 +164,20 @@ function patchCSS(css) {
             let elm = document.createElement("style");
             elm.innerText = patchCSS(style);
             document.head.appendChild(elm);
+        } catch (e) {
+            loadLog("Error occurred. Please check the console.", true, true);
+            console.error(e);
         }
+    }
 
-        //Patch and execute scripts
-        for (let scriptUrl of body.matchAll(/<script src="([^"]+)"[^>]*>/g)) {
+    //Patch and execute scripts
+    for (let scriptUrl of body.matchAll(/<script src="([^"]+)"[^>]*>/g)) {
+        try {
             await patchAndExecute(scriptUrl[1]);
+        } catch (e) {
+            loadLog("Error occurred. Please check the console.", true, true);
+            console.error(e);
         }
-    } catch (e) {
-        loadLog("Error occurred. Please check the console.", true, true);
     }
 
     //Cleanup
