@@ -13,7 +13,7 @@ const logText = (text, type) => {
         let functionname = stack.split('\n')[1].trim().split(' ')[1] || '<anonymous>';
         let message = text.toString();
 
-        console.log(`[OLDCORDV3] ERROR @ ${functionname} -> ${message}`);
+        console.error(`[OLDCORDV3] ERROR @ ${functionname} -> ${message}`);
     } else console.log(`[OLDCORDV3] <${type.toUpperCase()}>: ${text}`);
 };
 
