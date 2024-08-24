@@ -181,6 +181,8 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
 
         channel.name = req.body.name;
         channel.position = req.body.position;
+        channel.topic = req.body.topic ?? null;
+        channel.nsfw = req.body.nsfw ?? false;
 
         const outcome = await global.database.updateChannel(channel.id, channel);
 

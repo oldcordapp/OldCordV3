@@ -50,7 +50,27 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
             });
         }
 
-        const attempt = await global.database.updateRole(req.params.roleid, req.body.name, req.body.permissions, req.body.position ? req.body.position : role.position);
+        if (!req.body.permissions) {
+            req.body.permissions = 0;
+        }
+
+        if (!req.body.color) {
+            req.body.color = 0;
+        }
+
+        if (!req.body.hoist) {
+            req.body.hoist = false;
+        }
+
+        if (!req.body.mentionable) {
+            req.body.mentionable = false;
+        }
+
+        if (!req.body.name) {
+            req.body.name = "new role";
+        }
+
+        const attempt = await global.database.updateRole(req.params.roleid, req.body.name, req.body.color, req.body.hoist, req.body.permissions, req.body.position ? req.body.position : role.position);
 
         if (attempt) {
             role.name = req.body.name;

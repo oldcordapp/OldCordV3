@@ -139,6 +139,7 @@ const database = {
                 permission_overwrites TEXT,
                 name TEXT,
                 recipients TEXT DEFAULT '[]',
+                nsfw INTEGER DEFAULT 0,
                 position INTEGER DEFAULT 0
            );`, []); //type 0, aka "text", 1 for "dm", 2 for "voice" - and so on and so forth
 
@@ -1156,7 +1157,7 @@ const database = {
                 }
             }
 
-            await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, permission_overwrites = $4, position = $5 WHERE id = $6`, [channel.last_message_id, channel.name, channel.topic, overwrites, channel.position, channel_id]);
+            await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, nsfw = $4, permission_overwrites = $5, position = $6 WHERE id = $7`, [channel.last_message_id, channel.name, channel.topic, channel.nsfw, overwrites, channel.position, channel_id]);
 
             return true;    
         } catch(error) {
@@ -1423,6 +1424,7 @@ const database = {
                 topic: row.topic == 'NULL' ? null : row.topic,
                 last_message_id: row.last_message_id ?? "0",
                 permission_overwrites: overwrites,
+                nsfw: row.nsfw == 1 ?? false,
                 position: row.position
             }
         } catch (error) {
@@ -2237,9 +2239,9 @@ const database = {
             return null;
         }
     },
-    updateRole: async (role_id, name, permissions, position) => {
+    updateRole: async (role_id, name, color, hoist, mentionable, permissions, position) => {
         try {
-            await database.runQuery(`UPDATE roles SET name = $1, permissions = $2, position = $3 WHERE role_id = $4`, [name, permissions, position, role_id]);
+            await database.runQuery(`UPDATE roles SET name = $1, permissions = $2, position = $3, color = $4, hoist = $5, mentionable = $6 WHERE role_id = $7`, [name, permissions, position, color, hoist ? 1 : 0, mentionable ? 1 : 0, role_id]);
 
             return true;
         } catch(error) {
