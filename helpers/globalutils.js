@@ -188,7 +188,7 @@ const globalUtils = {
 
         return sanitizedObject;
     },
-    prepareAccountObject: (rows, relationships, private_channels) => {
+    prepareAccountObject: (rows, relationships) => {
         if (rows === null || rows.length === 0) {
             return null;
         }
@@ -207,7 +207,6 @@ const globalUtils = {
             bot: rows[0].bot == 1 ? true : false,
             created_at: rows[0].created_at,
             relationships: relationships ?? [],
-            private_channels: private_channels ?? [],
             settings: JSON.parse(rows[0].settings),
             claimed: true
         };
