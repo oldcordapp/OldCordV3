@@ -90,6 +90,8 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             });
         }
 
+        const account = creator;
+
         const channel = req.channel;
 
         if (channel == null) {
@@ -160,7 +162,17 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         if (channel.recipients || channel.recipient) {
             //handle dm channel case
 
-            let isDM = channel.recipient || channel.recipients.length === 1;
+            let isDM = false;
+
+            if (channel.recipients) {
+                channel.recipients = channel.recipients.filter(x => x.id !== account.id);
+
+                isDM = channel.recipients.length === 1;
+            }
+
+            if (channel.recipient) {
+                isDM = true;
+            }
 
             if (isDM) {
                 let channelId = null;
@@ -182,8 +194,8 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
 
                 let dmChannelUs = await global.database.getPrivateChannels(creator.id);
                 let dmChannelThem = await global.database.getPrivateChannels(channelId);
-                let dmChannelThey = dmChannelThem.find(x => x.recipients.find(y => y.user.id === creator.id));
-                let dmChannelMe = dmChannelUs.find(x => x.recipients.find(y => y.user.id === channelId));
+                let dmChannelThey = dmChannelThem.find(x => x.recipients.find(y => y.id === creator.id));
+                let dmChannelMe = dmChannelUs.find(x => x.recipients.find(y => y.id === channelId));
 
                 if (!dmChannelMe.open) {
                     dmChannelMe.open = true;
@@ -200,14 +212,15 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                         delete dmChannelMe.recipients;
 
                         await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
-                            id: account.id,
+                            id: channel.id,
                             type: req.channel_types_are_ints ? 1 : "text",
                             recipient: dmChannelMe.recipient,
                             guild_id: null,
+                            is_private: true
                         });
                     } else {
                         await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
-                            id: account.id,
+                            id: channel.id,
                             type: req.channel_types_are_ints ? 1 : "text", //how? but whatever
                             recipients: dmChannelMe.recipients,
                             guild_id: null,
@@ -220,27 +233,116 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
 
                     await global.database.setPrivateChannels(channelId, dmChannelThem);
 
-                    let old_system = req.client_build_date.getFullYear() === 2015 || (req.client_build_date.getMonth() <= 8 && req.client_build_date.getFullYear() === 2016);
+                    let sessions = global.userSessions.get(channelId);
 
-                    if (old_system) {
-                        dmChannelThey.recipient = dmChannelThey.recipients[0];
+                    let aliveSessions = sessions.filter(x => !x.dead && x.socket != null);
+
+                    for(var session of aliveSessions) {
+                        let client_build = session.socket.client_build_date;
+
+                        if (!client_build) continue;
+
+                        let old_system = client_build.getFullYear() === 2015 || (client_build.getMonth() <= 8 && client_build.getFullYear() === 2016);
                         
-                        delete dmChannelThey.recipients;
+                        if (old_system) {
+                            dmChannelThey.recipient = dmChannelThey.recipients[0];
+                        
+                            delete dmChannelThey.recipients;
 
-                        await global.dispatcher.dispatchEventTo(channelId, "CHANNEL_CREATE", {
-                            id: account.id,
-                            type: req.channel_types_are_ints ? 1 : "text",
-                            recipient: dmChannelThey.recipient,
-                            guild_id: null
-                        });
-                    } else {
-                        await global.dispatcher.dispatchEventTo(channelId, "CHANNEL_CREATE", {
-                            id: account.id,
-                            type: req.channel_types_are_ints ? 1 : "text", //how? but whatever
-                            recipients: dmChannelThey.recipients,
-                            guild_id: null
-                        });
+                            session.dispatch("CHANNEL_CREATE", {
+                                id: channel.id,
+                                type: req.channel_types_are_ints ? 1 : "text",
+                                recipient: dmChannelThey.recipient,
+                                guild_id: null,
+                                is_private: true
+                            })
+                        } else {
+                            session.dispatch("CHANNEL_CREATE", {
+                                id: channel.id,
+                                type: req.channel_types_are_ints ? 1 : "text", //how? but whatever
+                                recipients: dmChannelThey.recipients,
+                                guild_id: null
+                            });
+                        }
                     }
+                }
+
+                let ourFriends = account.relationships;
+                let theirFriends = recipient.relationships;
+                let ourRelationshipState = ourFriends.find(x => x.user.id == recipient.id);
+                let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
+
+                if (!ourRelationshipState) {
+                    ourFriends.push({
+                        id: recipient.id,
+                        type: 0,
+                        user: globalUtils.miniUserObject(recipient)
+                    });
+
+                    ourRelationshipState = ourFriends.find(x => x.user.id == recipient.id);
+                }
+
+                if (!theirRelationshipState) {
+                    theirFriends.push({
+                        id: account.id,
+                        type: 0,
+                        user: globalUtils.miniUserObject(account)
+                    })
+
+                    theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
+                }
+
+                if (ourRelationshipState.type === 2) {
+                    //we blocked them
+                    
+                    return res.status(403).json({
+                        code: 403,
+                        message: "You've blocked this user."
+                    })
+                }
+
+                if (theirRelationshipState.type === 2) {
+                    //they blocked us
+                    
+                    return res.status(403).json({
+                        code: 403,
+                        message: "You've been blocked by this user."
+                    })
+                }
+
+                let user = recipient;
+                let guilds = await global.database.getUsersGuilds(user.id);
+                let ourGuilds = await global.database.getUsersGuilds(account.id);
+                
+                let dmsOff = [];
+        
+                for(var guild of guilds) {
+                    if (user.settings.restricted_guilds.includes(guild.id)) {
+                        dmsOff.push(guild.id);
+                    }
+                }
+
+                if (dmsOff.length === guilds.length && !globalUtils.areWeFriends(account, user)) {
+                    return res.status(403).json({
+                        code: 403,
+                        message: "This user has direct messages turned off"
+                    });
+                }
+
+                let shareMutualGuilds = false;
+
+                for(var guild of guilds) {
+                    if (ourGuilds.find(x => x.id === guild.id)) {
+                        shareMutualGuilds = true;
+                        break;
+                    }
+                }
+
+                if (!shareMutualGuilds && !globalUtils.areWeFriends(account, user)) {
+                    return res.status(403).json({
+                        code: 403,
+                        message: "You don't share any mutual servers with this user."
+                    });
                 }
 
                 let createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
@@ -254,12 +356,56 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         
                 await global.dispatcher.dispatchEventInDM(creator.id, recipient.id, "MESSAGE_CREATE", createMessage);
         
+                let tryAck = await global.database.acknowledgeMessage(creator.id, channel.id, createMessage.id, 0);
+
+                if (!tryAck) {
+                    return res.status(500).json({
+                        code: 500,
+                        message: "Internal Server Error"
+                    });
+                }
+
+                await global.dispatcher.dispatchEventTo(creator.id, "MESSAGE_ACK", {
+                    channel_id: channel.id,
+                    message_id: createMessage.id
+                });
+
                 return res.status(200).json(createMessage);
             } 
 
-            //handle group dm case, its pretty similar though
+            if (channel.recipient || channel.type !== 3) {
+                return res.status(404).json({
+                    code: 404,
+                    message: "Unknown Channel"
+                });
+            }
 
-            return res.status(204).send();
+            let createMessage = await global.database.createMessage(null, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
+
+            if (!createMessage) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+    
+            await global.dispatcher.dispatchEventInGroupChannel(channel, "MESSAGE_CREATE", createMessage);
+    
+            let tryAck = await global.database.acknowledgeMessage(creator.id, channel.id, createMessage.id, 0);
+
+            if (!tryAck) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+
+            await global.dispatcher.dispatchEventTo(creator.id, "MESSAGE_ACK", {
+                channel_id: channel.id,
+                message_id: createMessage.id
+            });
+
+            return res.status(200).json(createMessage);
         }
 
         if (!channel.guild_id || !req.guild) {
@@ -393,7 +539,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
             });
         }
 
-        if (channel.recipient != null) {
+        if (channel.recipient || channel.recipients) {
             if (message.author.id != guy.id) {
                 return res.status(403).json({
                     code: 403,
@@ -410,7 +556,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
                 });
             }
 
-            await global.dispatcher.dispatchEventInDM(guy.id, channel.recipient.id, "MESSAGE_DELETE", {
+            await global.dispatcher.dispatchEventInDM(guy.id, channel.recipients ? channel.recipients[0].id : channel.recipient.id, "MESSAGE_DELETE", {
                 id: req.params.messageid,
                 guild_id: channel.guild_id,
                 channel_id: req.params.channelid
@@ -489,7 +635,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
             });
         }
 
-        if (channel.recipient != null) {
+        if (channel.recipient || channel.recipients) {
             if (message.author.id != guy.id) {
                 return res.status(403).json({
                     code: 403,
@@ -541,7 +687,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
                 });
             }
 
-            await global.dispatcher.dispatchEventInDM(guy.id, channel.recipient.id, "MESSAGE_UPDATE", message);
+            await global.dispatcher.dispatchEventInDM(guy.id, channel.recipients ? channel.recipients[0].id : channel.recipient.id, "MESSAGE_UPDATE", message);
 
             return res.status(204).send();
         } else {

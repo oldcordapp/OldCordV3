@@ -31,26 +31,161 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
         }
 
         let accountChannels = await global.database.getPrivateChannels(account.id);
+        let recipients = [];
+        let old_dm_sys = false;
 
-        let recipients = req.body.recipients;
-
-        if (recipients.length > 1) {
-            //handle group dms
-
-            return res.status(204).send();
+        if (req.body.recipients) {
+            recipients = req.body.recipients;
         }
 
-        console.log(accountChannels);
+        if (recipients.length === 0 && req.body.recipient_id) {
+            //handle 2015 dm shit
 
-        let existingChannel = accountChannels.find(x => x.recipients && x.recipients.find(y => y.id === recipients[0]));
+            recipients = [
+                req.body.recipient_id
+            ];
 
-        if (existingChannel) {
-            delete existingChannel.open;
-
-            return res.status(200).json(existingChannel);
+            old_dm_sys = true;
         }
+
+        if (recipients.length === 0) {
+            return res.status(400).json({
+                code: 400,
+                message: "Valid recipients are required."
+            });
+        }
+
+        if (recipients.length === 1) {
+            let existingChannel = accountChannels.find(x => x.recipients && x.recipients.find(y => y.id === recipients[0]));
+
+            if (existingChannel) {
+                existingChannel.open = true;
+
+                await global.database.setPrivateChannels(account.id, accountChannels); //its open now bucko
+
+                if (old_dm_sys) {
+                    existingChannel.type = req.channel_types_are_ints ? 1 : "text";
     
-        const user = await global.database.getAccountByUserId(req.body.recipients[0]);
+                    for(var recipient of existingChannel.recipients) {
+                        delete recipient.owner;
+                    }
+    
+                    existingChannel.recipient = existingChannel.recipients[0];
+
+                    delete existingChannel.recipients;
+
+                    existingChannel.is_private = true;
+                } else {
+                    for(var recipient of existingChannel.recipients) {
+                        delete recipient.owner;
+                    }
+                }
+
+                delete existingChannel.open;
+    
+                return res.status(200).json(existingChannel);
+            }
+        } 
+
+        if (old_dm_sys) {
+            //dont fucking care!!!
+
+            let user = await global.database.getAccountByUserId(recipients[0]);
+
+            if (user == null) {
+                return res.status(404).json({
+                    code: 404,
+                    message: "Unknown User"
+                });
+            }
+
+            let guilds = await global.database.getUsersGuilds(user.id);
+            let ourGuilds = await global.database.getUsersGuilds(account.id);
+
+            let shareMutualGuilds = false;
+
+            for(var guild of guilds) {
+                if (ourGuilds.find(x => x.id === guild.id)) {
+                    shareMutualGuilds = true;
+                    break;
+                }
+            }
+    
+            if (!shareMutualGuilds) {
+                return res.status(400).json({
+                    code: 400,
+                    message: "Creating a new private channel failed"
+                }); //???
+            }
+    
+            let createPrivateChannel = await global.database.createPrivateChannel(account, [user], false);
+    
+            if (!createPrivateChannel) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+    
+            createPrivateChannel.is_private = true;
+            createPrivateChannel.type = req.channel_types_are_ints ? 1 : "text";
+
+            await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
+                guild_id: null,
+                id: createPrivateChannel.id,
+                recipient: createPrivateChannel.recipients.find(x => x.id !== account.id),
+                is_private: true,
+                type: createPrivateChannel.type
+            });
+
+            return res.status(200).json(createPrivateChannel);
+        }
+
+        let isDM = recipients.length === 1;
+
+        if (!isDM) {
+            //handle group jargain
+            if (recipients.length > 9) {
+                return res.status(400).json({
+                    code: 400,
+                    message: "Maximum number of members for group reached (10)."
+                })
+            }
+
+            let handle_recipients = [];
+
+            for(var recipient in recipients) {
+                let userObject = await global.database.getAccountByUserId(recipient);
+
+                if (!userObject) continue;
+
+                if (globalUtils.areWeFriends(account, userObject)) {
+                    handle_recipients.push(userObject);
+                }
+            }
+
+            if (handle_recipients.length < 2) {
+                return res.status(400).json({
+                    code: 400,
+                    message: "To start a group you need at least 2 or more people."
+                })
+            }
+
+            let createPrivateChannel = await global.database.createPrivateChannel(account, handle_recipients, false);
+
+            if (!createPrivateChannel) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+
+            await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", createPrivateChannel);
+
+            return res.status(200).json(createPrivateChannel);
+        }
+
+        let user = await global.database.getAccountByUserId(recipients[0]);
 
         if (user == null) {
             return res.status(404).json({
@@ -59,8 +194,8 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        const ourFriends = await global.database.getRelationshipsByUserId(account.id);
-        const theirFriends = await global.database.getRelationshipsByUserId(user.id);
+        const ourFriends = account.relationships;
+        const theirFriends = user.relationships;
         const relationshipState = theirFriends.find(x => x.id === account.id);
         const ourRelationshipState = ourFriends.find(x => x.id === user.id);
 
@@ -96,7 +231,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
         if (dmsOff.length === guilds.length) {
             //they've turned off dms dude lol
 
-            let createPrivateChannel = await global.database.createPrivateChannel(account.id, [user.id], true); //true because theyve turned off dms, so dont create the channel for them
+            let createPrivateChannel = await global.database.createPrivateChannel(account, [user], true); //true because theyve turned off dms, so dont create the channel for them
 
             if (!createPrivateChannel) {
                 return res.status(500).json({
@@ -105,14 +240,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
                 });
             }
 
-            await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
-                id: account.id,
-                type: 1,
-                recipients: [
-                    globalUtils.miniUserObject(user)
-                ], //Since we're in a mid 2016 - 2017+ route, we can assume to use recipients here as otherwise the user doesnt know what the fuck theyre doing
-                guild_id: null,
-            });
+            await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", createPrivateChannel);
 
             return res.status(200).json(createPrivateChannel);
         }
@@ -133,7 +261,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             }); //???
         }
 
-        let createPrivateChannel = await global.database.createPrivateChannel(account.id, [user.id], false);
+        let createPrivateChannel = await global.database.createPrivateChannel(account, [user], false);
 
         if (!createPrivateChannel) {
             return res.status(500).json({
@@ -142,14 +270,7 @@ router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async
             });
         }
 
-        await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", {
-            id: account.id,
-            type: 1,
-            recipients: [
-                globalUtils.miniUserObject(user)
-            ], //Since we're in a mid 2016 - 2017+ route, we can assume to use recipients here as otherwise the user doesnt know what the fuck theyre doing
-            guild_id: null,
-        });
+        await global.dispatcher.dispatchEventTo(account.id, "CHANNEL_CREATE", createPrivateChannel);
 
         return res.status(200).json(createPrivateChannel);
     } catch(error) {
@@ -205,8 +326,8 @@ router.get("/:userid/profile", userMiddleware, async (req, res) => {
 
         ret.mutual_guilds = mutualGuilds; 
 
-        let ourFriends = await global.database.getRelationshipsByUserId(account.id);
-        let theirFriends = await global.database.getRelationshipsByUserId(user.id);
+        let ourFriends = account.relationships;
+        let theirFriends = user.relationships;
 
         let sharedFriends = [];
         
@@ -264,8 +385,8 @@ router.get("/:userid/relationships", userMiddleware, async (req, res) => {
             });
         }
 
-        let ourFriends = await global.database.getRelationshipsByUserId(account.id);
-        let theirFriends = await global.database.getRelationshipsByUserId(user.id);
+        let ourFriends = account.relationships;
+        let theirFriends = user.relationships;
 
         let sharedFriends = [];
 

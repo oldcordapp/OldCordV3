@@ -9,8 +9,11 @@ const SESSION_TIMEOUT = 60 * 2 * 1000; //2 mins
 
 function nineteeneightyfour(socket, type, payload) {
     if (type == "CHANNEL_CREATE" || type == "CHANNEL_UPDATE") {
-
         if (socket.channel_types_are_ints) {
+            if (payload.recipients) {
+                payload.type = payload.recipients.length > 2 ? 3 : 1; //dm channel / group dm
+            }
+
             if (typeof payload.type == 'string') {
                 payload.type = payload.type == "voice" ? 2 : 0;
             }
@@ -59,7 +62,7 @@ class session {
     }
     async updatePresence(status, game_id = null, save_presence = true) {
         try {
-            if (status == this.presence.status) return;
+            if (status === this.presence.status) return;
 
             let valid_status = [
                 "online",
@@ -343,30 +346,42 @@ class session {
                 ]
             }
 
-            this.dm_list = await global.database.getPrivateChannels(this.user.id);
+            let fetched_dms = await global.database.getPrivateChannels(this.user.id);
 
-            console.log(this.dm_list);
-            
-            for(var dm of this.dm_list) {
+            for(var dm of fetched_dms) {
                 if (dm.open) {
                     if (year == 2015 || (month <= 8 && year == 2016)) {
-                        if (dm.recipients.length > 1) {
-                            this.dm_list = this.dm_list.filter(x => x.id !== dm.id); //remove group dms on older clients temporarily
-                        } //else {
-                            //dm.recipient = dm.recipients[0];
-    
-                            //delete dm.recipients;
-                         //} //also this is like an only user object kinda deal
+                        if (dm.recipients.length > 2) {
+                            fetched_dms = fetched_dms.filter(x => x.id !== dm.id); //remove group dms on older clients temporarily
+                        } else {
+                            dm.recipient = dm.recipients[0];
+
+                            delete dm.recipient.owner;
+                            delete dm.recipients;
+
+                            dm.type = "text";
+                            dm.is_private = true;
+                         } //also this is like an only user object kinda deal
                     }
     
+                    if (dm.recipients) {
+                        dm.recipients = dm.recipients.filter(x => x.id !== this.user.id);
+
+                        for(var recipient of dm.recipients) {
+                            delete recipient.owner;
+                        }
+                    }
+                    
                     delete dm.open;
+
+                    this.dm_list.push(dm);
                 }
             }
             
             let connectedAccounts = await global.database.getConnectedAccounts(this.user.id);
             let guildSettings = await global.database.getUsersGuildSettings(this.user.id);
             
-            this.relationships = await global.database.getRelationshipsByUserId(this.user.id);
+            this.relationships = this.user.relationships;
 
             this.readyUp({
                 guilds: this.guilds ?? [],

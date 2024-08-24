@@ -26,7 +26,6 @@ const permissions = {
     DEAFEN_MEMBERS: 1 << 23,
     MOVE_MEMBERS: 1 << 24,
     USE_VAD: 1 << 25,
-    database: null,
 	has(compare, key) {
         try {
             return !!(BigInt(compare) & BigInt(permissions[key]));

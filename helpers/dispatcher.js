@@ -119,6 +119,27 @@ const dispatcher = {
 
         return true;
     },
+    dispatchEventInGroupChannel: async (channel, type, payload) => {
+        if (channel === null) return false;
+
+        for(let i = 0; i < channel.recipients.length; i++) {
+            let recipient = channel.recipients[i];
+
+            if (!recipient) continue;
+
+            let uSessions = global.userSessions.get(recipient.id);
+
+            if (!uSessions || uSessions.size === 0) continue;
+
+            for(let z = 0; z < uSessions.length; z++) {
+                uSessions[z].dispatch(type, payload);
+            }
+        }
+
+        logText(`[DISPATCHER] (Event in group channel) -> ${type}`, 'debug');
+
+        return true;
+    },
     dispatchEventInChannel: async (guild, channel_id, type, payload) => {
         if (guild === null) return false;
 

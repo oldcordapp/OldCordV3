@@ -20,7 +20,7 @@ router.get("/", async (req, res) => {
         });
     }
 
-    let relationships = await global.database.getRelationshipsByUserId(account.id);
+    let relationships = account.relationships;
     
     return res.status(200).json(relationships);
   }
@@ -54,8 +54,8 @@ router.delete("/:userid", async (req, res) => {
             });
         }
 
-        let ourFriends = await global.database.getRelationshipsByUserId(account.id);
-        let theirFriends = await global.database.getRelationshipsByUserId(user.id);
+        let ourFriends = account.relationships;
+        let theirFriends = user.relationships;
         let ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
         let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
 
@@ -167,8 +167,8 @@ router.put("/:userid", async (req, res) => {
         let type2 = req.body;
         let type = "SEND_FR";
 
-        let ourFriends = await global.database.getRelationshipsByUserId(account.id);
-        let theirFriends = await global.database.getRelationshipsByUserId(user.id);
+        let ourFriends = account.relationships;
+        let theirFriends = user.relationships;
         let ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
         let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
 
@@ -360,7 +360,7 @@ router.put("/:userid", async (req, res) => {
         } else if (type === "BLOCK") {
             ourRelationshipState.type = 2;
 
-            if (theirRelationshipState === 1) {
+            if (theirRelationshipState.type === 1) {
                 //ex-friend
 
                 theirRelationshipState.type = 0;
@@ -445,8 +445,8 @@ router.post("/", async (req, res) => {
                 }); 
             } //be very vague to protect the users privacy
 
-            let ourFriends = await global.database.getRelationshipsByUserId(account.id);
-            let theirFriends = await global.database.getRelationshipsByUserId(user.id);
+            let ourFriends = account.relationships;
+            let theirFriends = user.relationships;
             let ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
             let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
 
@@ -515,8 +515,8 @@ router.post("/", async (req, res) => {
                 });
             }
 
-            let ourFriends = await global.database.getRelationshipsByUserId(account.id);
-            let theirFriends = await global.database.getRelationshipsByUserId(user.id);
+            let ourFriends = account.relationships;
+            let theirFriends = user.relationships;
             let ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
             let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
 

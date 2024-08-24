@@ -268,22 +268,15 @@ const database = {
             return false;
         }
     },
-    createPrivateChannel: async (owner_id, to_ids, dont_add_for_them) => {
+    createPrivateChannel: async (owner, handle_recipients, dont_add_for_them) => {
         try {
             let recipients = [];
-            let owner = await database.getAccountByUserId(owner_id);
 
-            if (!owner) return null;
-
-            for(var to_id of to_ids) {
-                let user = await database.getAccountByUserId(to_id);
-
-                if (!user) continue;
-
+            for(var recipient of handle_recipients) {
                 recipients.push({
-                    ...globalUtils.miniUserObject(user),
+                    ...globalUtils.miniUserObject(recipient),
                     owner: false
-                });
+                }); 
             }
 
             recipients.push({
@@ -298,31 +291,37 @@ const database = {
             }
 
             if (!dont_add_for_them) {
-                for(var to_id2 of to_ids) {
-                    let priv_channels = await database.getPrivateChannels(to_id2);
+                for(var recipient of recipients) {
+                    let priv_channels = await database.getPrivateChannels(recipient.id);
     
-                    if (!priv_channels || priv_channels.find(x => x.id == owner_id)) continue;
+                    if (!priv_channels || priv_channels.find(x => x.id == owner.id)) continue;
     
                     priv_channels.push({
-                        id: dm_id,
+                        id: channel.id,
                         open: false
                     });
 
-                    await database.setPrivateChannels(to_id2, priv_channels);
+                    await database.setPrivateChannels(recipient.id, priv_channels);
                 }
             }
 
-            let ourPrivateChannels = await database.getPrivateChannels(id);
+            let ourPrivateChannels = await database.getPrivateChannels(owner.id);
 
             if (!ourPrivateChannels) return null;
             
             ourPrivateChannels.push({
-                id: dm_id,
+                id: channel.id,
                 open: true
             });
 
-            await database.setPrivateChannels(owner_id, ourPrivateChannels);
+            await database.setPrivateChannels(owner.id, ourPrivateChannels);
             
+            for(var recipient of channel.recipients) {
+                delete recipient.owner;
+            }
+
+            channel.recipients = channel.recipients.filter(x => x.id !== owner.id);
+
             return channel;
         } catch (error) {
             logText(error, "error");
@@ -360,15 +359,17 @@ const database = {
             if (chans && chans.length > 0) {
                 for(var chan of chans) {
                     let actual_channel = await database.getChannelById(chan.id);
+
+                    if (!actual_channel) continue;
     
-                    let recipients = chan.recipients; //people in the channel, user objects
+                    let recipients = actual_channel.recipients; //people in the channel, user objects
 
                     ret.push({
                         guild_id: null,
                         id: chan.id,
                         type: actual_channel.type,
                         last_message_id: actual_channel.last_message_id ?? "0",
-                        recipients: recipients,
+                        recipients: recipients ?? [],
                         open: chan.open
                     });
                 }
@@ -473,8 +474,34 @@ const database = {
                 SELECT * FROM users WHERE email = $1
             `, [email]);
 
-            return globalUtils.prepareAccountObject(rows);
+            return globalUtils.prepareAccountObject(rows, []); //relationships arent even accessed from here either
         } catch (error) {  
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    //temp fix for a memory leak, im going to redo this entire db wrapper one day.
+    getRelationshipUserById: async (id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM users WHERE id = $1
+            `, [id]);
+
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+
+            return {
+                id: rows[0].id,
+                username: rows[0].username,
+                discriminator: rows[0].discriminator,
+                avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
+                premium: true,
+                flags: rows[0].flags ?? 0,
+                bot: rows[0].bot == 1 ? true : false
+            };
+        } catch (error) {
             logText(error, "error");
 
             return null;
@@ -486,7 +513,24 @@ const database = {
                 SELECT * FROM users WHERE token = $1
             `, [token]);
 
-            return globalUtils.prepareAccountObject(rows); 
+            let contents = JSON.parse(rows[0].relationships);
+            let relationships = [];
+            
+            if (contents && contents.length > 0) {
+                for (var relationship of contents) {
+                    let user = await global.database.getRelationshipUserById(relationship.id);
+
+                    if (user && user.id != rows[0].id) {
+                        relationships.push({
+                            id: relationship.id,
+                            type: relationship.type,
+                            user: user
+                        })
+                    }
+                }
+            }
+
+            return globalUtils.prepareAccountObject(rows, relationships);
         } catch (error) {
             logText(error, "error");
 
@@ -499,7 +543,7 @@ const database = {
                 SELECT * FROM users WHERE username = $1 AND discriminator = $2
             `, [username, discriminator]);
 
-            return globalUtils.prepareAccountObject(rows); 
+            return globalUtils.prepareAccountObject(rows, []); //dont care about this, relationships arent even accessed from here
         } catch (error) {
             logText(error, "error");
 
@@ -584,7 +628,24 @@ const database = {
                 SELECT * FROM users WHERE id = $1
             `, [id]);
 
-            return globalUtils.prepareAccountObject(rows);
+            let contents = JSON.parse(rows[0].relationships);
+            let relationships = [];
+            
+            if (contents && contents.length > 0) {
+                for (var relationship of contents) {
+                    let user = await global.database.getRelationshipUserById(relationship.id);
+
+                    if (!user || user.id === id) continue;
+
+                    relationships.push({
+                        id: relationship.id,
+                        type: relationship.type,
+                        user: user
+                    })
+                }
+            }
+
+            return globalUtils.prepareAccountObject(rows, relationships);
         } catch (error) {
             logText(error, "error");
 
@@ -935,14 +996,14 @@ const database = {
             
             if (contents && contents.length > 0) {
                 for(var relationship of contents) {
-                    let user = await database.getAccountByUserId(relationship.id);
+                    let user = await database.getRelationshipUserById(relationship.id);
 
                     if (!user || user.id === user_id) continue;
 
                     ret.push({
                         id: relationship.id,
                         type: relationship.type,
-                        user: globalUtils.miniUserObject(user)
+                        user: user
                     })
                 }
 
@@ -1041,14 +1102,14 @@ const database = {
             if (guild_id === null && recipients.length > 0) {
                 //create dm channel / group dm
 
-                await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position, recipients) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [channel_id, recipients.length > 1 ? 3 : 1, 'NULL', 'NULL', '0', 'NULL', 'NULL', 0, JSON.stringify(recipients)]);
+                await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position, recipients) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [channel_id, recipients.length > 2 ? 3 : 1, 'NULL', 'NULL', '0', 'NULL', 'NULL', 0, JSON.stringify(recipients)]);
 
                 return {
                     id: channel_id,
                     guild_id: null,
-                    type: recipients.length > 1 ? 3 : 1,
+                    type: recipients.length > 2 ? 3 : 1,
                     last_message_id: "0",
-                    recipients: JSON.parse(recipients) ?? []
+                    recipients: recipients ?? []
                 };
             }
 
@@ -1319,7 +1380,7 @@ const database = {
                 return {
                     id: row.id,
                     guild_id: null,
-                    type: JSON.parse(row.recipients).length > 1 ? 3 : 1,
+                    type: row.type,
                     last_message_id: row.last_message_id ?? "0",
                     recipients: JSON.parse(row.recipients)
                 }
@@ -2984,8 +3045,6 @@ const database = {
                 }
             }
 
-            console.log(new_discriminator);
-
             if (new_password != null) {
                 const checkPassword = await database.doesThisMatchPassword(new_password, account.password);
 
@@ -2996,8 +3055,6 @@ const database = {
                 let salt = await genSalt(10);
                 let newPwHash = await hash(new_password, salt);
                 let token = globalUtils.generateToken(account.id, newPwHash);
-
-                console.log(new_discriminator);
 
                 await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3, password = $4, token = $5 WHERE id = $6`, [new_username, new_discriminator, new_email2, newPwHash, token, account.id]);
 
@@ -3015,8 +3072,6 @@ const database = {
                     return false;
                 }
 
-                console.log(new_discriminator);
-                
                 await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3 WHERE id = $4`, [new_username, new_discriminator, new_email2, account.id]);
             }
             

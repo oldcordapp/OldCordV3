@@ -456,7 +456,7 @@ function channelPermissionsMiddleware(permission) {
             });
         }
 
-        if (!channel.guild_id && channel.recipient) {
+        if (!channel.guild_id && (channel.recipient || channel.recipients)) {
             if (permission == "MANAGE_MESSAGES" && sender.id != channel.recipient.id) {
                 return res.status(403).json({
                     code: 403,
@@ -465,11 +465,43 @@ function channelPermissionsMiddleware(permission) {
             }
 
             if (permission == "SEND_MESSAGES") {
-                const guilds = await global.database.getUsersGuilds(channel.recipient.id);
+                let id = channel.recipient ? channel.recipient.id : channel.recipients[0].id;
 
-                let share = guilds.some(guild => guild.members != null && guild.members.length > 0 && guild.members.some(member => member.id === sender.id));
+                let userObject = await global.database.getAccountByUserId(id);
 
-                if (!share) {
+                if (!userObject) {
+                    return res.status(403).json({
+                        code: 403,
+                        message: "Missing Permissions"
+                    });
+                }
+
+                let friends = globalUtils.areWeFriends(sender, userObject);
+
+                const guilds = await global.database.getUsersGuilds(id);
+
+                const sharedGuilds = guilds.filter(guild => 
+                    guild.members != null && 
+                    guild.members.length > 0 && 
+                    guild.members.some(member => member.id === sender.id)
+                );
+
+                if (!friends && sharedGuilds.length === 0) {
+                    return res.status(403).json({
+                        code: 403,
+                        message: "Missing Permissions"
+                    });
+                }
+
+                let counted = 0;
+
+                for(var guild of sharedGuilds) {
+                    if (userObject.settings.restricted_guilds.includes(guild.id)) {
+                        counted++;
+                    }
+                }
+
+                if (counted === sharedGuilds.length && !friends) {
                     return res.status(403).json({
                         code: 403,
                         message: "Missing Permissions"

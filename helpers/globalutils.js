@@ -188,8 +188,8 @@ const globalUtils = {
 
         return sanitizedObject;
     },
-    prepareAccountObject: (rows) => {
-        if (rows == null || rows.length == 0) {
+    prepareAccountObject: (rows, relationships, private_channels) => {
+        if (rows === null || rows.length === 0) {
             return null;
         }
 
@@ -206,6 +206,8 @@ const globalUtils = {
             flags: rows[0].flags ?? 0,
             bot: rows[0].bot == 1 ? true : false,
             created_at: rows[0].created_at,
+            relationships: relationships ?? [],
+            private_channels: private_channels ?? [],
             settings: JSON.parse(rows[0].settings),
             claimed: true
         };
@@ -219,6 +221,34 @@ const globalUtils = {
         }
 
         return user;
+    },
+    areWeFriends: (user1, user2) => {
+        let ourRelationships = user1.relationships;
+        let theirRelationships = user2.relationships;
+        let relationshipState = theirRelationships.find(x => x.id === user1.id);
+        let ourRelationshipState = ourRelationships.find(x => x.id === user2.id);
+
+        if (!ourRelationshipState) {
+            ourRelationships.push({
+                id: user2.id,
+                type: 0,
+                user: globalUtils.miniUserObject(user2)
+            });
+
+            ourRelationshipState = ourRelationships.find(x => x.user.id == user2.id);
+        }
+
+        if (!relationshipState) {
+            theirRelationships.push({
+                id: user1.id,
+                type: 0,
+                user: globalUtils.miniUserObject(user1)
+            })
+
+            relationshipState = theirRelationships.find(x => x.id === user1.id);
+        }
+
+        return relationshipState.type === 1 && ourRelationshipState.type === 1;
     },
     miniUserObject: (user) => {
         return {
