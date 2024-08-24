@@ -43,6 +43,7 @@ function patchJS(script) {
     script = script.replaceAll(/discord.gg/g, config.custom_invite_url);
     script = script.replaceAll(/discordapp.com/g, config.base_url);
     script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true"); //april fools force enable @someone experiment
+    script = script.replaceAll(/isEmojiDisabled:function\([^)]*\){/g, "$&return false;");
     
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
 
@@ -250,18 +251,6 @@ function monkeyPatcher() {
             id: modId,
             loaded: true
         };
-    })();
-
-    (function() {
-        if (completedPatches.emojisEverywhere)
-            return;
-        
-        let module = findByProps("isEmojiDisabled");
-        if (module) {
-            completedPatches.emojisEverywhere = true;
-            console.log("Enabling emojis everywhere");
-            module.isEmojiDisabled = () => false;
-        }
     })();
 
     (function() {
