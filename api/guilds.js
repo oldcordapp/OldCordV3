@@ -20,7 +20,7 @@ router.get("/:guildid", guildMiddleware, async (req, res) => {
     return res.status(200).json(req.guild);
 });
 
-router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(global.config.ratelimit_config.createGuild.maxPerTimeFrame, global.config.ratelimit_config.createGuild.timeFrame), async (req, res) => {
     try {
         if (!req.body.name || req.body.name == "") {
             return res.status(400).json({
@@ -96,7 +96,7 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(50
 });
 
 //later 2016 guild deletion support - why the fuck do they do it like this?
-router.post("/:guildid/delete", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.post("/:guildid/delete", guildMiddleware, rateLimitMiddleware(global.config.ratelimit_config.leaveGuild.maxPerTimeFrame, global.config.ratelimit_config.leaveGuild.maxPerTimeFrame), async (req, res) => {
     try {
         const user = req.account;
 
@@ -147,7 +147,7 @@ router.post("/:guildid/delete", guildMiddleware, rateLimitMiddleware(50, 1000 * 
     }
 });
 
-router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(global.config.ratelimit_config.deleteGuild.maxPerTimeFrame, global.config.ratelimit_config.deleteGuild.timeFrame), async (req, res) => {
     try {
         const user = req.account;
 
@@ -215,7 +215,7 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 
     }
 });
 
-router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GUILD"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
+router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GUILD"), rateLimitMiddleware(global.config.ratelimit_config.updateGuild.maxPerTimeFrame, global.config.ratelimit_config.updateGuild.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -449,7 +449,7 @@ router.get("/:guildid/invites", guildMiddleware, guildPermissionsMiddleware("MAN
     }
 });
 
-router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
+router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(global.config.ratelimit_config.createChannel.maxPerTimeFrame, global.config.ratelimit_config.createChannel.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -506,7 +506,7 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
     }
 });
 
-router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
+router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(global.config.ratelimit_config.updateChannel.maxPerTimeFrame, global.config.ratelimit_config.updateChannel.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -570,7 +570,7 @@ router.use("/:guildid/emojis", emojis);
 
 //too little to make a route for it,
 
-router.get("/:guildid/webhooks", guildMiddleware, guildPermissionsMiddleware("MANAGE_WEBHOOKS"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
+router.get("/:guildid/webhooks", guildMiddleware, async (req, res) => {
     try {
         let guild = req.guild;
 

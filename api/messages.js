@@ -79,7 +79,7 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
     }
 });
 
-router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(5, 1000 * 10), rateLimitMiddleware(1000, 1000 * 60 * 60), async (req, res) => {
+router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.sendMessage.maxPerTimeFrame, global.config.ratelimit_config.sendMessage.timeFrame), async (req, res) => {
     try {
         const creator = req.account;
 
@@ -508,7 +508,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
     }
 });
 
-router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), rateLimitMiddleware(5, 1000 * 10), rateLimitMiddleware(1000, 1000 * 60 * 60, true), async (req, res) => {
+router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.deleteMessage.maxPerTimeFrame, global.config.ratelimit_config.deleteMessage.timeFrame), async (req, res) => {
     try {
         const guy = req.account;
 
@@ -597,7 +597,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
     }
 });
 
-router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMiddleware(1000, 1000 * 60 * 60), async (req, res) => {
+router.patch("/:messageid", rateLimitMiddleware(global.config.ratelimit_config.updateMessage.maxPerTimeFrame, global.config.ratelimit_config.updateMessage.timeFrame), async (req, res) => {
     try {
         if (req.body.content && req.body.content == "") {
             return res.status(403).json({
@@ -761,7 +761,7 @@ router.patch("/:messageid", rateLimitMiddleware(5, 1000 * 10, true), rateLimitMi
     }
 });
 
-router.post("/:messageid/ack", rateLimitMiddleware(5, 1000 * 10), rateLimitMiddleware(1000, 1000 * 60 * 60), async (req, res) => {
+router.post("/:messageid/ack", rateLimitMiddleware(global.config.ratelimit_config.ackMessage.maxPerTimeFrame, global.config.ratelimit_config.ackMessage.timeFrame), async (req, res) => {
     try {
         const guy = req.account;
 

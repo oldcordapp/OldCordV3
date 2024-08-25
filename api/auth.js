@@ -6,15 +6,24 @@ const rateLimitMiddleware = require("../helpers/middlewares").rateLimitMiddlewar
 const { logText } = require('../helpers/logger');
 const Snowflake = require('../helpers/snowflake');
 
-const config = globalUtils.config;
+global.config = globalUtils.config;
 
-router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddleware(5, 1000 * 60 * 60), async (req, res) => {
+console.log(global.config.ratelimit_config.useInvite);
+
+router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
     try {
         let release_date = req.client_build;
 
         if (!req.body.email && release_date == "june_12_2015") {
             req.body.email = `june_12_2015_app${globalUtils.generateString(10)}@oldcordrouter.com`
         } else if (!req.body.email) {
+            return res.status(400).json({
+                code: 400,
+                email: "This field is required",
+            });
+        }
+
+        if (!req.body.email.includes("@")) {
             return res.status(400).json({
                 code: 400,
                 email: "This field is required",
@@ -36,21 +45,13 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                 username: "This field is required",
             });
         }
-        
-        if (req.body.password.length > 64) {
-            return res.status(400).json({
-                code: 400,
-                password: "Must be between under 64 characters",
-            });
-        }
 
-        if (req.body.username.length < 2 || req.body.username.length > 32) {
-            return res.status(400).json({
-                code: 400,
-                username: "Must be between 2 and 32 characters",
-            });
-        }
+        let goodUsername = globalUtils.checkUsername(req.body.username);
 
+        if (goodUsername.code !== 200) {
+            return res.status(goodUsername.code).json(goodUsername);
+        }
+       
         const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password);
 
         if ('reason' in registrationAttempt) {
@@ -148,7 +149,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
     }
 });
 
-router.post("/login", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.post("/login", rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
     try {
         if (!req.body.email) {
             return res.status(400).json({

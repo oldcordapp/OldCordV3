@@ -60,6 +60,12 @@ const permissions = {
             if (for_build.endsWith("2015")) {
                 highestRole = gatheredRoles[gatheredRoles.length - 1];
             }
+
+            const ADMINISTRATOR = 8;
+
+            if ((highestRole.permissions & ADMINISTRATOR) === ADMINISTRATOR) {
+                return true;
+            } //admin override
     
             return permissions.has(highestRole.permissions, key);
         }

@@ -27,6 +27,7 @@ global.sessions = new Map();
 global.userSessions = new Map();
 global.database = database;
 global.permissions = permissions;
+global.config = globalUtils.config;
 
 //Load certificates (if any)
 let certificates = null;

@@ -19,7 +19,7 @@ router.get("/:userid", userMiddleware, async (req, res) => {
 });
 
 //new dm system / group dm system
-router.post("/:userid/channels", rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
+router.post("/:userid/channels", rateLimitMiddleware(global.config.ratelimit_config.createPrivateChannel.maxPerTimeFrame, global.config.ratelimit_config.createPrivateChannel.timeFrame), async (req, res) => {
     try {
         const account = req.account;
 

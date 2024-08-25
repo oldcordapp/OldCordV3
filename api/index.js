@@ -14,6 +14,9 @@ const connections = require('./connections');
 const admin = require('./admin');
 const webhooks = require('./webhooks');
 
+global.config = globalUtils.config;
+//just in case
+
 app.use("/auth", auth);
 app.use("/connections", connections);
 

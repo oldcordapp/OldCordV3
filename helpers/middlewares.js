@@ -46,11 +46,15 @@ async function clientMiddleware(req, res, next) {
     }
 };
 
-function rateLimitMiddleware(max, windowMs, ignore_trusted) {
+function rateLimitMiddleware(max, windowMs, ignore_trusted = true) {
     const rL = rateLimit({
         windowMs: windowMs,
         max: max,
         handler: (req, res, next) => {
+            if (!config.ratelimit_config.enabled) {
+                return next();
+            }
+
             if (ignore_trusted && req.account && config.trusted_users.includes(req.account.id)) {
                 return next();
             }    

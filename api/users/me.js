@@ -36,7 +36,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.maxPerTimeFrame, global.config.ratelimit_config.updateMe.timeFrame), async (req, res) => {
   try {
     let account = req.account;
 
@@ -113,11 +113,10 @@ router.patch("/", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
         });
       }
 
-      if (update_object.username.length < 2 || update_object.username.length > 32) {
-        return res.status(400).json({
-          code: 400,
-          username: "Must be between 2 and 32 characters"
-        });
+      let goodUsername = globalUtils.checkUsername(update_object.username);
+
+      if (goodUsername.code !== 200) {
+          return res.status(goodUsername.code).json(goodUsername);
       }
 
       if (update_object.email.length < 2 || update_object.email.length > 32) {
@@ -425,7 +424,7 @@ router.patch("/connections/:platform/:connectionid", async (req, res) => {
 });
 
 //Leaving guilds in late 2016
-router.delete("/guilds/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.delete("/guilds/:guildid", guildMiddleware, rateLimitMiddleware(global.config.ratelimit_config.leaveGuild.maxPerTimeFrame, global.config.ratelimit_config.leaveGuild.timeFrame), async (req, res) => {
     try {
         try {
             const user = req.account;
@@ -502,7 +501,7 @@ router.delete("/guilds/:guildid", guildMiddleware, rateLimitMiddleware(50, 1000 
     }
 });
 
-router.patch("/guilds/:guildid/settings", guildMiddleware, rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.patch("/guilds/:guildid/settings", guildMiddleware, rateLimitMiddleware(global.config.ratelimit_config.updateUsersGuildSettings.maxPerTimeFrame, global.config.ratelimit_config.updateUsersGuildSettings.timeFrame), async (req, res) => {
     try {
         const user = req.account;
     

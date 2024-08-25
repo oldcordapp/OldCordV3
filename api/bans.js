@@ -35,7 +35,7 @@ router.get("/", guildPermissionsMiddleware("BAN_MEMBERS"), async (req, res) => {
     }
 });
 
-router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
+router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.bans.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -131,7 +131,7 @@ router.put("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMid
     }
 });
 
-router.delete("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
+router.delete("/:memberid", guildPermissionsMiddleware("BAN_MEMBERS"), rateLimitMiddleware(global.config.ratelimit_config.bans.maxPerTimeFrame, global.config.ratelimit_config.bans.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 

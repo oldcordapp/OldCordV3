@@ -11,7 +11,7 @@ router.param('userid', async (req, res, next, userid) => {
     next();
 });
 
-router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), rateLimitMiddleware(100, 1000 * 10), rateLimitMiddleware(1000, 1000 * 60 * 60), async (req, res) => {
+router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), rateLimitMiddleware(global.config.ratelimit_config.removeReaction.maxPerTimeFrame, global.config.ratelimit_config.removeReaction.timeFrame), async (req, res) => {
     try {
         let account = req.account;
 
@@ -96,7 +96,7 @@ router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"),
     }
 });
 
-router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSAGES"), rateLimitMiddleware(100, 1000 * 10), rateLimitMiddleware(1000, 1000 * 60 * 60), async (req, res) => {
+router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.removeReaction.maxPerTimeFrame, global.config.ratelimit_config.removeReaction.timeFrame), async (req, res) => {
     try {
         let account = req.account;
 
@@ -190,7 +190,7 @@ router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSA
     }
 });
 
-router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), rateLimitMiddleware(100, 1000 * 10), rateLimitMiddleware(1000, 1000 * 60 * 60), async (req, res) => {
+router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), rateLimitMiddleware(global.config.ratelimit_config.addReaction.maxPerTimeFrame, global.config.ratelimit_config.addReaction.timeFrame), async (req, res) => {
     try {
         let account = req.account;
 

@@ -50,7 +50,7 @@ router.get("/:channelid", channelMiddleware, channelPermissionsMiddleware("READ_
     return res.status(200).json(req.channel);
 });
 
-router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(100, 1000 * 60), async (req, res) => {
+router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.typing.maxPerTimeFrame, global.config.ratelimit_config.typing.timeFrame), async (req, res) => {
     try {
         const typer = req.account;
 
@@ -131,7 +131,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
     }
 });
 
-router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(100, 1000 * 60 * 60), async (req, res) => {
+router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(global.config.ratelimit_config.updateChannel.maxPerTimeFrame, global.config.ratelimit_config.updateChannel.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -599,7 +599,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
     }
 });
 
-router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(5, 1000 * 60 * 60), async (req, res) => {
+router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(global.config.ratelimit_config.deleteChannel.maxPerTimeFrame, global.config.ratelimit_config.deleteChannel.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -642,11 +642,9 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
                 });
             }
 
-            if (!dmChannelState.open) {
-                return res.status(204).send();
-            }
-
             dmChannelState.open = false;
+
+            console.log(dmChannelState);
 
             await global.dispatcher.dispatchEventTo(sender.id, "CHANNEL_DELETE", {
                 id: channel.id,

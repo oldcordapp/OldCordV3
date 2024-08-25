@@ -47,7 +47,7 @@ router.get("/:code", async (req, res) => {
     }
 });
 
-router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.delete("/:code", rateLimitMiddleware(global.config.ratelimit_config.deleteInvite.maxPerTimeFrame, global.config.ratelimit_config.deleteInvite.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -107,7 +107,7 @@ router.delete("/:code", rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res
     }
 });
 
-router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(50, 1000 * 60 * 60), async (req, res) => {
+router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(global.config.ratelimit_config.useInvite.maxPerTimeFrame, global.config.ratelimit_config.useInvite.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 

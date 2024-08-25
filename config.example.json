@@ -23,5 +23,153 @@
     "gcs_config" : { },
     "trusted_users" : [],
     "custom_invite_url" : "",
-    "integration_config" : []
+    "integration_config" : [],
+    "ratelimit_config" : {
+        "enabled" : false,
+        "registration" : {
+            "maxPerTimeFrame" : 50,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "bans" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "typing" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 60000,
+            "breakdown" : "1000 * 60"
+        },
+        "updateChannel" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "deleteChannel" : {
+            "maxPerTimeFrame" : 5,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "createGuild" : {
+            "maxPerTimeFrame" : 50,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "deleteGuild" : {
+            "maxPerTimeFrame" : 50,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "updateGuild" : {
+            "maxPerTimeFrame" : 50,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "createChannel" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "deleteInvite" : {
+            "maxPerTimeFrame" : 50,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+	    "useInvite" : {
+            "maxPerTimeFrame" : 50,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "createInvite" : {
+            "maxPerTimeFrame" : 50,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "kickMember" : {
+            "maxPerTimeFrame" : 200,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "banMember" : {
+            "maxPerTimeFrame" : 200,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "updateMember" : {
+            "maxPerTimeFrame" : 200,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "updateNickname" : {
+            "maxPerTimeFrame" : 300,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "sendMessage" : {
+            "maxPerTimeFrame" : 5,
+            "timeFrame" : 10000,
+            "breakdown" : "1000 * 10"
+        },
+        "deleteMessage" : {
+            "maxPerTimeFrame" : 1000,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "updateMessage" : {
+            "maxPerTimeFrame" : 75,
+            "timeFrame" : 30000,
+            "breakdown" : "1000 * 30" 
+        },
+        "ackMessage" : {
+            "maxPerTimeFrame" : 250,
+            "timeFrame" : 10000,
+            "breakdown" : "1000 * 10"
+        },
+        "addReaction" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 10000,
+            "breakdown" : "1000 * 10"
+        },
+        "removeReaction" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 10000,
+            "breakdown" : "1000 * 10"
+        },
+        "updateRole" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "deleteRole" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "createRole" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "createPrivateChannel" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "leaveGuild" : {
+            "maxPerTimeFrame" : 400,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "updateUsersGuildSettings" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        },
+        "updateMe" : {
+            "maxPerTimeFrame" : 100,
+            "timeFrame" : 3600000,
+            "breakdown" : "1000 * 60 * 60"
+        }
+     }
 }

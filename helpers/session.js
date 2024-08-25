@@ -354,6 +354,8 @@ class session {
 
             for(var dm of fetched_dms) {
                 if (dm.open) {
+                    console.log("DM is open for " + this.user.username);
+
                     if (year == 2015 || (month <= 8 && year == 2016)) {
                         if (dm.recipients.length > 2) {
                             fetched_dms = fetched_dms.filter(x => x.id !== dm.id); //remove group dms on older clients temporarily

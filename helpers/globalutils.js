@@ -188,6 +188,56 @@ const globalUtils = {
 
         return sanitizedObject;
     },
+    checkUsername: (username) => {
+        let allowed = /^[A-Za-z0-9А-Яа-яЁё\s.]+$/;
+
+        if (!username) {
+            return {
+                code: 400,
+                username: "This field is required."
+            }
+        }
+
+        if (username.length > 32) {
+            return {
+                code: 400,
+                username: "Maximum character length for usernames reached (32).",
+            };
+        }
+
+        if (username.length < 2) {
+            return {
+                code: 400,
+                username: "Minimum character length for usernames not reached (2).",
+            };
+        }
+
+        if (username.startsWith(" ")) {
+            return {
+                code: 400,
+                username: "Username cannot start with a space.",
+            };
+        }
+
+        if (username.endsWith(" ")) {
+            return {
+                code: 400,
+                username: "Username cannot end with a space.",
+            };
+        }
+
+        if (!allowed.test(username)) {
+            return {
+                code: 400,
+                username: "That username is not allowed. Please try another.",
+            };
+        }
+
+        return {
+            code: 200,
+            username: ""
+        }
+    },
     prepareAccountObject: (rows, relationships) => {
         if (rows === null || rows.length === 0) {
             return null;
