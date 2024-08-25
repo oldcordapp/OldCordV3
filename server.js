@@ -358,7 +358,6 @@ app.get("/bootloaderConfig", (req, res) => {
     const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
     const base_url = config.base_url + portAppend;
     res.json({
-        base_url: base_url,
         instance_name: config.instance_name,
         instance_description: config.instance_description,
         custom_invite_url: config.custom_invite_url == "" ? base_url + "/invite" : config.custom_invite_url,

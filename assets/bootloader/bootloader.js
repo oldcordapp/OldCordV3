@@ -46,12 +46,12 @@ function patchJS(script, kind) {
         script = script.replaceAll(".presence.", ".presences.");
 
     //Set URLs
-    script = script.replaceAll(/d3dsisomax34re.cloudfront.net/g, config.base_url);
-    script = script.replaceAll(/status.discordapp.com/g, config.base_url);
-    script = script.replaceAll(/cdn.discordapp.com/g, config.base_url);
-    script = script.replaceAll(/discordcdn.com/g, config.base_url); //??? DISCORDCDN.COM?!!11
+    script = script.replaceAll(/d3dsisomax34re.cloudfront.net/g, location.host);
+    script = script.replaceAll(/status.discordapp.com/g, location.host);
+    script = script.replaceAll(/cdn.discordapp.com/g, location.host);
+    script = script.replaceAll(/discordcdn.com/g, location.host); //??? DISCORDCDN.COM?!!11
     script = script.replaceAll(/discord.gg/g, config.custom_invite_url);
-    script = script.replaceAll(/discordapp.com/g, config.base_url);
+    script = script.replaceAll(/discordapp.com/g, location.host);
     
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
     
@@ -99,7 +99,7 @@ function patchJS(script, kind) {
 }
 
 function patchCSS(css) {
-    css = css.replaceAll(/d3dsisomax34re.cloudfront.net/g, config.base_url);
+    css = css.replaceAll(/d3dsisomax34re.cloudfront.net/g, location.host);
     
     css = css.replaceAll(/url\(\/assets\//g, `url(${cdn_url}/assets/`);
 
