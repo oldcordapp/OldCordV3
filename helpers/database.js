@@ -2888,6 +2888,7 @@ const database = {
                 name: name,
                 owner_id: owner_id,
                 region: region,
+                voice_states: [],
                 roles: [{
                     id: id,
                     name: "@everyone", 
