@@ -93,7 +93,8 @@ function patchJS(script, kind) {
     }
 
     //Remove useless unknown-field error
-    script = script.replaceAll("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
+    if (kind == "root")
+        script = script.replace("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
 
     return script;
 }
