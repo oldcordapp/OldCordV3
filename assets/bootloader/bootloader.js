@@ -21,13 +21,13 @@ function loadLog(text, error, noLog) {
 
 function noop() {}
 
-const release_date = (function() {
+let release_date = (function() {
 	const parts = `; ${document.cookie}`.split("; release_date=");
 	if (parts.length === 2)
 		return parts.pop().split(';').shift();
 })();
 
-function patchJS(script) {
+function patchJS(script, kind) {
     //Fix client misidentification
     script = script.replace('__[STANDALONE]__', '');
     
@@ -105,6 +105,16 @@ function patchCSS(css) {
 }
 
 (async function() {
+    loadLog("Build: " + release_date);
+    
+    if ((release_date == "november_16_2017" ||
+         release_date == "december_21_2017" ||
+         release_date == "april_1_2018")
+         && !localStorage.getItem("token")) {
+        loadLog("Warning: You aren't logged in, and the login page is BROKEN on this build. Switching to October 5 2017 temporarily.", true, true);
+        release_date = "october_5_2017";
+    }
+    
     loadLog("Loading bootloader parameters");
     try {
         config = await (await fetch("/bootloaderConfig")).json();
@@ -126,7 +136,7 @@ function patchCSS(css) {
     let body = /<body>([^]*?)<\/body>/.exec(html)[1];
     let scripts = /<script src="([^"]+)".*>/.exec(body);
 
-    async function patchAndExecute(path) {
+    async function patchAndExecute(path, kind) {
         if (path.startsWith("http")) {
             path = new URL(path).pathname;
         }
@@ -143,8 +153,8 @@ function patchCSS(css) {
         
         let script = await response.text();
         
-        loadLog("Executing script: " + path);
-        eval?.(patchJS(script));
+        loadLog(`Executing ${kind} script: ${path}`);
+        eval?.(patchJS(script, kind));
     }
 
     //Copy icon
@@ -163,7 +173,7 @@ function patchCSS(css) {
             return;
         }
         
-        patchAndExecute(elm.src);
+        patchAndExecute(elm.src, "inline");
     }
 
     //Copy react roots
@@ -190,7 +200,7 @@ function patchCSS(css) {
     //Patch and execute scripts
     for (let scriptUrl of body.matchAll(/<script src="([^"]+)"[^>]*>/g)) {
         try {
-            await patchAndExecute(scriptUrl[1]);
+            await patchAndExecute(scriptUrl[1], "root");
         } catch (e) {
             loadLog("Error occurred. Please check the console.", true, true);
             console.error(e);
