@@ -644,8 +644,6 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
 
             dmChannelState.open = false;
 
-            console.log(dmChannelState);
-
             await global.dispatcher.dispatchEventTo(sender.id, "CHANNEL_DELETE", {
                 id: channel.id,
                 guild_id: null

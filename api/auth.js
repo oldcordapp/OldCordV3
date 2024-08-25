@@ -8,8 +8,6 @@ const Snowflake = require('../helpers/snowflake');
 
 global.config = globalUtils.config;
 
-console.log(global.config.ratelimit_config.useInvite);
-
 router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
     try {
         let release_date = req.client_build;
