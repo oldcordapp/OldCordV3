@@ -106,10 +106,22 @@ function patchCSS(css) {
 
 (async function() {
     loadLog("Loading bootloader parameters");
-    config = await (await fetch("/bootloaderConfig")).json();
+    try {
+        config = await (await fetch("/bootloaderConfig")).json();
+    } catch (e) {
+        loadLog("Fatal error occurred. Please check the console.", true, true);
+        throw e;
+    }
 
-    loadLog("Loading application");
-    let html = await (await fetch(`${cdn_url}/assets/clients/${release_date}/app.html`)).text();
+    loadLog("Downloading application");
+    let html;
+    try {
+        html = await (await fetch(`${cdn_url}/assets/clients/${release_date}/app.html`)).text();
+    } catch (e) {
+        loadLog("Fatal error occurred. Please check the console.", true, true);
+        throw e;
+    }
+
     let head = /<head>([^]*?)<\/head>/.exec(html)[1];
     let body = /<body>([^]*?)<\/body>/.exec(html)[1];
     let scripts = /<script src="([^"]+)".*>/.exec(body);
