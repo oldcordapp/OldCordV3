@@ -525,23 +525,55 @@ router.patch("/guilds/:guildid/settings", guildMiddleware, rateLimitMiddleware(g
         let guildSettings = usersGuildSettings.find(x => x.guild_id == guild.id);
 
         if (!guildSettings) {
-            usersGuildSettings.push({
+            //New guild settings object
+            guildSettings = {
                 guild_id: guild.id,
                 muted: false,
                 message_notifications: 2, //2 = Nothing, 1 = Only @mentions, 3 = All Messages
                 suppress_everyone: false,
                 mobile_push: false,
-                channel_overrides: {} //channelid: message_notifications: 0 - (0 = all, 1 = mentions, 2 = nothing), muted: false (or true)
-            });
+                channel_overrides: [] //channelid: message_notifications: 0 - (0 = all, 1 = mentions, 2 = nothing), muted: false (or true)
+            };
+            usersGuildSettings.push(guildSettings);
         }
+        
+        //Update guild settings
+        function copyIfSetGuild(name) {
+            if (req.body[name] !== undefined)
+                guildSettings[name] = req.body[name];
+        }
+        
+        copyIfSetGuild("muted");
+        copyIfSetGuild("suppress_everyone");
+        copyIfSetGuild("message_notifications");
+        copyIfSetGuild("mobile_push");
+        
+        //Update channel overrides
+        if (req.body.channel_overrides) {
+            if (!guildSettings.channel_overrides || !Array.isArray(guildSettings.channel_overrides)) {
+                //New channel overrides array for the guild (or old was corrupt)
+                guildSettings.channel_overrides = [];
+            }
 
-        guildSettings = usersGuildSettings.find(x => x.guild_id == guild.id);
+            for (let [id, newChannelOverride] of Object.entries(req.body.channel_overrides)) {
+                let channelOverride = guildSettings.channel_overrides.find(x => x.channel_id == id || x.channel_id == newChannelOverride.channel_id);
 
-        for (let key in req.body) {
-            let value = req.body[key];
+                if (!channelOverride) {
+                    //New channel override
+                    channelOverride = {
+                        channel_id: id ?? newChannelOverride.channel_id,
+                    };
+                    guildSettings.channel_overrides.push(channelOverride);
+                }
 
-            if (guildSettings.hasOwnProperty(key)) {
-                guildSettings[key] = value;
+                //Update channel override settings
+                function copyIfSetChannel(name) {
+                    if (newChannelOverride[name] !== undefined)
+                        channelOverride[name] = newChannelOverride[name];
+                }
+
+                copyIfSetChannel("muted");
+                copyIfSetChannel("message_notifications");
             }
         }
 
@@ -553,6 +585,8 @@ router.patch("/guilds/:guildid/settings", guildMiddleware, rateLimitMiddleware(g
                 message: "Internal Server Error"
             });
         }
+
+        await global.dispatcher.dispatchEventTo(user.id, "USER_GUILD_SETTINGS_UPDATE", guildSettings);
 
         return res.status(204).send();
     } catch (error) {
