@@ -72,6 +72,8 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
     } catch (error) {
         logText(error, "error");
 
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
             code: 500,
             message: "Internal Server Error"
@@ -89,7 +91,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 message: "Unauthorized"
             });
         }
-
+        
         const account = creator;
 
         const channel = req.channel;

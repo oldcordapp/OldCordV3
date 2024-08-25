@@ -32,6 +32,8 @@ router.get("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), as
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -78,6 +80,8 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
         let tryCreateEmoji = await global.database.createCustomEmoji(guild, account.id, emoji_id, req.body.name);
 
         if (!tryCreateEmoji) {
+            await globalUtils.unavailableGuild(guild, "Something went wrong creating an emoji");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -111,6 +115,8 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -173,6 +179,8 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
         let tryUpdate = await global.database.updateCustomEmoji(guild, emoji_id, req.body.name);
 
         if (!tryUpdate) {
+            await globalUtils.unavailableGuild(req.guild, "Something went wrong while updating an emoji");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -197,6 +205,8 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -238,6 +248,8 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
         let tryDelete = await global.database.deleteCustomEmoji(guild, emoji_id);
 
         if (!tryDelete) {
+            await globalUtils.unavailableGuild(req.guild, "Something went wrong while deleting an emoji");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -262,6 +274,8 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+        
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"

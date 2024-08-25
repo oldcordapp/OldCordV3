@@ -1460,11 +1460,11 @@ const database = {
         }
     },
     getGuildById: async (id) => {
-        try {
-            const rows = await database.runQuery(`
+        const rows = await database.runQuery(`
                 SELECT * FROM guilds WHERE id = $1
-            `, [id]);
+        `, [id]);
 
+        try {
             if (rows === null || rows.length === 0) {
                 return null;
             }
@@ -1702,7 +1702,10 @@ const database = {
         } catch (error) {
             logText(error, "error");
 
-            return null;
+            return {
+                id: rows[0].id,
+                unavailable: true 
+            }; //fallback ?
         }
     },
     transferGuildOwnership: async (guild_id, new_owner) => {

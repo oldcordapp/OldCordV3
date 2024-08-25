@@ -124,6 +124,8 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
       } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -187,6 +189,8 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
         const outcome = await global.database.updateChannel(channel.id, channel);
 
         if (channel == null || !outcome) {
+            await globalUtils.unavailableGuild(req.guild, "Something went wrong while updating a channel");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -203,6 +207,8 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
       } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -227,6 +233,8 @@ router.get("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewar
       } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -281,6 +289,8 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
         const invite = await global.database.createInvite(req.params.guildid, req.params.channelid, sender.id, temporary, max_uses, max_age, xkcdpass, regenerate);
 
         if (invite == null) {
+            await globalUtils.unavailableGuild(req.guild, "Something went wrong while creating an invite");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -291,6 +301,8 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -335,6 +347,8 @@ router.get("/:channelid/webhooks", channelMiddleware, channelPermissionsMiddlewa
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -392,6 +406,8 @@ router.post("/:channelid/webhooks",  channelMiddleware, channelPermissionsMiddle
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -512,6 +528,8 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
     } catch(error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -592,6 +610,8 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
     } catch(error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+        
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -674,6 +694,8 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
         });
 
         if (!await global.database.deleteChannel(channel.id)) {
+            await globalUtils.unavailableGuild(req.guild, "Something went wrong while deleting a channel");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -684,6 +706,8 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
     } catch(error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+        
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"

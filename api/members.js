@@ -38,6 +38,8 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
         const attempt = await global.database.leaveGuild(member.id, req.params.guildid);
 
         if (!attempt) {
+            await globalUtils.unavailableGuild(req.guild, "Kicking member failed -> they couldn't leave");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -60,6 +62,8 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
     } catch (error) {
         console.log(error);
     
+        await globalUtils.unavailableGuild(req.guild, error);
+        
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -101,6 +105,8 @@ async function updateMember(member, guild, roles, nick) {
             roles = newRoles;
             
             if (!await global.database.setRoles(guild, roles, member.id)) {
+                await globalUtils.unavailableGuild(guild, "Setting roles on " + member.id + " failed");
+
                 return res.status(500).json({
                     code: 500,
                     message: "Internal Server Error"
@@ -138,6 +144,8 @@ async function updateMember(member, guild, roles, nick) {
             let tryUpdateNick = await global.database.updateGuildMemberNick(guild_id, member.user.id, nick);
 
             if (!tryUpdateNick) {
+                await globalUtils.unavailableGuild(guild, "Updating nick failed");
+
                 return res.status(500).json({
                     code: 500,
                     message: "Internal Server Error"
@@ -192,6 +200,8 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+        
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -213,6 +223,8 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
         let member = req.guild.members.find(y => y.id == account.id);
 
         if (!member) {
+            await globalUtils.unavailableGuild(req.guild, "Member not found?");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -232,6 +244,8 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+        
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"

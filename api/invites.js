@@ -90,6 +90,8 @@ router.delete("/:code", rateLimitMiddleware(global.config.ratelimit_config.delet
         const tryDelete = await global.database.deleteInvite(req.params.code);
 
         if (!tryDelete) {
+            await globalUtils.unavailableGuild(req.guild, "Deleting invite failed");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -99,6 +101,8 @@ router.delete("/:code", rateLimitMiddleware(global.config.ratelimit_config.delet
         return res.status(204).send();
     } catch (error) {
         logText(error, "error");
+
+        await globalUtils.unavailableGuild(req.guild, error);
 
         return res.status(500).json({
             code: 500,
@@ -165,6 +169,8 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(g
         return res.status(200).send(invite);
     } catch (error) {
         logText(error, "error");
+
+        await globalUtils.unavailableGuild(req.guild, error);
 
         return res.status(500).json({
             code: 500,

@@ -83,6 +83,8 @@ router.patch("/:webhookid", async (req, res) => {
         let tryUpdate = await global.database.updateWebhook(webhook.id, channel.id, req.body.name ?? "Captain Hook", req.body.avatar ?? "NULL");
 
         if (!tryUpdate) {
+            await globalUtils.unavailableGuild(guild, "Updating webhook failed");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -141,6 +143,8 @@ router.delete("/:webhookid", async (req, res) => {
         let tryDelete = await global.database.deleteWebhook(webhook.id);
 
         if (!tryDelete) {
+            await globalUtils.unavailableGuild(guild, "Deleting webhook failed");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"

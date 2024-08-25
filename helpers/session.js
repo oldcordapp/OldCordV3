@@ -301,6 +301,28 @@ class session {
             this.guilds = await global.database.getUsersGuilds(this.user.id);
 
             for(var guild of this.guilds) {
+                if (guild.unavailable) {
+                    this.guilds = this.guilds.filter(x => x.id !== guild.id);
+
+                    this.unavailable_guilds.push(guild.id);
+
+                    continue;
+                }
+                
+                if (globalUtils.unavailableGuildsStore.includes(guild.id)) {
+                    this.guilds = this.guilds.filter(x => x.id !== guild.id);
+
+                    this.unavailable_guilds.push(guild.id);
+
+                    continue;
+                }
+
+                if (guild.region != "everything" && year < parseInt(guild.region)) {
+                    this.guilds = this.guilds.filter(x => x.id !== guild.id);
+
+                    continue;
+                }
+
                 let guild_presences = guild.presences;
 
                 if (guild_presences.length == 0) continue;
@@ -354,18 +376,18 @@ class session {
 
             for(var dm of fetched_dms) {
                 if (dm.open) {
-                    if (year == 2015 || (month <= 8 && year == 2016)) {
+                    if (year === 2015 || (month <= 8 && year === 2016)) {
                         if (dm.recipients.length > 2) {
                             fetched_dms = fetched_dms.filter(x => x.id !== dm.id); //remove group dms on older clients temporarily
-                        } else {
-                            dm.recipient = dm.recipients[0];
+                        }
+                        
+                        dm.recipient = dm.recipients[0];
 
-                            delete dm.recipient.owner;
-                            delete dm.recipients;
+                        delete dm.recipient.owner;
+                        delete dm.recipients;
 
-                            dm.type = "text";
-                            dm.is_private = true;
-                         } //also this is like an only user object kinda deal
+                        dm.type = "text";
+                        dm.is_private = true;
                     }
     
                     if (dm.recipients) {
@@ -379,7 +401,7 @@ class session {
                     delete dm.open;
 
                     this.dm_list.push(dm);
-                }
+                } //ignore closed dms
             }
             
             let connectedAccounts = await global.database.getConnectedAccounts(this.user.id);
@@ -406,7 +428,6 @@ class session {
                 },
                 user_settings: this.user.settings,
                 session_id: this.id,
-                unavailable_guilds: this.unavailable_guilds,
                 friend_suggestion_count: 0,
                 notes: [],
                 analytics_token: globalUtils.generateString(20),
@@ -417,6 +438,13 @@ class session {
                 heartbeat_interval: 45 * 1000,
                 _trace: ["oldcord-v3"]
             });
+
+            for(var guild of this.unavailable_guilds) {
+                await this.dispatch("GUILD_DELETE", {
+                    id: guild.id,
+                    unavailable: true,
+                })
+            }
         } catch(error) { 
             logText(error, "error");
         }

@@ -84,6 +84,8 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
 
             return res.status(200).json(role);
         } else {
+            await globalUtils.unavailableGuild(req.guild, "Roles update failed");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -92,6 +94,8 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -122,6 +126,8 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
         const attempt = await global.database.deleteRole(req.params.roleid);
 
         if (!attempt) {
+            await globalUtils.unavailableGuild(req.guild, "Deleting role failed");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -137,6 +143,8 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -158,6 +166,8 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
         const role = await global.database.createRole(req.params.guildid, "new role", 0, 1);
 
         if (role == null) {
+            await globalUtils.unavailableGuild(req.guild, "Creating role failed");
+
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
@@ -178,6 +188,8 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
     } catch (error) {
         logText(error, "error");
     
+        await globalUtils.unavailableGuild(req.guild, error);
+
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
