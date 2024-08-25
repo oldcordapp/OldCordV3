@@ -241,9 +241,7 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 app.use("/assets/:asset", assetsMiddleware);
 
-let handleClient = false;
-
-if (handleClient) {
+if (global.config.serveDesktopClient) {
     const desktop = require('./api/desktop');
 
     app.use(desktop);
