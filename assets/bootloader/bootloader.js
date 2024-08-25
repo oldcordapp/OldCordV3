@@ -113,6 +113,14 @@ function patchCSS(css) {
          && !localStorage.getItem("token")) {
         loadLog("Warning: You aren't logged in, and the login page is BROKEN on this build. Switching to October 5 2017 temporarily.", true, true);
         release_date = "october_5_2017";
+        
+        //Wait until the user has logged in, then refresh
+        let waitForLogin = setInterval(() => {
+            if (localStorage.getItem("token")) {
+                clearInterval(waitForLogin);
+                location.reload();
+            }
+        }, 1000);
     }
     
     loadLog("Loading bootloader parameters");
