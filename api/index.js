@@ -37,6 +37,10 @@ app.get("/scheduled-maintenances/active.json", (req, res) => {
     });
 });
 
+app.get("/experiments", (req, res) => {
+    return res.status(200).json({assignments:[]});
+});
+
 app.get("/gateway", (req, res) => {
     let host = req.headers['host'];
     if (host) host = host.split(':', 2)[0];
