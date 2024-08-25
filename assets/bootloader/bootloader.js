@@ -32,8 +32,10 @@ function patchJS(script, kind) {
     script = script.replace('__[STANDALONE]__', '');
     
     //Branding
-    script = script.replaceAll("\"Discord\"", "\"Oldcord\"");
-    script = script.replaceAll("'Discord'", "'Oldcord'");
+    function sanitize(js) {
+        return js.replaceAll(/"/g, '"').replaceAll(/\n|\r/g, "");
+    }
+    script = script.replaceAll(/\"Discord\"|'Discord'/g, `"${sanitize(config.instance_name)}"`);
     
     //Disable HTTPS in insecure mode (for local testing)
     if (location.protocol != "https")
@@ -114,6 +116,8 @@ function patchCSS(css) {
         loadLog("Fatal error occurred. Please check the console.", true, true);
         throw e;
     }
+    
+    document.title = config.instance_name;
 
     if ((release_date == "november_16_2017" ||
          release_date == "december_21_2017" ||
