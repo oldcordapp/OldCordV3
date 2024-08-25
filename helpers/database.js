@@ -332,11 +332,9 @@ const database = {
     },
     setPrivateChannels: async (user_id, private_channels) => {
         try {
-            const result = await database.runQuery(`
+            await database.runQuery(`
                 UPDATE users SET private_channels = $1 WHERE id = $2
             `, [JSON.stringify(private_channels), user_id]);
-
-            console.log('Database update result:', result);
 
             return true;
         } catch(error) {
