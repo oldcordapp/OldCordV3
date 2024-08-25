@@ -95,59 +95,7 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(gl
     }
 });
 
-//later 2016 guild deletion support - why the fuck do they do it like this?
-router.post("/:guildid/delete", guildMiddleware, rateLimitMiddleware(global.config.ratelimit_config.leaveGuild.maxPerTimeFrame, global.config.ratelimit_config.leaveGuild.maxPerTimeFrame), async (req, res) => {
-    try {
-        const user = req.account;
-
-        if (!user) {
-            return res.status(401).json({
-                code: 401,
-                message: "Unauthorized"
-            });
-        }
-
-        const guild = req.guild;
-
-        if (!guild) {
-            return res.status(404).json({
-                code: 404,
-                message: "Unknown Guild"
-            });
-        }
-
-        if (guild.owner_id != user.id) {
-            return res.status(403).json({
-                code: 403,
-                message: "Missing Permissions"
-            });
-        }
-
-        await global.dispatcher.dispatchEventInGuild(guild, "GUILD_DELETE", {
-            id: req.params.guildid
-        });
-        
-        const del = await global.database.deleteGuild(guild.id);
-
-        if (!del) {
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
-            });
-        }
-
-        return res.status(204).send();
-    } catch(error) {
-        logText(error, "error");
-    
-        return res.status(500).json({
-            code: 500,
-            message: "Internal Server Error"
-        });
-    }
-});
-
-router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(global.config.ratelimit_config.deleteGuild.maxPerTimeFrame, global.config.ratelimit_config.deleteGuild.timeFrame), async (req, res) => {
+async function guildDeleteRequest(req, res) {
     try {
         const user = req.account;
 
@@ -213,7 +161,12 @@ router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(global.config.ra
             message: "Internal Server Error"
         });
     }
-});
+}
+
+//later 2016 guild deletion support - why the fuck do they do it like this?
+router.post("/:guildid/delete", guildMiddleware, rateLimitMiddleware(global.config.ratelimit_config.leaveGuild.maxPerTimeFrame, global.config.ratelimit_config.leaveGuild.maxPerTimeFrame), guildDeleteRequest);
+
+router.delete("/:guildid", guildMiddleware, rateLimitMiddleware(global.config.ratelimit_config.deleteGuild.maxPerTimeFrame, global.config.ratelimit_config.deleteGuild.timeFrame), guildDeleteRequest);
 
 router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GUILD"), rateLimitMiddleware(global.config.ratelimit_config.updateGuild.maxPerTimeFrame, global.config.ratelimit_config.updateGuild.timeFrame), async (req, res) => {
     try {
