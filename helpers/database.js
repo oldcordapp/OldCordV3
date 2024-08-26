@@ -3155,114 +3155,112 @@ const database = {
             return false;
         }
     },
-    updateAccount: async (avatar , email , username , discriminator, password , new_password , new_email ) => {
+    updateAccount: async (avatar, email, username, discriminator, password, new_password, new_email) => {
         try {
-            if (email == null) {
+            if (email == null || username == null) {
                 return -1; //error
             }
-
-            if (username == null) {
-                return -1; //error
-            }
-
+    
             const account = await database.getAccountByEmail(email);
-
+    
             if (account == null || !account.password || !account.email) {
                 return -1; //error
             }
-
+    
             let new_avatar = avatar;
             let new_email2 = email;
             let new_username = username;
             let new_discriminator = account.discriminator;
-
-            if (discriminator && parseInt(discriminator) >= 1000 && parseInt(discriminator) < 10000 && discriminator != account.discriminator) {
-                let existingUsers = await global.database.getAccountByUsernameTag(new_username, discriminator);
-
+    
+            // Validate discriminator
+            if (discriminator) {
+                const parsedDiscriminator = parseInt(discriminator);
+    
+                if (isNaN(parsedDiscriminator) || parsedDiscriminator < 1 || parsedDiscriminator > 9999 || discriminator.length !== 4) {
+                    return res.status(400).json({
+                        code: 400,
+                        message: "Invalid discriminator. It must be a 4-digit number between 0001 and 9999."
+                    });
+                }
+    
+                const existingUsers = await global.database.getAccountByUsernameTag(new_username, discriminator);
+    
                 if (existingUsers === null) {
                     new_discriminator = discriminator;
                 } else {
                     return 0;  // Discriminator is already taken
                 }
             }
-
+    
             if (new_email != null) {
                 new_email2 = new_email;
             }
-
-            if (avatar != null && avatar.includes("data:image/")) {
-                var extension = avatar.split('/')[1].split(';')[0];
-                var imgData = avatar.replace(`data:image/${extension};base64,`, "");
-                var name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
-                var name_hash = md5(name);
     
-                if (extension == "jpeg") {
-                    extension = "jpg";
-                }
+            // Handle avatar update
+            if (avatar != null && avatar.includes("data:image/")) {
+                const extension = avatar.split('/')[1].split(';')[0];
+                const imgData = avatar.replace(`data:image/${extension};base64,`, "");
+                const name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                const name_hash = md5(name);
+    
+                const validExtension = extension === "jpeg" ? "jpg" : extension;
     
                 new_avatar = name_hash.toString();
     
                 if (!fs.existsSync(`./www_dynamic/avatars/${account.id}`)) {
                     fs.mkdirSync(`./www_dynamic/avatars/${account.id}`, { recursive: true });
                 }
- 
-                fs.writeFileSync(`./www_dynamic/avatars/${account.id}/${name_hash}.${extension}`, imgData, "base64");
-
+    
+                fs.writeFileSync(`./www_dynamic/avatars/${account.id}/${name_hash}.${validExtension}`, imgData, "base64");
+    
                 await database.runQuery(`UPDATE users SET avatar = $1 WHERE id = $2`, [new_avatar, account.id]);
             } else if (avatar == null) {
                 await database.runQuery(`UPDATE users SET avatar = $1 WHERE id = $2`, ['NULL', account.id]);
             }
-
-            let accounts = await database.getAccountsByUsername(new_username);
-
+    
+            const accounts = await database.getAccountsByUsername(new_username);
+    
             if (accounts.length >= 9998 && account.username != new_username) {
                 return 1; //too many users
             }
-
+    
             if (accounts.find(x => x.discriminator == new_discriminator && x.username == new_username)) {
-                new_discriminator = Math.round(Math.random() * 9999);
-
-                while (new_discriminator < 1000) {
-                    new_discriminator = Math.round(Math.random() * 9999).toString();
-                }
-
-                new_discriminator = new_discriminator.toString();
+                new_discriminator = Math.floor(Math.random() * 9000) + 1000; // Generate random 4-digit number between 1000 and 9999
             }
-
+    
             if (new_password != null) {
                 const checkPassword = await database.doesThisMatchPassword(new_password, account.password);
-
-                if (checkPassword) {
-                    return 2; //invalid pw
+    
+                if (!checkPassword) {
+                    return 2; //invalid password
                 }
-
-                let salt = await genSalt(10);
-                let newPwHash = await hash(new_password, salt);
-                let token = globalUtils.generateToken(account.id, newPwHash);
-
+    
+                const salt = await genSalt(10);
+                const newPwHash = await hash(new_password, salt);
+                const token = globalUtils.generateToken(account.id, newPwHash);
+    
                 await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3, password = $4, token = $5 WHERE id = $6`, [new_username, new_discriminator, new_email2, newPwHash, token, account.id]);
-
+    
                 return 3; //success
             }
-
-            if ((new_email2 != account.email && new_username != account.username && new_discriminator != account.discriminator) || (new_email2 != account.email || new_username != account.username || new_discriminator != account.discriminator)) {
+    
+            if ((new_email2 != account.email || new_username != account.username || new_discriminator != account.discriminator)) {
                 if (password == null) {
-                    return 2; //invalid pw
+                    return 2; //invalid password
                 }
-
+    
                 const checkPassword = await database.doesThisMatchPassword(password, account.password);
-
+    
                 if (!checkPassword) {
-                    return 2;
+                    return 2; //invalid password
                 }
-
+    
                 await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3 WHERE id = $4`, [new_username, new_discriminator, new_email2, account.id]);
             }
-            
-            return 3;
+    
+            return 3; //success
         } catch (error) {
             logText(error, "error");
-
             return -1;
         }
     },

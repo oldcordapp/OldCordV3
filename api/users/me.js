@@ -136,7 +136,9 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
       });
     }
 
-    if (parseInt(update.discriminator).length < 4 || parseInt(update.discriminator).length > 4 || parseInt(update.discriminator) === 0) {
+    let discriminator = update.discriminator;
+    
+    if (isNaN(parseInt(discriminator)) || parseInt(discriminator) < 1 || parseInt(discriminator) > 9999 || discriminator.length !== 4) {
       return res.status(400).json({
         code: 400,
         username: "A valid discriminator is required."
