@@ -2,6 +2,7 @@ const { logText } = require('./helpers/logger');
 const globalUtils = require('./helpers/globalutils');
 const WebSocket = require('ws').WebSocket;
 const session = require('./helpers/session');
+const zlib = require('zlib');
 
 async function syncPresence(socket, packet) {
     let allSessions = global.userSessions.get(socket.user.id);
