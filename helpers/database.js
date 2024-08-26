@@ -1352,7 +1352,7 @@ const database = {
             query += `(content LIKE '%<@${user_id}>%'`;
 
             if (include_everyone_mentions) {
-                query += ` OR content LIKE '%@everyone%'`;
+                query += ` OR mention_everyone = 1`;
             }
 
             query += `) `;
