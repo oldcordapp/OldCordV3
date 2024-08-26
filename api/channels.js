@@ -2,6 +2,7 @@ const express = require('express');
 const { logText } = require('../helpers/logger');
 const messages = require('./messages');
 const webhooks = require("./webhooks");
+const pins = require('./pins');
 const { channelPermissionsMiddleware, rateLimitMiddleware, guildPermissionsMiddleware, channelMiddleware } = require('../helpers/middlewares');
 const globalUtils = require('../helpers/globalutils');
 
@@ -714,5 +715,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
         });
     }
 });
+
+router.use("/:channelid/pins", pins);
 
 module.exports = router;

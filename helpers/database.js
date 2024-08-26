@@ -220,6 +220,7 @@ const database = {
                 tts INTEGER DEFAULT 0,
                 embeds TEXT DEFAULT '[]',
                 reactions TEXT DEFAULT '[]',
+                pinned INTEGER DEFAULT 0,
                 overrides TEXT DEFAULT NULL
            );`, []);
 
@@ -425,6 +426,9 @@ const database = {
 
             return null;
         }
+    },
+    isMessageAcked: async (user_id, channel_id, message_id) => {
+
     },
     acknowledgeMessage: async (user_id, channel_id, message_id, mention_count) => {
         try {
@@ -1280,12 +1284,89 @@ const database = {
                 mention_roles: [],
                 reactions: reactionRet,
                 tts: rows[0].tts == 1,
+                pinned: rows[0].pinned == 1,
                 overrides: (!rows[0].overrides ? null : rows[0].overrides == 'NULL' ? null : JSON.parse(rows[0].overrides))
             }
         } catch (error) {
             logText(error, "error");
 
             return null;
+        }
+    },
+    getPinnedMessagesInChannel: async (channel_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM messages WHERE channel_id = $1 AND pinned = $2`, [channel_id, 1]);
+           
+            if (rows == null || rows.length == 0) {
+                return [];
+            }
+
+            const ret = [];
+
+            for (const row of rows) {
+                const message = await database.getMessageById(row.message_id);
+
+                if (message != null) {
+                    ret.push(message);
+                }
+            }
+
+            return ret;
+        } catch (error) {
+            logText(error, "error");
+
+            return [];
+        }
+    },
+    //to-do add role mention support
+    getRecentMentions: async (user_id, limit, include_roles, include_everyone_mentions, guild_id) => {
+        try {
+            let query = `SELECT * FROM messages WHERE `;
+
+            const params = [];
+
+            let paramIndex = 1;
+    
+            if (guild_id) {
+                query += `guild_id = $${paramIndex} AND `;
+
+                params.push(guild_id);
+
+                paramIndex++;
+            }
+
+            query += `(content LIKE '%<@${user_id}>%'`;
+
+            if (include_everyone_mentions) {
+                query += ` OR content LIKE '%@everyone%'`;
+            }
+
+            query += `) `;
+
+            query += `ORDER BY timestamp DESC LIMIT $${paramIndex}`;
+
+            params.push(limit);
+
+            const rows = await database.runQuery(query, params);
+    
+            if (!rows || rows.length === 0) {
+                return [];
+            }
+
+            const ret = [];
+
+            for (const row of rows) {
+                const message = await database.getMessageById(row.message_id);
+
+                if (message != null) {
+                    ret.push(message);
+                }
+            }
+    
+            return ret;
+        } catch (error) {
+            logText(error, "error");
+            return [];
         }
     },
     getChannelMessages: async (id, limit, before_id, after_id, includeReactions) => {
@@ -2958,6 +3039,17 @@ const database = {
             if (!comparison) {
                 return false;
             }
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    setPinState: async (message_id, state) => {
+        try {
+            await database.runQuery(`UPDATE messages SET pinned = $1 WHERE message_id = $2`, [state ? 1 : 0, message_id]);
 
             return true;
         } catch (error) {

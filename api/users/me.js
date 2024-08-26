@@ -47,7 +47,7 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         });
     }
 
-    account = globalUtils.sanitizeObject(account, ['settings', 'created_at']);
+    account = globalUtils.sanitizeObject(account, ['settings', 'created_at', 'relationships', 'claimed']);
 
     if (!req.body.avatar || req.body.avatar == "") req.body.avatar = null;
 
@@ -79,7 +79,7 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         let account2 = await global.database.getAccountByEmail(account.email);
 
         if (account2 != null && account2.token) {
-          account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password']);
+          account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password', 'relationships', 'claimed']);
 
           await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
 
@@ -183,7 +183,7 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
           let account2 = await global.database.getAccountByEmail(update_object.email);
   
           if (account2 != null && account2.token) {
-            account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password']);
+            account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password', 'relationships', 'claimed']);
 
             await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
 
@@ -195,13 +195,11 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
       }
     }
 
-    account = globalUtils.sanitizeObject(account, ['settings', 'created_at', 'password']);
+    account = globalUtils.sanitizeObject(account, ['settings', 'created_at', 'password', 'relationships', 'claimed']);
 
     return res.status(200).json(account);
   } catch (error) {
     logText(error, "error");
-
-    console.log(error);
 
     return res.status(500).json({
       code: 500,
@@ -598,5 +596,34 @@ router.patch("/guilds/:guildid/settings", guildMiddleware, rateLimitMiddleware(g
         })
     }
 });
+
+router.get("/mentions", async (req, res) => {
+  try {
+    let account = req.account;
+
+    if (!account) {
+      return res.status(401).json({
+          code: 401,
+          message: "Unauthorized"
+      });
+    }
+
+    let limit = req.query.limit ?? 25;
+    let guild_id = req.query.guild_id ?? null;
+    let include_roles = req.query.roles == "true" ?? false;
+    let include_everyone_mentions = req.query.everyone == "true" ?? true;
+
+    let recentMentions = await global.database.getRecentMentions(account.id, limit, include_roles, include_everyone_mentions, guild_id);
+
+    return res.status(200).json(recentMentions);
+  } catch (error) {
+    logText(error, "error");
+
+    return res.status(500).json({
+        code: 500,
+        message: "Internal Server Error"
+    })
+  }
+})
 
 module.exports = router;
