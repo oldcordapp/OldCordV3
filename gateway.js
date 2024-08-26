@@ -138,8 +138,6 @@ const gateway = {
                         op: 11,
                         d: d
                     });
-
-                    logText(`Acknowledged client heartbeat from ${socket.user.id} (${socket.user.username}#${socket.user.discriminator})`, "GATEWAY");
                 }
             };
 
@@ -148,7 +146,9 @@ const gateway = {
                     const msg = data.toString("utf-8");
                     const packet = JSON.parse(msg);
 
-                    logText(`Incoming -> ${msg}`, "GATEWAY");
+                    if (packet.op !== 1) {
+                        logText(`Incoming -> ${msg}`, "GATEWAY");
+                    } //ignore heartbeat stuff
 
                     if (packet.op == 2) {
                         if (identified || socket.session) {

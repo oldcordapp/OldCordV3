@@ -10,7 +10,6 @@
     "instance_name": "Staging",
     "instance_description": "An oldcord v3 instance",
     "instance_flags": [],
-    "acknowledge_heartbeat_acks" : false,
     "cert_path": "",
     "key_path": "",
     "db_config" : {
