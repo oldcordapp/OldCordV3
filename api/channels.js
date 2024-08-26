@@ -47,11 +47,11 @@ router.param('channelid', async (req, res, next, channelid) => {
     next();
 });
 
-router.get("/:channelid", channelMiddleware, channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req, res) => {
+router.get("/:channelid", channelMiddleware, channelPermissionsMiddleware("READ_MESSAGES"), async (req, res) => {
     return res.status(200).json(req.channel);
 });
 
-router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.typing.maxPerTimeFrame, global.config.ratelimit_config.typing.timeFrame), async (req, res) => {
+router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.typing.maxPerTimeFrame, global.config.ratelimit_config.typing.timeFrame), async (req, res) => {
     try {
         const typer = req.account;
 
