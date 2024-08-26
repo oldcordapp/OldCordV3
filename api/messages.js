@@ -792,6 +792,14 @@ router.post("/:messageid/ack", rateLimitMiddleware(global.config.ratelimit_confi
             });
         }
 
+        let msgAlreadyAcked = await global.database.isMessageAcked(guy.id, channel.id, message.id);
+
+        if (msgAlreadyAcked) {
+            return res.status(200).json({
+                token: globalUtils.generateToken(guy.id, globalUtils.generateString(20))
+            });
+        }
+
         let tryAck = await global.database.acknowledgeMessage(guy.id, channel.id, message.id, 0);
 
         if (!tryAck) {

@@ -428,7 +428,21 @@ const database = {
         }
     },
     isMessageAcked: async (user_id, channel_id, message_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT * FROM acknowledgements WHERE user_id = $1 AND channel_id = $2 AND message_id = $3
+            `, [user_id, channel_id, message_id]);
 
+            if (rows == null || rows.length == 0) {
+                return false;
+            }
+
+            return true;
+        }  catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
     },
     acknowledgeMessage: async (user_id, channel_id, message_id, mention_count) => {
         try {
