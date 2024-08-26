@@ -110,6 +110,13 @@ const database = {
            //[{id, open, recipients, group_dm}]
 
            await database.runQuery(`
+            CREATE TABLE IF NOT EXISTS group_channels (
+                id TEXT,
+                icon TEXT DEFAULT NULL,
+                name TEXT DEFAULT NULL
+            );`, []);
+
+           await database.runQuery(`
             CREATE TABLE IF NOT EXISTS staff (
                 user_id TEXT,
                 privilege INTEGER DEFAULT 1,
@@ -263,6 +270,13 @@ const database = {
                 creator_id TEXT
             );`, []);
 
+            await database.runQuery(`CREATE TABLE IF NOT EXISTS webhook_overrides (
+                id TEXT,
+                override_id TEXT,
+                avatar_url TEXT DEFAULT NULL,
+                username TEXT DEFAULT NULL
+            );`, []);
+
             return true;
         } catch (error) {
             logText(error, "error");
@@ -322,7 +336,11 @@ const database = {
                 delete recipient.owner;
             }
 
-            channel.recipients = channel.recipients.filter(x => x.id !== owner.id);
+            if (channel.type === 1) {
+                channel.recipients = channel.recipients.filter(x => x.id !== owner.id);
+            } else if (channel.type === 3) {
+                channel.owner_id = owner.id;
+            }
 
             return channel;
         } catch (error) {
@@ -366,14 +384,25 @@ const database = {
     
                     let recipients = actual_channel.recipients; //people in the channel, user objects
 
-                    ret.push({
+                    let obj = {
                         guild_id: null,
                         id: chan.id,
                         type: actual_channel.type,
                         last_message_id: actual_channel.last_message_id ?? "0",
                         recipients: recipients ?? [],
                         open: chan.open
-                    });
+                    };
+                    
+                    if (actual_channel.type === 3) {
+                        let group_dm_info = await database.getGroupDMInfo(actual_channel.id);
+
+                        if (group_dm_info != null) {
+                            obj.icon = group_dm_info.icon;
+                            obj.name = group_dm_info.name;
+                        }
+                    }
+
+                    ret.push(obj);
                 }
 
                 return ret;
@@ -629,17 +658,32 @@ const database = {
         try {
             if (id.startsWith("WEBHOOK_")) {
                 let webhookId = id.split('_')[1];
+                let overrideId = id.split('_')[2];
+
                 let webhook = await database.getWebhookById(webhookId);
 
                 if (!webhook) return null;
 
-                return {
-                    username: webhook.name,
-                    discriminator: "0000",
-                    id: webhookId,
-                    bot: true,
-                    webhook: true,
-                    avatar: null
+                let overrides = await database.getWebhookOverrides(webhookId, overrideId);
+
+                if (overrides !== null) {
+                    return {
+                        username: overrides.username ?? webhook.name,
+                        discriminator: "0000",
+                        avatar: null,
+                        id: webhookId,
+                        bot: true,
+                        webhook: true
+                    } //avatar_url todo
+                } else {
+                    return {
+                        username: webhook.name,
+                        discriminator: "0000",
+                        id: webhookId,
+                        bot: true,
+                        webhook: true,
+                        avatar: null
+                    }
                 }
             }
 
@@ -842,7 +886,7 @@ const database = {
             let token = globalUtils.generateString(60);
 
             await database.runQuery(`INSERT INTO webhooks (guild_id, channel_id, id, token, avatar, name, creator_id) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [guild.id, channel_id, webhook_id, token, avatarHash == null ? 'NULL' : avatarHash, name, user.id]);
-            
+  
             return {
                 application_id: null,
                 id: webhook_id,
@@ -1121,15 +1165,32 @@ const database = {
             if (guild_id === null && recipients.length > 0) {
                 //create dm channel / group dm
 
-                await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position, recipients) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [channel_id, recipients.length > 2 ? 3 : 1, 'NULL', 'NULL', '0', 'NULL', 'NULL', 0, JSON.stringify(recipients)]);
+                let type = recipients.length > 2 ? 3 : 1;
 
-                return {
-                    id: channel_id,
-                    guild_id: null,
-                    type: recipients.length > 2 ? 3 : 1,
-                    last_message_id: "0",
-                    recipients: recipients ?? []
-                };
+                await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position, recipients) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [channel_id, type, 'NULL', 'NULL', '0', 'NULL', 'NULL', 0, JSON.stringify(recipients)]);
+
+                if (type === 3) {
+                    await database.runQuery(`INSERT INTO group_channels (id, icon, name) VALUES ($1, $2, $3)`, [channel_id, 'NULL', '']);
+
+                    return {
+                        id: channel_id,
+                        guild_id: null,
+                        type: recipients.length > 2 ? 3 : 1,
+                        last_message_id: "0",
+                        recipients: recipients ?? [],
+                        name: "",
+                        icon: null,
+                        owner_id: recipients ? (recipients.find(x => x.owner === true).id) : null //wtf
+                    };
+                } else {
+                    return {
+                        id: channel_id,
+                        guild_id: null,
+                        type: recipients.length > 2 ? 3 : 1,
+                        last_message_id: "0",
+                        recipients: recipients ?? []
+                    };
+                }
             }
 
             await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [channel_id, type, guild_id, 'NULL', '0', 'NULL', name, 0])
@@ -2453,7 +2514,54 @@ const database = {
             return false;
         }
     },
-    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone, webhookProps = null, webhook_embeds = []) => {
+    getGroupDMInfo: async (channel_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM group_channels WHERE id = $1`, [channel_id]);
+  
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+
+            return {
+                icon: rows[0].icon == 'NULL' ? null : rows[0].icon,
+                name: rows[0].name == 'NULL' ? '' : rows[0].name
+            };
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    createWebhookOverride: async (webhook_id, override_id, username, avatar_url = null) => {
+        try {
+            await database.runQuery(`INSERT INTO webhook_overrides (id, override_id, avatar_url, username) VALUES ($1, $2, $3, $4)`, [webhook_id, override_id, avatar_url == null ? 'NULL' : avatar_url, username == null ? 'NULL' : username]);
+
+            return true;
+        } catch(error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    getWebhookOverrides: async (webhook_id, override_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM webhook_overrides WHERE id = $1 AND override_id = $2`, [webhook_id, override_id]);
+  
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+
+            return {
+                username: rows[0].username,
+                avatar_url: rows[0].avatar_url
+            };
+        } catch(error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone, webhookOverride = null, webhook_embeds = []) => {
         try {
             const id = Snowflake.generate();
             const date = new Date().toISOString();
@@ -2468,21 +2576,18 @@ const database = {
                     return null;
                 }
 
-                //webhookProps.avatar_url - todo
-
-                if (webhookProps == null) {
-                    webhookProps = {
-                        username: webhook.name
-                    }
-                }
-
                 author = {
-                    username: webhookProps.username,
+                    username: webhook.name,
                     discriminator: "0000",
                     id: webhookId,
                     bot: true,
                     webhook: true,
                     avatar: null
+                }
+
+                if (webhookOverride !== null) {
+                    author.username = webhookOverride.username;
+                    author.avatar = null; //to-do
                 }
             } else author = await database.getAccountByUserId(author_id);
 

@@ -191,13 +191,51 @@ router.post("/:webhookid/:webhooktoken", async (req, res) => {
             }); 
         }
 
-        const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, "WEBHOOK_" + webhook.id, req.body.content, req.body.nonce, null, req.body.tts, false, req.body.username ? { username: req.body.username } : null, []);
+        let create_override = false;
+        let override = {
+            username: null,
+            avatar_url: null
+        };
+
+        if (req.body.username) {
+            create_override = true;
+
+            override.username = req.body.username;
+        }
+
+        if (req.body.avatar_url) {
+            create_override = true;
+
+            override.avatar_url = req.body.avatar_url;
+        }
+
+        let override_id = Snowflake.generate();
+
+        let createMessage = null;
+
+        if (create_override) {
+            createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, "WEBHOOK_" + webhook.id + "_" + override_id, req.body.content, req.body.nonce, null, req.body.tts, false, override, []);
+        } else createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, "WEBHOOK_" + webhook.id, req.body.content, req.body.nonce, null, req.body.tts, false, null, []);
 
         if (!createMessage) {
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
             });
+        }
+
+        if (create_override) {
+            let tryCreateOverride = await global.database.createWebhookOverride(webhook.id, override_id, override.username, override.avatar_url);
+
+            if (!tryCreateOverride) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+
+            createMessage.author.username = override.username;
+            createMessage.author.avatar = null; //to-do
         }
 
         await global.dispatcher.dispatchEventInChannel(guild, channel.id, "MESSAGE_CREATE", createMessage);

@@ -154,7 +154,7 @@ router.post("/:userid/channels", rateLimitMiddleware(global.config.ratelimit_con
 
             let handle_recipients = [];
 
-            for(var recipient in recipients) {
+            for(var recipient of recipients) {
                 let userObject = await global.database.getAccountByUserId(recipient);
 
                 if (!userObject) continue;

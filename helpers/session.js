@@ -368,33 +368,55 @@ class session {
             let fetched_dms = await global.database.getPrivateChannels(this.user.id);
 
             for(var dm of fetched_dms) {
-                if (dm.open) {
-                    if (year === 2015 || (month <= 8 && year === 2016)) {
-                        if (dm.recipients.length > 2) {
-                            fetched_dms = fetched_dms.filter(x => x.id !== dm.id); //remove group dms on older clients temporarily
+                if (dm.type === 1) {
+                    if (dm.open) {
+                        if (year === 2015 || (month <= 8 && year === 2016)) {
+                            if (dm.recipients.length > 2) {
+                                fetched_dms = fetched_dms.filter(x => x.id !== dm.id); //remove group dms on older clients temporarily
+                            }
+                            
+                            dm.recipient = dm.recipients[0];
+    
+                            delete dm.recipient.owner;
+                            delete dm.recipients;
+    
+                            dm.type = "text";
+                            dm.is_private = true;
+                        }
+        
+                        if (dm.recipients) {
+                            dm.recipients = dm.recipients.filter(x => x.id !== this.user.id);
+    
+                            for(var recipient of dm.recipients) {
+                                delete recipient.owner;
+                            }
                         }
                         
-                        dm.recipient = dm.recipients[0];
-
-                        delete dm.recipient.owner;
-                        delete dm.recipients;
-
-                        dm.type = "text";
-                        dm.is_private = true;
-                    }
+                        delete dm.open;
     
-                    if (dm.recipients) {
-                        dm.recipients = dm.recipients.filter(x => x.id !== this.user.id);
+                        this.dm_list.push(dm);
+                    } //ignore closed dms
+                } else if (dm.type === 3) {
+                    //group dm logic
 
-                        for(var recipient of dm.recipients) {
+                    let fixed_recipients = [];
+
+                    for (let recipient of dm.recipients) {
+                        if (recipient.owner) {
+                            dm.owner_id = recipient.id;         
+                        } else {
                             delete recipient.owner;
+                            
+                            fixed_recipients.push(recipient);
                         }
                     }
-                    
+
                     delete dm.open;
 
+                    dm.recipients = fixed_recipients;
+
                     this.dm_list.push(dm);
-                } //ignore closed dms
+                } 
             }
             
             let connectedAccounts = await global.database.getConnectedAccounts(this.user.id);
