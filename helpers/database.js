@@ -1661,12 +1661,12 @@ const database = {
                     const db_roles = row.roles.split(':');
 
                     for (var db_role of db_roles) {
-                        if (roles.find(x => x.id === db_role)) {
+                        if (db_role !== 'NULL' && roles.find(x => x.id === db_role)) {
                             member_roles.push(db_role);
                         }
                     }
                 } else {
-                    if (roles.find(x => x.id === row.roles)) {
+                    if (row.roles !== 'NULL' && roles.find(x => x.id === row.roles)) {
                         member_roles.push(row.roles);
                     }
                 }
@@ -2669,18 +2669,18 @@ const database = {
             let members = [];
 
             for (var row of memberRows) {
-                const member_roles = [];
+                let member_roles = [];
 
                 if (row.roles.includes(':')) {
                     const db_roles = row.roles.split(':');
 
                     for (var db_role of db_roles) {
-                        if (roles.find(x => x.id === db_role)) {
+                        if (db_role !== 'NULL' && roles.find(x => x.id === db_role)) {
                             member_roles.push(db_role);
                         }
                     }
                 } else {
-                    if (roles.find(x => x.id === row.roles)) {
+                    if (row.roles !== 'NULL' && roles.find(x => x.id === row.roles)) {
                         member_roles.push(row.roles);
                     }
                 }

@@ -104,7 +104,7 @@ const permissions = {
             for(var role2 of member.roles) {
                 var role = guild.roles.find(x => x.id === role2)
     
-                if (role != null || role2 == guild.id) {
+                if (role != null) {
                     memberRoles.push(role);
     
                     calc |= role.permissions;

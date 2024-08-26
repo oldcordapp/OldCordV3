@@ -118,7 +118,7 @@ const gateway = {
 
             socket.hb = {
                 timeout: setTimeout(async () => {
-                    await socket.session.updatePresence("offline", null);
+                    if (socket.session) await socket.session.updatePresence("offline", null);
 
                     socket.close(4009, 'Session timed out');
                 }, (45 * 1000) + (20 * 1000)),
@@ -128,7 +128,7 @@ const gateway = {
                     }
 
                     socket.hb.timeout = new setTimeout(async () => {
-                        await socket.session.updatePresence("offline", null);
+                        if (socket.session) await socket.session.updatePresence("offline", null);
 
                         socket.close(4009, 'Session timed out');
                     }, (45 * 1000) + 20 * 1000);
