@@ -337,6 +337,121 @@ const globalUtils = {
 
         return relationshipState.type === 1 && ourRelationshipState.type === 1;
     },
+    parseMentions: (text) => {
+        let result = {
+            mentions: [],
+            mention_roles: [],
+            mention_everyone: false,
+            mention_here: false,
+        };
+
+        if (!text)
+            return result;
+
+        let i = 0;
+        while (i < text.length) {
+            switch (text[i++]) {
+                case '\\':
+                    //Escape: Skip next char
+                    i++;
+                    break;
+
+                case '@':
+                    if (text.startsWith("everyone", i)) {
+                        //Mention @everyone
+                        result.mention_everyone = true;
+                        i += "everyone".length;
+                        break;
+                    }
+                    if (text.startsWith("here", i)) {
+                        //Mention @here
+                        result.mention_here = true;
+                        i += "here".length;
+                        break;
+                    }
+                    break;
+
+                case '<':
+                    if (text[i++] != '@')
+                        break; //Ignore non-user mentions
+
+                    //Check type (optional)
+                    let targetArray = result.mentions;
+                    switch (text[i]) {
+                        case '!': //Nickname
+                            i++;
+                            break;
+
+                        case '&': //Role
+                            targetArray = result.mention_roles;
+                            i++;
+                            break;
+                    }
+
+                    //Read snowflake
+                    let snowflake = "";
+                    while (true) {
+                        if (i >= text.length) {
+                            //Snowflake not complete
+                            snowflake = "";
+                            break;
+                        }
+
+                        const c = text[i];
+                        if (c == '>') {
+                            //Completed valid snowflake
+                            break;
+                        }
+
+                        if (c >= '0' && c <= '9') {
+                            snowflake += c;
+                            i++;
+                        } else {
+                            //Invalid snowflake
+                            snowflake = "";
+                            break;
+                        }
+                    }
+
+                    if (snowflake && snowflake.length > 0)
+                        targetArray.push(snowflake);
+
+                    break;
+                    
+                case '`':
+                    let startTicks = 1;
+                    let startIndex = i;
+                    if (text[i++] == '`') {
+                        startTicks++;
+                        if (text[i++] == '`') {
+                            startTicks++;
+                        }
+                    }
+                    
+                    let success = false;
+                    while (i < text.length) {
+                        if (text[i++] == '`') {
+                            let endTicks = 1;
+                            while (endTicks < startTicks) {
+                                if (text[i++] != '`')
+                                    break;
+                                endTicks++;
+                            }
+                            
+                            if (endTicks >= startTicks && text[i] != '`') {
+                                success = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!success)
+                        i = startIndex;
+                    break;
+            }
+        }
+
+        return result;
+    },
     miniUserObject: (user) => {
         return {
             username: user.username,

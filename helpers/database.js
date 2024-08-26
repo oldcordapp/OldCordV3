@@ -1228,28 +1228,14 @@ const database = {
                 return null;
             }
 
+            const mentions_data = globalUtils.parseMentions(rows[0].content);
             const mentions = [];
-            const mention_ids = [];
 
-            if (rows[0].content.includes("<@")) {
-                const regex = /<@(\d+)>/g;
+            for(var mention_id of mentions_data.mentions) {
+                const mention = await database.getAccountByUserId(mention_id);
 
-                let match = null;
-
-                while ((match = regex.exec(rows[0].content))) {
-                    if (match != null) {
-                        mention_ids.push(match[1]);
-                    }
-                }
-            }
-
-            if (mention_ids.length > 0) {
-                for(var mention_id of mention_ids) {
-                    const mention = await database.getAccountByUserId(mention_id);
-
-                    if (mention != null) {
-                        mentions.push(globalUtils.miniUserObject(mention));
-                    }
+                if (mention != null) {
+                    mentions.push(globalUtils.miniUserObject(mention));
                 }
             }
 
@@ -1291,7 +1277,8 @@ const database = {
                 attachments: messageAttachments,
                 embeds: rows[0].embeds == 'NULL' ? [] : JSON.parse(rows[0].embeds),
                 mentions: mentions,
-                mention_everyone: rows[0].mention_everyone == 1,
+                mention_everyone: mentions_data.mention_everyone,
+                mention_roles: mentions_data.mention_roles,
                 nonce: rows[0].nonce,
                 edited_timestamp: rows[0].edited_timestamp == 'NULL' ? null : rows[0].edited_timestamp,
                 timestamp: rows[0].timestamp,

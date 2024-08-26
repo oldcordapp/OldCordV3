@@ -103,28 +103,15 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             });
         }
 
-        let finalContent = req.body.content;
+        const mentions_data = globalUtils.parseMentions(req.body.content);
 
-        if (req.body.mentions && req.body.mentions.length > 0) {
-            const mentions = req.body.mentions;
+        if (mentions_data.mention_everyone ||
+            mentions_data.mention_here ||
+            !await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "MENTION_EVERYONE")) {
             
-            for(let mention of mentions) {
-                const user = await global.database.getAccountByUserId(mention);
-
-                if (user != null) {
-                    finalContent = finalContent.replace(`@${user.username}`, `<@${user.id}>`);
-                }
-            }
-
-            req.body.content = finalContent;
-        }
-
-        let mention_everyone = false;
-
-        if (finalContent && (finalContent.includes("@everyone") || finalContent.includes("@here"))) {
-            let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, creator.id, "MENTION_EVERYONE");
-
-            mention_everyone = pCheck;
+            //Not allowed
+            mentions_data.mention_everyone = false;
+            mentions_data.mention_here = false;
         }
 
         let file_details = null;
@@ -162,6 +149,10 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
 
         if (channel.recipients || channel.recipient) {
             //handle dm channel case
+
+            //Disable @everyone and @here for DMs and groups
+            mentions_data.mention_everyone = false;
+            mentions_data.mention_here = false;
 
             let isDM = false;
 
@@ -346,7 +337,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     });
                 }
 
-                let createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts);
+                let createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, null, req.body.tts, false);
     
                 if (!createMessage) {
                     return res.status(500).json({
@@ -445,7 +436,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                     name: `${req.file.originalname}`,
                 };
 
-                const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, file_details, req.body.tts, ((channel.recipients || channel.recipient) ? false : mention_everyone));
+                const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, file_details, req.body.tts, mentions_data.mention_everyone);
 
                 if (!createMessage) {
                     return res.status(500).json({
@@ -473,7 +464,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 return res.status(200).json(createMessage);
             });
         } else {
-            const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, file_details, req.body.tts, ((channel.recipients || channel.recipient) ? false : mention_everyone));
+            const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, creator.id, req.body.content, req.body.nonce, file_details, req.body.tts, mentions_data.mention_everyone);
 
             if (!createMessage) {
                 return res.status(500).json({
@@ -643,30 +634,14 @@ router.patch("/:messageid", rateLimitMiddleware(global.config.ratelimit_config.u
                 });
             }
 
-            let finalContent = req.body.content;
-
-            if (req.body.mentions && req.body.mentions.length > 0) {
-                const mentions = req.body.mentions;
-                
-                for(let mention of mentions) {
-                    const user = await global.database.getAccountByUserId(mention);
-
-                    if (user != null) {
-                        finalContent = finalContent.replace(`@${user.username}`, `<@${user.id}>`);
-                    }
-                }
-
-                req.body.content = finalContent;
-            }
-
-            if (finalContent && finalContent.includes("@everyone")) {
+            //TODO:
+            //FIXME: this needs to use globalUtils.parseMentions
+            if (req.body.content && req.body.content.includes("@everyone")) {
                 let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
 
                 if (!pCheck) {
-                    finalContent = finalContent.replace(/@everyone/g, "");
-                } 
-
-                req.body.content = finalContent;
+                    req.body.content = req.body.content.replace(/@everyone/g, "");
+                }
             }
 
             const update = await global.database.updateMessage(message.id, req.body.content);
@@ -705,30 +680,14 @@ router.patch("/:messageid", rateLimitMiddleware(global.config.ratelimit_config.u
                 });
             }
 
-            let finalContent = req.body.content;
-
-            if (req.body.mentions && req.body.mentions.length > 0) {
-                const mentions= req.body.mentions;
-                
-                for(let mention of mentions) {
-                    const user = await global.database.getAccountByUserId(mention);
-
-                    if (user != null) {
-                        finalContent = finalContent.replace(`@${user.username}`, `<@${user.id}>`);
-                    }
-                }
-
-                req.body.content = finalContent;
-            }
-
-            if (finalContent && finalContent.includes("@everyone")) {
+            //TODO:
+            //FIXME: ditto, this needs to use globalUtils.parseMentions
+            if (req.body.content && req.body.content.includes("@everyone")) {
                 let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
 
                 if (!pCheck) {
-                    finalContent = finalContent.replace(/@everyone/g, "");
-                } 
-
-                req.body.content = finalContent;
+                    req.body.content = req.body.content.replace(/@everyone/g, "");
+                }
             }
 
             const update = await global.database.updateMessage(message.id, req.body.content);
