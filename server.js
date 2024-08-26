@@ -78,7 +78,7 @@ app.use(cookieParser());
 app.use(cors());
 
 app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
-    const baseFilePath = path.join(__dirname, 'user_assets', 'attachments', req.params.guildid, req.params.channelid, req.params.filename);
+    const baseFilePath = path.join(__dirname, 'www_dynamic', 'attachments', req.params.guildid, req.params.channelid, req.params.filename);
     
     try {
         let { width, height } = req.query;
@@ -99,7 +99,7 @@ app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
         const mime = req.params.filename.endsWith(".jpg") ? 'image/jpeg' : 'image/png';
 
         const resizedFileName = `${req.params.filename.split('.').slice(0, -1).join('.')}_${width}_${height}.${mime.split('/')[1]}`;
-        const resizedFilePath = path.join(__dirname, 'user_assets', 'attachments', req.params.guildid, req.params.channelid, resizedFileName);
+        const resizedFilePath = path.join(__dirname, 'www_dynamic', 'attachments', req.params.guildid, req.params.channelid, resizedFileName);
 
         if (fs.existsSync(resizedFilePath)) {
             return res.status(200).type(mime).sendFile(resizedFilePath);
@@ -125,7 +125,7 @@ app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
 
 app.get('/icons/:serverid/:file', async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'user_assets', 'icons', req.params.serverid);
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'icons', req.params.serverid);
 
         if (!fs.existsSync(directoryPath)) {
             return res.status(404).send("File not found");
@@ -153,7 +153,7 @@ app.get('/icons/:serverid/:file', async (req, res) => {
 
 app.get('/splashes/:serverid/:file', async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'user_assets', 'splashes', req.params.serverid);
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'splashes', req.params.serverid);
 
         if (!fs.existsSync(directoryPath)) {
             return res.status(404).send("File not found");
@@ -181,7 +181,7 @@ app.get('/splashes/:serverid/:file', async (req, res) => {
 
 app.get('/avatars/:userid/:file', async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'user_assets', 'avatars', req.params.userid);
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'avatars', req.params.userid);
 
         if (!fs.existsSync(directoryPath)) {
             return res.status(404).send("File not found");
@@ -210,7 +210,7 @@ app.get('/avatars/:userid/:file', async (req, res) => {
 
 app.get("/emojis/:file", async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'user_assets', 'emojis');
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'emojis');
 
         if (!fs.existsSync(directoryPath)) {
             return res.status(404).send("File not found");
@@ -237,7 +237,9 @@ app.get("/emojis/:file", async (req, res) => {
     }
 });
 
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/assets', express.static(path.join(__dirname, 'www_static', 'assets')));
+
+app.use('/assets', express.static(path.join(__dirname, 'www_dynamic', 'assets')));
 
 app.use("/assets/:asset", assetsMiddleware);
 
@@ -251,7 +253,7 @@ app.use(clientMiddleware);
 
 app.get("/api/users/:userid/avatars/:file", async (req, res) => {
     try {
-        const filePath = path.join(__dirname, 'user_assets', 'avatars', req.params.userid, req.params.file);
+        const filePath = path.join(__dirname, 'www_dynamic', 'avatars', req.params.userid, req.params.file);
 
         if (!fs.existsSync(filePath)) {
             return res.status(404).send("File not found");
@@ -284,7 +286,7 @@ app.use("/api/v*/", (_, res) => {
 
 if (config.serve_selector) {
     app.get("/selector", (_, res) => {
-        return res.send(fs.readFileSync(`./assets/selector/selector.html`, 'utf8'));
+        return res.send(fs.readFileSync(`./www_static/assets/selector/selector.html`, 'utf8'));
     });
 }
 
@@ -309,11 +311,11 @@ app.get("/widget", (req, res) => {
             return res.redirect("/selector");
         }
 
-        if (!fs.existsSync(`./assets/${req.client_build}`)) {
+        if (!fs.existsSync(`./www_static/assets/clients/${req.client_build}`)) {
             return res.redirect("/selector");
         }
 
-        res.send(fs.readFileSync(`./assets/${req.client_build}/widget.html`, 'utf8'));
+        res.send(fs.readFileSync(`./www_static/assets/clients/${req.client_build}/widget.html`, 'utf8'));
     }
     catch(error) {
         logText(error, "error");
@@ -330,7 +332,7 @@ app.get('/developers/*', (req, res) => {
             return res.redirect("/selector");
         }
 
-        if (!fs.existsSync(`./assets/${req.client_build}`)) {
+        if (!fs.existsSync(`./www_static/assets/clients/${req.client_build}`)) {
             return res.redirect("/selector");
         }
 
@@ -340,7 +342,7 @@ app.get('/developers/*', (req, res) => {
             return res.redirect("https://www.youtube.com/watch?v=jeg_TJvkSjg"); //wtf r u doing lol
         }
 
-        res.send(fs.readFileSync(`./assets/developer_${year}/app.html`, 'utf8'));
+        res.send(fs.readFileSync(`./www_static/assets/developer_${year}/app.html`, 'utf8'));
     }
     catch(error) {
         logText(error, "error");
@@ -370,7 +372,7 @@ app.get("*", (req, res) => {
             return res.redirect("/selector");
         }
 
-        res.sendFile(path.join(__dirname, "assets/bootloader/index.html"));
+        res.sendFile(path.join(__dirname, "www_static/assets/bootloader/index.html"));
     }
     catch(error) {
         logText(error, "error");

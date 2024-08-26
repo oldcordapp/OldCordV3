@@ -90,7 +90,7 @@ async function assetsMiddleware(req, res) {
         return res.status(404).send("File not found");
     }
 
-    const filePath = `./assets/${req.params.asset}`;
+    const filePath = `./www_dynamic/assets/${req.params.asset}`;
 
     if (!fs.existsSync(filePath)) {
         logText(`[LOG] Saving ${req.params.asset} -> https://discordapp.com/assets/${req.params.asset}...`, 'debug');

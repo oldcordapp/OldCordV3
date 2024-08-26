@@ -782,11 +782,11 @@ const database = {
 
                 avatar = name_hash;
     
-                if (!fs.existsSync(`./user_assets/avatars/${webhook_id}`)) {
-                    fs.mkdirSync(`./user_assets/avatars/${webhook_id}`, { recursive: true });
+                if (!fs.existsSync(`./www_dynamic/avatars/${webhook_id}`)) {
+                    fs.mkdirSync(`./www_dynamic/avatars/${webhook_id}`, { recursive: true });
                 }
  
-                fs.writeFileSync(`./user_assets/avatars/${webhook_id}/${name_hash}.${extension}`, imgData, "base64");
+                fs.writeFileSync(`./www_dynamic/avatars/${webhook_id}/${name_hash}.${extension}`, imgData, "base64");
             }
 
             await database.runQuery(`UPDATE webhooks SET channel_id = $1, name = $2, avatar = $3 WHERE id = $4`, [channel_id, name, avatar, webhook_id]);
@@ -832,11 +832,11 @@ const database = {
                     extension = "jpg";
                 }
 
-                if (!fs.existsSync(`./user_assets/avatars/${webhook_id}`)) {
-                    fs.mkdirSync(`./user_assets/avatars/${webhook_id}`, { recursive: true });
+                if (!fs.existsSync(`./www_dynamic/avatars/${webhook_id}`)) {
+                    fs.mkdirSync(`./www_dynamic/avatars/${webhook_id}`, { recursive: true });
                 }
  
-                fs.writeFileSync(`./user_assets/avatars/${webhook_id}/${name_hash}.${extension}`, imgData, "base64");
+                fs.writeFileSync(`./www_dynamic/avatars/${webhook_id}/${name_hash}.${extension}`, imgData, "base64");
             }
 
             let token = globalUtils.generateString(60);
@@ -2443,13 +2443,13 @@ const database = {
 
             if (attachments != null && attachments.length > 0) {
                 for(var attachment of attachments) {
-                    fs.readdirSync(`./user_assets/attachments/${message.channel_id}/${attachment.attachment_id}`).forEach((file) => {
-                        const curPath = path.join(`./user_assets/attachments/${message.channel_id}/${attachment.attachment_id}`, file);
+                    fs.readdirSync(`./www_dynamic/attachments/${message.channel_id}/${attachment.attachment_id}`).forEach((file) => {
+                        const curPath = path.join(`./www_dynamic/attachments/${message.channel_id}/${attachment.attachment_id}`, file);
                         
                         fs.unlinkSync(curPath);
                     });
 
-                    fs.rmdirSync(`./user_assets/attachments/${message.channel_id}/${attachment.attachment_id}`);
+                    fs.rmdirSync(`./www_dynamic/attachments/${message.channel_id}/${attachment.attachment_id}`);
 
                     await database.runQuery(`DELETE FROM attachments WHERE attachment_id = $1`, [attachment.attachment_id]);
                 }
@@ -2857,16 +2857,16 @@ const database = {
             
                     send_icon = hash.toString();
             
-                    if (!fs.existsSync(`user_assets/icons`)) {
-                        fs.mkdirSync(`user_assets/icons`, { recursive: true });
+                    if (!fs.existsSync(`www_dynamic/icons`)) {
+                        fs.mkdirSync(`www_dynamic/icons`, { recursive: true });
                     }
     
-                    if (!fs.existsSync(`user_assets/icons/${guild_id}`)) {
-                        fs.mkdirSync(`user_assets/icons/${guild_id}`, { recursive: true });
+                    if (!fs.existsSync(`www_dynamic/icons/${guild_id}`)) {
+                        fs.mkdirSync(`www_dynamic/icons/${guild_id}`, { recursive: true });
             
-                        fs.writeFileSync(`user_assets/icons/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                        fs.writeFileSync(`www_dynamic/icons/${guild_id}/${hash}.${extension}`, imgData, "base64");
                     } else {
-                        fs.writeFileSync(`user_assets/icons/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                        fs.writeFileSync(`www_dynamic/icons/${guild_id}/${hash}.${extension}`, imgData, "base64");
                     }
                 } else {
                     send_icon = icon;
@@ -2886,16 +2886,16 @@ const database = {
             
                     send_splash = hash.toString();
             
-                    if (!fs.existsSync(`user_assets/splashes`)) {
-                        fs.mkdirSync(`user_assets/splashes`, { recursive: true });
+                    if (!fs.existsSync(`www_dynamic/splashes`)) {
+                        fs.mkdirSync(`www_dynamic/splashes`, { recursive: true });
                     }
     
-                    if (!fs.existsSync(`user_assets/splashes/${guild_id}`)) {
-                        fs.mkdirSync(`user_assets/splashes/${guild_id}`, { recursive: true });
+                    if (!fs.existsSync(`www_dynamic/splashes/${guild_id}`)) {
+                        fs.mkdirSync(`www_dynamic/splashes/${guild_id}`, { recursive: true });
             
-                        fs.writeFileSync(`user_assets/splashes/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                        fs.writeFileSync(`www_dynamic/splashes/${guild_id}/${hash}.${extension}`, imgData, "base64");
                     } else {
-                        fs.writeFileSync(`user_assets/splashes/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                        fs.writeFileSync(`www_dynamic/splashes/${guild_id}/${hash}.${extension}`, imgData, "base64");
                     }
                 } else {
                     send_splash = splash;
@@ -2933,16 +2933,16 @@ const database = {
         
                 icon = hash.toString();
         
-                if (!fs.existsSync(`user_assets/icons`)) {
-                    fs.mkdirSync(`user_assets/icons`, { recursive: true });
+                if (!fs.existsSync(`www_dynamic/icons`)) {
+                    fs.mkdirSync(`www_dynamic/icons`, { recursive: true });
                 }
 
-                if (!fs.existsSync(`user_assets/icons/${id}`)) {
-                    fs.mkdirSync(`user_assets/icons/${id}`, { recursive: true });
+                if (!fs.existsSync(`www_dynamic/icons/${id}`)) {
+                    fs.mkdirSync(`www_dynamic/icons/${id}`, { recursive: true });
         
-                    fs.writeFileSync(`user_assets/icons/${id}/${hash}.${extension}`, imgData, "base64");
+                    fs.writeFileSync(`www_dynamic/icons/${id}/${hash}.${extension}`, imgData, "base64");
                 } else {
-                    fs.writeFileSync(`user_assets/icons/${id}/${hash}.${extension}`, imgData, "base64");
+                    fs.writeFileSync(`www_dynamic/icons/${id}/${hash}.${extension}`, imgData, "base64");
                 }
             }
 
@@ -3136,11 +3136,11 @@ const database = {
     
                 new_avatar = name_hash.toString();
     
-                if (!fs.existsSync(`./user_assets/avatars/${account.id}`)) {
-                    fs.mkdirSync(`./user_assets/avatars/${account.id}`, { recursive: true });
+                if (!fs.existsSync(`./www_dynamic/avatars/${account.id}`)) {
+                    fs.mkdirSync(`./www_dynamic/avatars/${account.id}`, { recursive: true });
                 }
  
-                fs.writeFileSync(`./user_assets/avatars/${account.id}/${name_hash}.${extension}`, imgData, "base64");
+                fs.writeFileSync(`./www_dynamic/avatars/${account.id}/${name_hash}.${extension}`, imgData, "base64");
 
                 await database.runQuery(`UPDATE users SET avatar = $1 WHERE id = $2`, [new_avatar, account.id]);
             } else if (avatar == null) {

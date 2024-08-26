@@ -67,11 +67,11 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
 
         let emoji_id = Snowflake.generate();
 
-        if (!fs.existsSync(`./user_assets/emojis`)) {
-            fs.mkdirSync(`./user_assets/emojis`, { recursive: true });
+        if (!fs.existsSync(`./www_dynamic/emojis`)) {
+            fs.mkdirSync(`./www_dynamic/emojis`, { recursive: true });
         }
 
-        const filePath = `./user_assets/emojis/${emoji_id}.${extension}`;
+        const filePath = `./www_dynamic/emojis/${emoji_id}.${extension}`;
 
         const imageBuffer = Buffer.from(base64Data, 'base64');
 

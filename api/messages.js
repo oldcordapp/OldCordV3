@@ -147,17 +147,17 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 }
             } else if (req.body.tts) req.body.tts = false; //how the fuck do you tts here?
             
-            if (!fs.existsSync(`./user_assets/attachments/${channel.id}`)) {
-                fs.mkdirSync(`./user_assets/attachments/${channel.id}`, { recursive: true });
+            if (!fs.existsSync(`./www_dynamic/attachments/${channel.id}`)) {
+                fs.mkdirSync(`./www_dynamic/attachments/${channel.id}`, { recursive: true });
             }
 
-            if (!fs.existsSync(`./user_assets/attachments/${channel.id}/${attachment_id}`)) {
-                fs.mkdirSync(`./user_assets/attachments/${channel.id}/${attachment_id}`, { recursive: true });
+            if (!fs.existsSync(`./www_dynamic/attachments/${channel.id}/${attachment_id}`)) {
+                fs.mkdirSync(`./www_dynamic/attachments/${channel.id}/${attachment_id}`, { recursive: true });
             }
 
-            fs.writeFileSync(`./user_assets/attachments/${channel.id}/${attachment_id}/${name}`, req.file.buffer);
+            fs.writeFileSync(`./www_dynamic/attachments/${channel.id}/${attachment_id}/${name}`, req.file.buffer);
 
-            file_path = `./user_assets/attachments/${channel.id}/${attachment_id}/${name}`;
+            file_path = `./www_dynamic/attachments/${channel.id}/${attachment_id}/${name}`;
         }
 
         if (channel.recipients || channel.recipient) {
