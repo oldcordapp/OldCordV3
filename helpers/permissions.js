@@ -42,11 +42,15 @@ const permissions = {
     
             if (guild.owner_id == member.id) return true;
     
-            if (member.roles.length == 0) return false;
-    
-            const roles = member.roles;
+            if (member.roles.length === 0) {
+                let everyoneRole = guild.roles.find(x => x.id === guild.id);
+
+                return permissions.has(everyoneRole.permissions, key); //@everyone role default perms
+            }
+
             const gatheredRoles = []
-    
+            const roles = member.roles;
+
             for(var role2 of roles) {
                 var role = guild.roles.find(x => x.id === role2)
     
@@ -54,7 +58,7 @@ const permissions = {
                     gatheredRoles.push(role);
                 }
             }
-    
+
             let highestRole = gatheredRoles[0];
     
             if (for_build.endsWith("2015")) {
@@ -69,34 +73,44 @@ const permissions = {
     
             return permissions.has(highestRole.permissions, key);
         }
-        catch { return false; }
+        catch (error) {
+            console.log(error);
+
+            return false;
+        }
     },
     async hasChannelPermissionTo(channel, guild, user_id, key) {
         try {
             if (channel == null || !channel.guild_id) return false;
 
             if (guild == null) return false;
+
+            if (guild.owner_id == user_id) return true;
     
             const member = guild.members.find(y => y.id == user_id);
     
-            if (member == null) return false;
-    
-            if (guild.owner_id == user_id) return true;
+            if (member == null) return false;     
     
             let calc = 0;
+
+            if (member.roles.length === 0) {
+                let everyoneRole = guild.roles.find(x => x.id === guild.id);
+
+                calc |= everyoneRole.permissions;
+            }
     
             let memberRoles = [];
-    
+
             for(var role2 of member.roles) {
                 var role = guild.roles.find(x => x.id === role2)
     
-                if (role != null) {
+                if (role != null || role2 == guild.id) {
                     memberRoles.push(role);
     
                     calc |= role.permissions;
                 }
             }
-    
+
             if (channel.permission_overwrites && channel.permission_overwrites.length > 0 && !(calc & 8)) {
                 let basePerms = Number(calc);
                 let overwrites = channel.permission_overwrites;
@@ -139,7 +153,11 @@ const permissions = {
     
             return permissions.has(calc, key);
         }
-        catch { return false; }
+        catch (error) { 
+            console.log(error);
+
+            return false; 
+        }
     },
     toObject() {
         return {
