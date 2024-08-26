@@ -1668,7 +1668,7 @@ const database = {
             let members = [];
 
             for (var row of memberRows) {
-                const member_roles = [];
+                let member_roles = [];
 
                 if (row.roles.includes(':')) {
                     const db_roles = row.roles.split(':');
@@ -1689,6 +1689,8 @@ const database = {
                 if (user == null) {
                     continue;
                 }
+
+                member_roles = member_roles.filter(x => x !== id); //exclude @ everyone just in case
 
                 members.push({
                     id: user.id,
@@ -2162,15 +2164,9 @@ const database = {
                 return false;
             }
 
-            let everyone_role = roles.filter((x) => x && x.name == "@everyone")[0];
-
-            if (!everyone_role) {
-                return false;
-            }
-
             const date = new Date().toISOString();
 
-            await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [guild.id, user_id, 'NULL', everyone_role.id, date, 0, 0]);
+            await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [guild.id, user_id, 'NULL', guild.id, date, 0, 0]);
 
             return true;
         } catch(error) {

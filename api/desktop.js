@@ -5,7 +5,7 @@ const fetch = require('node-fetch');
 const contentDisposition = require('content-disposition');
 const router = express.Router();
 
-const distributionFolder = path.join(__dirname, '../', 'www_static', 'distribution');
+const distributionFolder = path.join(__dirname, '../', 'distribution');
 const cacheFolder = path.join(distributionFolder, 'cache');
 const windowsCacheFile = path.join(cacheFolder, 'windows.json');
 const moduleVersionFile = path.join(cacheFolder, 'module_versions.json');
