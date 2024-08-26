@@ -561,6 +561,10 @@ const database = {
                 SELECT * FROM users WHERE token = $1
             `, [token]);
 
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+
             let contents = JSON.parse(rows[0].relationships);
             let relationships = [];
             
@@ -3154,17 +3158,17 @@ const database = {
     updateAccount: async (avatar , email , username , discriminator, password , new_password , new_email ) => {
         try {
             if (email == null) {
-                return false;
+                return -1; //error
             }
 
             if (username == null) {
-                return false;
+                return -1; //error
             }
 
             const account = await database.getAccountByEmail(email);
 
             if (account == null || !account.password || !account.email) {
-                return false;
+                return -1; //error
             }
 
             let new_avatar = avatar;
@@ -3178,11 +3182,9 @@ const database = {
                 if (existingUsers === null) {
                     new_discriminator = discriminator;
                 } else {
-                    return false;  // Discriminator is already taken
+                    return 0;  // Discriminator is already taken
                 }
             }
-
-            
 
             if (new_email != null) {
                 new_email2 = new_email;
@@ -3214,22 +3216,24 @@ const database = {
             let accounts = await database.getAccountsByUsername(new_username);
 
             if (accounts.length >= 9998 && account.username != new_username) {
-                return false;
+                return 1; //too many users
             }
 
             if (accounts.find(x => x.discriminator == new_discriminator && x.username == new_username)) {
                 new_discriminator = Math.round(Math.random() * 9999);
 
                 while (new_discriminator < 1000) {
-                    new_discriminator = Math.round(Math.random() * 9999);
+                    new_discriminator = Math.round(Math.random() * 9999).toString();
                 }
+
+                new_discriminator = new_discriminator.toString();
             }
 
             if (new_password != null) {
                 const checkPassword = await database.doesThisMatchPassword(new_password, account.password);
 
                 if (checkPassword) {
-                    return false;
+                    return 2; //invalid pw
                 }
 
                 let salt = await genSalt(10);
@@ -3238,28 +3242,28 @@ const database = {
 
                 await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3, password = $4, token = $5 WHERE id = $6`, [new_username, new_discriminator, new_email2, newPwHash, token, account.id]);
 
-                return true;
+                return 3; //success
             }
 
-            if ((new_email2 != account.email && new_username != account.username) || (new_email2 != account.email || new_username != account.username)) {
+            if ((new_email2 != account.email && new_username != account.username && new_discriminator != account.discriminator) || (new_email2 != account.email || new_username != account.username || new_discriminator != account.discriminator)) {
                 if (password == null) {
-                    return false;
+                    return 2; //invalid pw
                 }
 
                 const checkPassword = await database.doesThisMatchPassword(password, account.password);
 
                 if (!checkPassword) {
-                    return false;
+                    return 2;
                 }
 
                 await database.runQuery(`UPDATE users SET username = $1, discriminator = $2, email = $3 WHERE id = $4`, [new_username, new_discriminator, new_email2, account.id]);
             }
             
-            return true;
+            return 3;
         } catch (error) {
             logText(error, "error");
 
-            return false;
+            return -1;
         }
     },
     checkAccount: async (email, password) => {

@@ -24,7 +24,7 @@ router.get("/", async (req, res) => {
         });
     }
 
-    return res.status(200).json(globalUtils.sanitizeObject(account, ['settings', 'token', 'password']));
+    return res.status(200).json(globalUtils.sanitizeObject(account, ['settings', 'token', 'password', 'relationships', 'claimed']));
   }
   catch (error) {
     logText(error, "error");
@@ -47,152 +47,174 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         });
     }
 
-    account = globalUtils.sanitizeObject(account, ['settings', 'created_at', 'relationships', 'claimed']);
-
-    if (!req.body.avatar || req.body.avatar == "") req.body.avatar = null;
-
-    if (!req.body.email || req.body.email == "") req.body.email = null;
-
-    if (!req.body.new_password || req.body.new_password == "") req.body.new_password = null;
-
-    if (!req.body.password || req.body.password == "") req.body.password = null;
-
-    if (!req.body.username || req.body.username == "") req.body.username = null;
-
-    if (!req.body.discriminator || req.body.discriminator == "") req.body.discriminator = null;
-
-    let update_object = {
-      avatar: req.body.avatar == ("" || null || undefined) ? null : req.body.avatar,
-      email: req.body.email == ("" || null || undefined) ? null : req.body.email,
-      new_password: req.body.new_password == ("" || null || undefined) ? null : req.body.new_password,
-      password: req.body.password == ("" || null || undefined) ? null : req.body.password,
-      username: req.body.username == ("" || null || undefined) ? null : req.body.username,
-      discriminator: req.body.discriminator == ("" || null || undefined) ? null : req.body.discriminator
+    let update = {
+      avatar: null,
+      email: account.email,
+      new_password: null,
+      new_email: null,
+      password: null,
+      username: account.username,
+      discriminator: account.discriminator
     };
 
-    if (update_object.email == account.email && update_object.new_password == null && update_object.password == null && update_object.username == account.username && update_object.discriminator == account.discriminator) {
+    if (req.body.avatar) {
+        update.avatar = req.body.avatar;
+    }
+
+    if (req.body.email) {
+      update.new_email = req.body.email;
+    }
+
+    if (req.body.new_password) {
+      update.new_password = req.body.new_password;
+    }
+
+    if (req.body.password) {
+       update.password = req.body.password;
+    }
+
+    if (req.body.username) {
+      update.username = req.body.username;
+    }
+
+    if (req.body.password) {
+      update.password = req.body.password;
+    }
+
+    if (req.body.discriminator) {
+      update.discriminator = req.body.discriminator;
+    }
+
+    if (update.email == account.email && update.new_password == null && update.password == null && update.username == account.username && update.discriminator == account.discriminator) {
        //avatar change
+       
+       let tryUpdate = await global.database.updateAccount(update.avatar, account.email, account.username, null, null, null, null);
 
-      const attemptToUpdateAvi = await global.database.updateAccount(update_object.avatar, account.email, account.username, null, null, null, null);
+       if (tryUpdate !== 3) {
+          return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+          });
+       }
 
-      if (attemptToUpdateAvi) {
-        let account2 = await global.database.getAccountByEmail(account.email);
+       let retAccount = await global.database.getAccountByEmail(account.email);
 
-        if (account2 != null && account2.token) {
-          account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password', 'relationships', 'claimed']);
+       if (!retAccount) {
+          return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+          });
+       }
 
-          await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
+       retAccount = globalUtils.sanitizeObject(retAccount, ['settings', 'created_at', 'password', 'relationships', 'claimed']);
 
-          await global.dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id, account2);
+       await global.dispatcher.dispatchEventTo(retAccount.id, "USER_UPDATE", retAccount);
 
-          return res.status(200).json(account2);
-        }
-      } else return res.status(500).json({
+       await global.dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(retAccount.id, retAccount);
+
+       return res.status(200).json(retAccount);
+    }
+
+    if (update.password == null) {
+      return res.status(400).json({
+        code: 400,
+        password: "This field is required"
+      });
+    }
+
+    if (update.email == null) {
+      return res.status(400).json({
+        code: 400,
+        email: "This field is required"
+      });
+    }
+
+    if (update.username == null) {
+      return res.status(400).json({
+        code: 400,
+        username: "This field is required"
+      });
+    }
+
+    if (parseInt(update.discriminator).length < 4 || parseInt(update.discriminator).length > 4 || parseInt(update.discriminator) === 0) {
+      return res.status(400).json({
+        code: 400,
+        username: "A valid discriminator is required."
+      });
+    }
+
+    if (update.email.length < 2 || update.email.length > 32) {
+      return res.status(400).json({
+        code: 400,
+        email: "Must be between 2 and 32 characters"
+      });
+    }
+
+    if (update.new_password && update.new_password.length > 64) {
+      return res.status(400).json({
+        code: 400,
+        password: "Must be under 64 characters"
+      });
+    }
+
+    let goodUsername = globalUtils.checkUsername(update.username);
+
+    if (goodUsername.code !== 200) {
+        return res.status(goodUsername.code).json(goodUsername);
+    }
+
+    const correctPassword = await global.database.doesThisMatchPassword(update.password, account.password);
+
+    if (!correctPassword) {
+      return res.status(400).json({
+        code: 400,
+        password: "Incorrect password"
+      })
+    }
+
+    const attemptToUpdate = await global.database.updateAccount(update.avatar, update.email, update.username, update.discriminator, update.password, update.new_password, update.new_email);
+
+    if (attemptToUpdate !== 3) {
+      if (update.password === update.new_password) {
+        return res.status(200).json(globalUtils.sanitizeObject(account, ['settings', 'created_at', 'password', 'relationships', 'claimed']))
+      } //idk why this errors but honestly just return existing acc object
+
+      if (attemptToUpdate === -1) {
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        });
+      }
+
+      if (attemptToUpdate === 2) {
+        return res.status(400).json({
+          code: 400,
+          password: "Incorrect password"
+        }); //how?
+      }
+
+      if (attemptToUpdate === 0) {
+        return res.status(400).json({
+          code: 400,
+          username: "Username#Tag combo already taken."
+        });
+      }
+
+      if (attemptToUpdate === 1) {
+        return res.status(400).json({
+          code: 400,
+          username: "Too many users have that username. Try another."
+        });
+      }
+    }
+
+    account = await global.database.getAccountByEmail(update.email != account.email ? update.email : account.email);
+
+    if (!account) {
+      return res.status(500).json({
         code: 500,
         message: "Internal Server Error"
       });
-    } else {
-      if (update_object.password == null) {
-        return res.status(400).json({
-          code: 400,
-          password: "This field is required"
-        });
-      }
-
-      if (update_object.email == null) {
-        return res.status(400).json({
-          code: 400,
-          email: "This field is required"
-        });
-      }
-
-      if (update_object.username == null) {
-        return res.status(400).json({
-          code: 400,
-          username: "This field is required"
-        });
-      }
-
-      let goodUsername = globalUtils.checkUsername(update_object.username);
-
-      if (goodUsername.code !== 200) {
-          return res.status(goodUsername.code).json(goodUsername);
-      }
-
-      if (update_object.email.length < 2 || update_object.email.length > 32) {
-        return res.status(400).json({
-          code: 400,
-          email: "Must be between 2 and 32 characters"
-        });
-      }
-
-      if (update_object.new_password && update_object.new_password.length > 64) {
-        return res.status(400).json({
-          code: 400,
-          password: "Must be under 64 characters"
-        });
-      }
-
-      const correctPassword = await global.database.doesThisMatchPassword(update_object.password, account.password);
-
-        if (!correctPassword) {
-          return res.status(400).json({
-            code: 400,
-            password: "Incorrect password"
-          })
-        }
-
-      if ((update_object.email != account.email || update_object.username != account.username || update_object.discriminator != account.discriminator) || (update_object.email != account.email && update_object.username != account.username && update_object.discriminator != account.discriminator)) {
-        const correctPassword = await global.database.doesThisMatchPassword(update_object.password, account.password);
-
-        if (!correctPassword) {
-          return res.status(400).json({
-            code: 400,
-            password: "Incorrect password"
-          })
-        }
-
-        const update = await global.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.discriminator, update_object.password, update_object.new_password, update_object.email);
-
-        if (update) {
-          let account2 = await global.database.getAccountByEmail(update_object.email);
-  
-          if (account2 != null && account2.token) {
-            account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password']);
-  
-            await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
-
-            await global.dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id, account2);
-            
-            return res.status(200).json(account2);
-          }
-        }
-      } else if (update_object.new_password != null) {
-        const correctPassword = await global.database.doesThisMatchPassword(update_object.password, account.password);
-
-        if (!correctPassword) {
-          return res.status(400).json({
-            code: 400,
-            password: "Incorrect password"
-          })
-        }
-
-        const update = await global.database.updateAccount(update_object.avatar, account.email, update_object.username, update_object.discriminator, update_object.password, update_object.new_password, update_object.email);
-
-        if (update) {
-          let account2 = await global.database.getAccountByEmail(update_object.email);
-  
-          if (account2 != null && account2.token) {
-            account2 = globalUtils.sanitizeObject(account2, ['settings', 'created_at', 'password', 'relationships', 'claimed']);
-
-            await global.dispatcher.dispatchEventTo(account2.id, "USER_UPDATE", account2);
-
-            await global.dispatcher.dispatchGuildMemberUpdateToAllTheirGuilds(account2.id, account2);
-            
-            return res.status(200).json(account2);
-          }
-        }
-      }
     }
 
     account = globalUtils.sanitizeObject(account, ['settings', 'created_at', 'password', 'relationships', 'claimed']);
