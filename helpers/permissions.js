@@ -100,7 +100,8 @@ const permissions = {
             if (channel.permission_overwrites && channel.permission_overwrites.length > 0 && !(calc & 8)) {
                 let basePerms = Number(calc);
                 let overwrites = channel.permission_overwrites;
-                let everyone = overwrites?.find(x => x.type == 'role' && x.id == guild.id);
+                
+                let everyone = overwrites.find(x => x.type == 'role' && x.id == guild.id);
     
                 if (everyone) {
                     basePerms &= ~everyone.deny;

@@ -163,7 +163,7 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
             });
         }
         
-        const role = await global.database.createRole(req.params.guildid, "new role", 0, 1);
+        const role = await global.database.createRole(req.params.guildid, "new role", req.guild.roles.length + 1);
 
         if (role == null) {
             await globalUtils.unavailableGuild(req.guild, "Creating role failed");
@@ -173,11 +173,6 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
                 message: "Internal Server Error"
             });
         }
-
-        await global.dispatcher.dispatchEventTo(sender.id, "GUILD_ROLE_CREATE", {
-            guild_id: req.params.guildid,
-            role: role
-        });
 
         await global.dispatcher.dispatchEventToAllPerms(req.params.guildid, null, "MANAGE_ROLES", "GUILD_ROLE_CREATE", {
             guild_id: req.params.guildid,

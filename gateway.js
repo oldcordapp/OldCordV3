@@ -31,12 +31,15 @@ async function syncPresence(socket, packet) {
 
     // Sync
     for (let session of allSessions) {
-        session.presence.status = setStatusTo;
-        session.presence.game_id = gameField;
+        if (session.id !== socket.session.id) {
+            session.presence.status = setStatusTo;
+            session.presence.game_id = gameField;
+        } //only do this for other sessions, not us as we're gonna update in a sec
     }
 
     await socket.session.updatePresence(setStatusTo, gameField);
 }
+
 const gateway = {
     server: null,
     port: null,
@@ -76,6 +79,7 @@ const gateway = {
 
             if (req.url.includes("compress=zlib-stream")) {
                 socket.wantsZlib = true;
+                socket.zlibHeader = true;
             }
 
             let identified = false;
@@ -88,6 +92,55 @@ const gateway = {
                     socket.session.onClose(code);
                 }
             });
+
+            let heartbeat_payload = JSON.stringify({
+                op: 10,
+                s: null,
+                d: {
+                    heartbeat_interval: 45 * 1000,
+                    _trace: ["oldcord-v3"]
+                }
+            });
+
+            if (socket.wantsZlib) {
+                let buffer;
+
+                buffer = zlib.deflateSync(heartbeat_payload, {chunkSize: 65535, flush: zlib.constants.Z_SYNC_FLUSH, finishFlush: zlib.constants.Z_SYNC_FLUSH, level: zlib.constants.Z_BEST_COMPRESSION})
+    
+                if (!socket.zlibHeader) {
+                    buffer = buffer.subarray(2, buffer.length);
+                }
+                else socket.zlibHeader = false;
+
+                socket.send(buffer);
+            } else socket.send(heartbeat_payload);
+
+            socket.hb = {
+                timeout: setTimeout(async () => {
+                    await socket.session.updatePresence("offline", null);
+
+                    socket.close(4009, 'Session timed out');
+                }, (45 * 1000) + (20 * 1000)),
+                reset: () => {
+                    if (socket.hb.timeout != null) {
+                        clearInterval(socket.hb.timeout);
+                    }
+
+                    socket.hb.timeout = new setTimeout(async () => {
+                        await socket.session.updatePresence("offline", null);
+
+                        socket.close(4009, 'Session timed out');
+                    }, (45 * 1000) + 20 * 1000);
+                },
+                acknowledge: (d) => {
+                    socket.session.send({
+                        op: 11,
+                        d: d
+                    });
+
+                    logText(`Acknowledged client heartbeat from ${socket.user.id} (${socket.user.username}#${socket.user.discriminator})`, "GATEWAY");
+                }
+            };
 
             socket.on('message', async (data) => {
                 try {
@@ -121,45 +174,9 @@ const gateway = {
 
                         socket.session = sesh;        
 
-                        socket.hb = {
-                            timeout: setTimeout(async () => {
-                                await socket.session.updatePresence("offline", null);
-
-                                socket.close(4009, 'Session timed out');
-                            }, (45 * 1000) + (20 * 1000)),
-                            reset: () => {
-                                if (socket.hb.timeout != null) {
-                                    clearInterval(socket.hb.timeout);
-                                }
-
-                                socket.hb.timeout = new setTimeout(async () => {
-                                    await socket.session.updatePresence("offline", null);
-
-                                    socket.close(4009, 'Session timed out');
-                                }, (45 * 1000) + 20 * 1000);
-                            },
-                            acknowledge: (d) => {
-                                socket.session.send({
-                                    op: 11,
-                                    d: d
-                                });
-
-                                logText(`Acknowledged client heartbeat from ${socket.user.id} (${socket.user.username}#${socket.user.discriminator})`, "GATEWAY");
-                            }
-                        };
-                        
                         socket.session.start();
 
                         await socket.session.prepareReady();
-
-                        socket.session.send({
-                            op: 10,
-                            s: ++socket.session.seq,
-                            d: {
-                                heartbeat_interval: 45 * 1000,
-                                _trace: ["oldcord-v3"]
-                            }
-                        });
 
                         await socket.session.updatePresence(socket.user.settings.status ?? "online", null);
                     } else if (packet.op == 1) {

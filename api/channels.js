@@ -496,7 +496,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
                     message: "Unknown Member"
                 });
             }
-        } else {
+        } else if (type == 'role') {
             let role = req.guild.roles.find(x => x.id === id);
 
             if (role == null) {
@@ -515,15 +515,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 
-        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "CHANNEL_UPDATE", {
-            type: channel.type,
-            id: channel.id,
-            guild_id: channel.guild_id,
-            topic: channel.topic,
-            last_message_id: channel.last_message_id,
-            name: channel.name,
-            permission_overwrites: channel.permission_overwrites
-        });
+        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "CHANNEL_UPDATE", channel);
 
         return res.status(204).send();
     } catch(error) {
@@ -569,15 +561,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
         }
 
         if (overwriteIndex === -1) {
-            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "CHANNEL_UPDATE", {
-                type: channel.type,
-                id: channel.id,
-                guild_id: channel.guild_id,
-                topic: channel.topic,
-                last_message_id: channel.last_message_id,
-                name: channel.name,
-                permission_overwrites: channel.permission_overwrites
-            });
+            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "CHANNEL_UPDATE", channel);
 
             return res.status(204).send();
         }
@@ -597,15 +581,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
             channel.type = channel.type == 2 ? "voice" : "text";
         }
 
-        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "CHANNEL_UPDATE", {
-            type: channel.type,
-            id: channel.id,
-            guild_id: channel.guild_id,
-            topic: channel.topic,
-            last_message_id: channel.last_message_id,
-            name: channel.name,
-            permission_overwrites: channel.permission_overwrites
-        });
+        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "CHANNEL_UPDATE", channel);
 
         return res.status(204).send();
     } catch(error) {

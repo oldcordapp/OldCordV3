@@ -52,7 +52,6 @@ class session {
         this.read_states = [];
         this.dm_list = [];
         this.relationships = [];
-        this.zlibHeader = true;
     }
     onClose(code) {
         if (this.dead) return;
@@ -100,6 +99,8 @@ class session {
         if (!this.ready) return;
         if (this.dead) return;
 
+        let sequence = ++this.seq;
+
         if (this.eventsBuffer.length > BUFFER_LIMIT) {
             if (this.dead) return this.terminate();
 
@@ -107,13 +108,13 @@ class session {
             this.eventsBuffer.push({
                 type: type,
                 payload: payload,
-                seq: this.seq
+                seq: sequence
             });
         } else {
             this.eventsBuffer.push({
                 type: type,
                 payload: payload,
-                seq: this.seq
+                seq: sequence
             })
         }
 
@@ -122,7 +123,7 @@ class session {
         this.send({
             op: 0,
             t: type,
-            s: ++this.seq,
+            s: sequence,
             d: payload
         });
     }
@@ -234,10 +235,10 @@ class session {
 
             buffer = zlib.deflateSync(stringifiedpayload, {chunkSize: 65535, flush: zlib.constants.Z_SYNC_FLUSH, finishFlush: zlib.constants.Z_SYNC_FLUSH, level: zlib.constants.Z_BEST_COMPRESSION})
 
-            if (!this.zlibHeader) {
+            if (!this.socket.zlibHeader) {
                 buffer = buffer.subarray(2, buffer.length);
             }
-            else this.zlibHeader = false;
+            else this.socket.zlibHeader = false;
             
             this.socket.send(buffer);
         } else this.socket.send(JSON.stringify(payload));
@@ -271,6 +272,7 @@ class session {
         if (this.timeout) clearTimeout(this.timeout);
 
         this.socket = socket;
+        this.dead = false;
 
         let items = this.eventsBuffer.filter(s => s.seq > seq);
 
@@ -278,17 +280,8 @@ class session {
 			this.dispatch(k.type, k.payload);
 		}
 
-        this.send({
-            op: 10,
-            s: ++this.seq,
-            d: {
-                heartbeat_interval: 45 * 1000,
-                _trace: ["oldcord-v3"]
-            }
-        });
-
         this.dispatch("RESUMED", {
-            __trace: ['oldcordv3']
+            _trace: ["oldcord-v3"]
         });
 
         this.updatePresence("online", null, false);

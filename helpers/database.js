@@ -1333,14 +1333,12 @@ const database = {
         }
     },
     //to-do add role mention support
-    getRecentMentions: async (user_id, limit, include_roles, include_everyone_mentions, guild_id) => {
+    getRecentMentions: async (user_id, before_id, limit, include_roles, include_everyone_mentions, guild_id) => {
         try {
             let query = `SELECT * FROM messages WHERE `;
-
             const params = [];
-
             let paramIndex = 1;
-    
+
             if (guild_id) {
                 query += `guild_id = $${paramIndex} AND `;
 
@@ -1349,26 +1347,35 @@ const database = {
                 paramIndex++;
             }
 
-            query += `(content LIKE '%<@${user_id}>%'`;
+            if (before_id) {
+                query += `message_id < $${paramIndex} AND `;
 
+                params.push(before_id);
+
+                paramIndex++;
+            }
+    
+            query += `(content LIKE '%<@${user_id}>%'`;
+    
             if (include_everyone_mentions) {
                 query += ` OR mention_everyone = 1`;
             }
-
+    
             query += `) `;
+    
 
             query += `ORDER BY timestamp DESC LIMIT $${paramIndex}`;
 
             params.push(limit);
-
+    
             const rows = await database.runQuery(query, params);
     
             if (!rows || rows.length === 0) {
                 return [];
             }
-
+    
             const ret = [];
-
+    
             for (const row of rows) {
                 const message = await database.getMessageById(row.message_id);
 
@@ -1681,12 +1688,6 @@ const database = {
 
                 if (user == null) {
                     continue;
-                }
-
-                let everyoneRole = roles.find(x => x.name == '@everyone');
-
-                if (everyoneRole != null && !member_roles.includes(everyoneRole.id)) {
-                    member_roles.push(everyoneRole.id);
                 }
 
                 members.push({
@@ -2318,16 +2319,18 @@ const database = {
             return false;
         }
     },
-    createRole: async (guild_id, name, permissions, position) => {
+    createRole: async (guild_id, name, position) => {
         try {
             const role_id = Snowflake.generate();
 
-            await database.runQuery(`INSERT INTO roles (guild_id, role_id, name, permissions, position) VALUES ($1, $2, $3, $4, $5)`, [guild_id, role_id, name, permissions, position]);
+            let default_permissions = 73468929; //READ, SEND, READ MSG HISTORY, CREATE INSTANT INVITE, SPEAK, MUTE_MEMBERS, CHANGE_NICKNAME
+
+            await database.runQuery(`INSERT INTO roles (guild_id, role_id, name, permissions, position) VALUES ($1, $2, $3, $4, $5)`, [guild_id, role_id, name, default_permissions, position]);
 
             return {
                 id: role_id,
                 name: name,
-                permissions: permissions,
+                permissions: default_permissions,
                 position: position,
                 color: 0,
                 hoist: false,

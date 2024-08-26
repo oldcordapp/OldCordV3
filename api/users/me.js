@@ -250,8 +250,6 @@ router.patch("/settings", async (req, res) => {
       });
     }
 
-    //"show_current_game":false,"inline_attachment_media":false,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"offline"
-
     for (let key in req.body) {
         if (new_settings.hasOwnProperty(key)) {
           new_settings[key] = req.body[key];
@@ -612,8 +610,9 @@ router.get("/mentions", async (req, res) => {
     let guild_id = req.query.guild_id ?? null;
     let include_roles = req.query.roles == "true" ?? false;
     let include_everyone_mentions = req.query.everyone == "true" ?? true;
+    let before = req.query.before ?? null;
 
-    let recentMentions = await global.database.getRecentMentions(account.id, limit, include_roles, include_everyone_mentions, guild_id);
+    let recentMentions = await global.database.getRecentMentions(account.id, before, limit, include_roles, include_everyone_mentions, guild_id);
 
     return res.status(200).json(recentMentions);
   } catch (error) {
