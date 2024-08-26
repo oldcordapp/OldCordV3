@@ -599,9 +599,9 @@ router.patch("/:messageid", rateLimitMiddleware(global.config.ratelimit_config.u
             });
         }
         
-        const guy = req.account;
+        const caller = req.account;
 
-        if (guy == null) {
+        if (caller == null) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -626,92 +626,57 @@ router.patch("/:messageid", rateLimitMiddleware(global.config.ratelimit_config.u
             });
         }
 
-        if (channel.recipient || channel.recipients) {
-            if (message.author.id != guy.id) {
-                return res.status(403).json({
-                    code: 403,
-                    message: "Missing Permissions"
-                });
+        let dm = channel.recipient || channel.recipients;
+
+        if (!dm && !channel.guild_id) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
+            });
+        }
+
+        if (message.author.id != caller.id) {
+            return res.status(403).json({
+                code: 403,
+                message: "Missing Permissions"
+            });
+        }
+
+        //TODO:
+        //FIXME: this needs to use globalUtils.parseMentions
+        if (req.body.content && req.body.content.includes("@everyone")) {
+            let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
+
+            if (!pCheck) {
+                req.body.content = req.body.content.replace(/@everyone/g, "");
             }
+        }
 
-            //TODO:
-            //FIXME: this needs to use globalUtils.parseMentions
-            if (req.body.content && req.body.content.includes("@everyone")) {
-                let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
+        const update = await global.database.updateMessage(message.id, req.body.content);
 
-                if (!pCheck) {
-                    req.body.content = req.body.content.replace(/@everyone/g, "");
-                }
-            }
+        if (!update) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
 
-            const update = await global.database.updateMessage(message.id, req.body.content);
+        message = await global.database.getMessageById(req.params.messageid);
 
-            if (!update) {
-                return res.status(500).json({
-                    code: 500,
-                    message: "Internal Server Error"
-                });
-            }
+        if (message == null) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Message"
+            });
+        }
 
-            message = await global.database.getMessageById(req.params.messageid);
-
-            if (message == null) {
-                return res.status(404).json({
-                    code: 404,
-                    message: "Unknown Message"
-                });
-            }
-
-            await global.dispatcher.dispatchEventInDM(guy.id, channel.recipients ? channel.recipients[0].id : channel.recipient.id, "MESSAGE_UPDATE", message);
-
-            return res.status(204).send();
-        } else {
-            if (!channel.guild_id) {
-                return res.status(404).json({
-                    code: 404,
-                    message: "Unknown Channel"
-                });
-            }
-            
-            if (message.author.id != guy.id) {
-                return res.status(403).json({
-                    code: 403,
-                    message: "Missing Permissions"
-                });
-            }
-
-            //TODO:
-            //FIXME: ditto, this needs to use globalUtils.parseMentions
-            if (req.body.content && req.body.content.includes("@everyone")) {
-                let pCheck = await global.permissions.hasChannelPermissionTo(req.channel, req.guild, message.author.id, "MENTION_EVERYONE");
-
-                if (!pCheck) {
-                    req.body.content = req.body.content.replace(/@everyone/g, "");
-                }
-            }
-
-            const update = await global.database.updateMessage(message.id, req.body.content);
-
-            if (!update) {
-                return res.status(500).json({
-                    code: 500,
-                    message: "Internal Server Error"
-                });
-            }
-
-            message = await global.database.getMessageById(req.params.messageid);
-
-            if (message == null) {
-                return res.status(404).json({
-                    code: 404,
-                    message: "Unknown Message"
-                });
-            }
-
+        if (dm)
+            await global.dispatcher.dispatchEventInDM(caller.id, (channel.recipients ? channel.recipients[0] : channel.recipient).id, "MESSAGE_UPDATE", message);
+        else
             await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_UPDATE", message);
 
-            return res.status(204).send();
-        }
+        return res.status(204).send();
+        
     } catch (error) {
         logText(error, "error");
     
