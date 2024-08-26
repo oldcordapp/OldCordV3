@@ -186,7 +186,7 @@ const database = {
                 guild_id TEXT,
                 user_id TEXT,
                 nick TEXT DEFAULT NULL,
-                roles TEXT DEFAULT NULL,
+                roles TEXT DEFAULT '[]',
                 joined_at TEXT DEFAULT NULL,
                 deaf INTEGER DEFAULT 0,
                 mute INTEGER DEFAULT 0
@@ -1655,21 +1655,9 @@ const database = {
             let members = [];
 
             for (var row of memberRows) {
-                let member_roles = [];
+                let member_roles = JSON.parse(row.roles) ?? [];
 
-                if (row.roles.includes(':')) {
-                    const db_roles = row.roles.split(':');
-
-                    for (var db_role of db_roles) {
-                        if (db_role !== 'NULL' && roles.find(x => x.id === db_role)) {
-                            member_roles.push(db_role);
-                        }
-                    }
-                } else {
-                    if (row.roles !== 'NULL' && roles.find(x => x.id === row.roles)) {
-                        member_roles.push(row.roles);
-                    }
-                }
+                member_roles = member_roles.filter(role_id => roles.find(guild_role => guild_role.id === role_id) !== undefined);
 
                 const user = await database.getAccountByUserId(row.user_id);
 
@@ -2111,24 +2099,21 @@ const database = {
 
             let guild_id = guild.id;
             
-            let roleStr = null;
+            let saveRoles = [];
 
             for (var role of role_ids) {
                 if (!guild.roles.find(x => x.id === role)) {
                     continue; //Invalid role
                 }
 
-                if (role == guild_id) {
+                if (role === guild_id) {
                     continue; //everyone has the everyone role silly
                 }
                 
-                if (roleStr == null)
-                    roleStr = role;
-                else
-                    roleStr += ':' + role;
+                saveRoles.push(role);
             }
 
-            await database.runQuery(`UPDATE members SET roles = $1 WHERE user_id = $2`, [roleStr ?? "NULL", user_id]);
+            await database.runQuery(`UPDATE members SET roles = $1 WHERE user_id = $2 AND guild_id = $3`, [JSON.stringify(saveRoles), user_id, guild_id]);
 
             return true;
         } catch(error) {
@@ -2153,7 +2138,7 @@ const database = {
 
             const date = new Date().toISOString();
 
-            await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [guild.id, user_id, 'NULL', guild.id, date, 0, 0]);
+            await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [guild.id, user_id, 'NULL', '[]', date, 0, 0]);
 
             return true;
         } catch(error) {
@@ -2669,21 +2654,9 @@ const database = {
             let members = [];
 
             for (var row of memberRows) {
-                let member_roles = [];
+                let member_roles = JSON.parse(row.roles) ?? [];
 
-                if (row.roles.includes(':')) {
-                    const db_roles = row.roles.split(':');
-
-                    for (var db_role of db_roles) {
-                        if (db_role !== 'NULL' && roles.find(x => x.id === db_role)) {
-                            member_roles.push(db_role);
-                        }
-                    }
-                } else {
-                    if (row.roles !== 'NULL' && roles.find(x => x.id === row.roles)) {
-                        member_roles.push(row.roles);
-                    }
-                }
+                member_roles = member_roles.filter(role_id => roles.find(guild_role => guild_role.id === role_id) !== undefined);
 
                 const user = await database.getAccountByUserId(row.user_id);
 
@@ -2935,7 +2908,7 @@ const database = {
             await database.runQuery(`INSERT INTO guilds (id, name, icon, region, owner_id, afk_channel_id, afk_timeout, creation_date, exclusions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [id, name, (icon == null ? 'NULL' : icon), region, owner_id, 'NULL', 300, date, JSON.stringify(exclusions)])
             await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, 0, id, 'NULL', '0', 'NULL', 'general', 0]);
             await database.runQuery(`INSERT INTO roles (guild_id, role_id, name, permissions, position) VALUES ($1, $2, $3, $4, $5)`, [id, id, '@everyone', 104193089, 0]); 
-            await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [id, owner_id, 'NULL', id, date, 0, 0]);
+            await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [id, owner_id, 'NULL', '[]', date, 0, 0]);
             await database.runQuery(`INSERT INTO widgets (guild_id, channel_id, enabled) VALUES ($1, $2, $3)`, [id, 'NULL', 0]);
 
             return {
