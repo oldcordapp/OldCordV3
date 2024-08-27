@@ -118,7 +118,7 @@ function patchJS(script, kind) {
             script = script.replaceAll(/var (\w+)=\w\["default"\]\.requireElectron\("powerMonitor",!0\);/g, `var $1=window.DiscordNative.powerMonitor;`);
             script = script.replace(/var \w=\w\["default"\]\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\["default"\]\.Messages\)}\)/, "");
         }
-        if (release_date.endsWith("_2017") && !release_date.startsWith("janurary")) {
+        if (release_date.endsWith("_2017") && !release_date.startsWith("january")) {
             script = script.replaceAll(/this\.getDiscordUtils\(\)/g, `window.DiscordNative.nativeModules.requireModule("discord_utils")`);
             script = script.replaceAll(/\w\.default\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
             script = script.replaceAll(/this\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
