@@ -163,7 +163,7 @@ function patchCSS(css) {
     document.title = config.instance_name;
 
     if (window.DiscordNative && release_date == "april_1_2018") {
-        loadLog("This build does not work on desktop client due to missing important chunks.", true, true)
+        loadLog("This build does not work on desktop client due to missing important scripts.", true, true)
         return
     }
 
