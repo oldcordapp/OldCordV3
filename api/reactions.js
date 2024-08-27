@@ -33,7 +33,7 @@ router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"),
 
         let guild = req.guild;
 
-        if (!guild) {
+        if (channel.type != 1 && channel.type != 3 && !guild) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Channel"
@@ -49,7 +49,7 @@ router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"),
             });
         }
 
-        if (guild.exclusions.includes("reactions")) {
+        if (guild && guild.exclusions.includes("reactions")) {
             return res.status(400).json({
                 code: 400,
                 message: "Reactions are disabled in this server due to its maximum support"
@@ -74,8 +74,8 @@ router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"),
                 message: "Internal Server Error"
             }); 
         }
-
-        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_REACTION_REMOVE", {
+        
+        const payload = {
             channel_id: channel.id,
             message_id: message.id,
             user_id: account.id,
@@ -83,7 +83,12 @@ router.delete("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"),
                 id: id,
                 name: dispatch_name
             }
-        });
+        };
+
+        if (guild)
+            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_REACTION_REMOVE", payload);
+        else
+            await global.dispatcher.dispatchEventInPrivateChannel(channel.id, "MESSAGE_REACTION_REMOVE", payload);
 
         return res.status(204).send();
     } catch (error) {
@@ -127,7 +132,7 @@ router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSA
 
         let guild = req.guild;
 
-        if (!guild) {
+        if (channel.type != 1 && channel.type != 3 && !guild) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Channel"
@@ -143,7 +148,7 @@ router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSA
             });
         }
 
-        if (guild.exclusions.includes("reactions")) {
+        if (guild && guild.exclusions.includes("reactions")) {
             return res.status(400).json({
                 code: 400,
                 message: "Reactions are disabled in this server due to its maximum support"
@@ -168,8 +173,8 @@ router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSA
                 message: "Internal Server Error"
             }); 
         }
-
-        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_REACTION_REMOVE", {
+        
+        const payload = {
             channel_id: channel.id,
             message_id: message.id,
             user_id: user.id,
@@ -177,7 +182,12 @@ router.delete("/:urlencoded/:userid", channelPermissionsMiddleware("MANAGE_MESSA
                 id: id,
                 name: dispatch_name
             }
-        });
+        };
+        
+        if (guild)
+            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_REACTION_REMOVE", payload);
+        else
+            await global.dispatcher.dispatchEventInPrivateChannel(channel.id, "MESSAGE_REACTION_REMOVE", payload);
 
         return res.status(204).send();
     } catch (error) {
@@ -212,7 +222,7 @@ router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), ra
 
         let guild = req.guild;
 
-        if (!guild) {
+        if (channel.type != 1 && channel.type != 3 && !guild) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Channel"
@@ -228,7 +238,7 @@ router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), ra
             });
         }
 
-        if (guild.exclusions.includes("reactions")) {
+        if (guild && guild.exclusions.includes("reactions")) {
             return res.status(400).json({
                 code: 400,
                 message: "Reactions are disabled in this server due to its maximum support"
@@ -253,8 +263,8 @@ router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), ra
                 message: "Internal Server Error"
             }); 
         }
-
-        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_REACTION_ADD", {
+        
+        const payload = {
             channel_id: channel.id,
             message_id: message.id,
             user_id: account.id,
@@ -262,7 +272,12 @@ router.put("/:urlencoded/@me", channelPermissionsMiddleware("ADD_REACTIONS"), ra
                 id: id,
                 name: dispatch_name
             }
-        });
+        };
+
+        if (guild)
+            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_REACTION_ADD", payload);
+        else
+            await global.dispatcher.dispatchEventInPrivateChannel(channel.id, "MESSAGE_REACTION_ADD", payload);
 
         return res.status(204).send();
     } catch (error) {
@@ -297,7 +312,7 @@ router.get("/:urlencoded", async (req, res) => {
 
         let guild = req.guild;
 
-        if (!guild) {
+        if (channel.type != 1 && channel.type != 3 && !guild) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Channel"
@@ -313,7 +328,7 @@ router.get("/:urlencoded", async (req, res) => {
             });
         }
 
-        if (guild.exclusions.includes("reactions")) {
+        if (guild && guild.exclusions.includes("reactions")) {
             return res.status(400).json({
                 code: 400,
                 message: "Reactions are disabled in this server due to its maximum support"
