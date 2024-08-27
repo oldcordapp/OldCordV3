@@ -126,12 +126,13 @@ function patchJS(script, kind) {
         }
 
         //Desktop Native API fix for 2018+ (Not entirely complete!)
-        if (release_date.endsWith("_2018") && kind == "root") {
+        if (release_date.endsWith("_2018")) {
             script = script.replace(/(\w)\.globals\.releaseChannel/, "$1.app.getReleaseChannel()")
             script = script.replace(/(\w)\.globals\.features/, "$1.features")
             script = script.replace(/(\w)\.globals\[(\w)\]/, "$1[$2]")
             script = script.replace(/return \w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){\w\.emit\("devtools-opened"\)}\),\w/, "");
             script = script.replace(/var \w=\w\.default\.window\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\.default\.Messages\)}\)/, "");
+            script = script.replace(/return \w\.default\.ensureModule\("discord_spellcheck"\)\.then\(function\(\){var \w=\w.default.requireModule\("discord_spellcheck"\)\.Spellchecker,\w=new \w\(new \w\);return function\(\w\){null!=document\.body&&document\.body\.addEventListener\("input",function\(\w\){null!=\w\.target&&"string"==typeof \w\.target.value&&e.detectLocale\(\w\.target\.value\)},!0\)}\(\w\),\w}\)/, "")
         }
     }
 
