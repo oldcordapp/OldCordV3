@@ -120,12 +120,9 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         let file_details = null;
 
         if (req.file) {
-            let dimensions = await sizeOf(req.file.buffer);
             file_details = {
                 id: Snowflake.generate(),
                 size: req.file.size,
-                width: dimensions?.width,
-                height: dimensions?.height,
             };
 
             file_details.name = globalUtils.replaceAll(req.file.originalname, ' ', '_').replace(/[^A-Za-z0-9_\-.()\[\]]/g, '');
@@ -146,6 +143,13 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             }
 
             fs.writeFileSync(file_path, req.file.buffer);
+            
+            //I hate this, but image-size softlocks when taking a buffer
+            let dimensions = await sizeOf(file_path);
+            if (dimensions) {
+                file_details.width = dimensions.width;
+                file_details.height = dimensions.height;
+            }
         }
 
         if (!req.channel.recipients) {
