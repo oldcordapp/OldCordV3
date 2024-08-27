@@ -521,8 +521,32 @@ const database = {
             const rows = await database.runQuery(`
                 SELECT * FROM users WHERE username = $1 AND discriminator = $2
             `, [username, discriminator]);
+            
+            if (!rows || rows.length == 0)
+                return null;
 
-            return globalUtils.prepareAccountObject(rows, []); //dont care about this, relationships arent even accessed from here
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+
+            let contents = JSON.parse(rows[0].relationships);
+            let relationships = [];
+            
+            if (contents && contents.length > 0) {
+                for (var relationship of contents) {
+                    let user = await global.database.getRelationshipUserById(relationship.id);
+
+                    if (user && user.id != rows[0].id) {
+                        relationships.push({
+                            id: relationship.id,
+                            type: relationship.type,
+                            user: user
+                        })
+                    }
+                }
+            }
+
+            return globalUtils.prepareAccountObject(rows, relationships);
         } catch (error) {
             logText(error, "error");
 
