@@ -394,7 +394,6 @@ router.put("/:userid", async (req, res) => {
 
 router.post("/", async (req, res) => {
     try {
-        //getAccountByUsernameTag
         let account = req.account;
 
         if (!account) {

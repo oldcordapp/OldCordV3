@@ -49,7 +49,7 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
 
     let update = {
       avatar: null,
-      email: account.email,
+      email: null,
       new_password: null,
       new_email: null,
       password: null,
@@ -62,7 +62,12 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
     }
 
     if (req.body.email) {
-      update.new_email = req.body.email;
+      update.email = req.body.email;
+    }
+
+    if (update.email && update.email != account.email) {
+      update.new_email = update.email;
+      update.email = account.email;
     }
 
     if (req.body.new_password) {
@@ -88,9 +93,9 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
     if (update.email == account.email && update.new_password == null && update.password == null && update.username == account.username && update.discriminator == account.discriminator) {
        //avatar change
        
-       let tryUpdate = await global.database.updateAccount(update.avatar, account.email, account.username, null, null, null, null);
+       let tryUpdate = await global.database.updateAccount(update.avatar, account.email, account.username, account.discriminator, null, null);
 
-       if (tryUpdate !== 3) {
+       if (tryUpdate !== 3 && tryUpdate !== 2) {
           return res.status(500).json({
             code: 500,
             message: "Internal Server Error"
@@ -177,10 +182,6 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
     const attemptToUpdate = await global.database.updateAccount(update.avatar, update.email, update.username, update.discriminator, update.password, update.new_password, update.new_email);
 
     if (attemptToUpdate !== 3) {
-      if (update.password === update.new_password) {
-        return res.status(200).json(globalUtils.sanitizeObject(account, ['settings', 'created_at', 'password', 'relationships', 'claimed']))
-      } //idk why this errors but honestly just return existing acc object
-
       if (attemptToUpdate === -1) {
         return res.status(500).json({
           code: 500,
