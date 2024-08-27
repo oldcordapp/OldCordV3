@@ -151,11 +151,6 @@ function patchCSS(css) {
 
 (async function() {
     loadLog("Build: " + release_date);
-
-    if (window.DiscordNative && release_date == "april_1_2018") {
-        loadLog("This build does not work on desktop client due to missing important chunks.", true, true)
-        throw "does_not_work";
-    }
     
     loadLog("Loading bootloader parameters");
     try {
@@ -166,6 +161,11 @@ function patchCSS(css) {
     }
     
     document.title = config.instance_name;
+
+    if (window.DiscordNative && release_date == "april_1_2018") {
+        loadLog("This build does not work on desktop client due to missing important chunks.", true, true)
+        return
+    }
 
     if ((release_date == "november_16_2017" ||
          release_date == "december_21_2017" ||
