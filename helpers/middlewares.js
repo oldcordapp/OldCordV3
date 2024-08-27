@@ -460,8 +460,8 @@ function channelPermissionsMiddleware(permission) {
             });
         }
 
-        if (!channel.guild_id && (channel.recipient || channel.recipients)) {
-            if (permission == "MANAGE_MESSAGES" && sender.id != channel.recipient.id) {
+        if (!channel.guild_id && channel.recipients) {
+            if (permission == "MANAGE_MESSAGES" && !channel.recipients.includes(sender.id)) {
                 return res.status(403).json({
                     code: 403,
                     message: "Missing Permissions"
@@ -469,47 +469,61 @@ function channelPermissionsMiddleware(permission) {
             }
 
             if (permission == "SEND_MESSAGES") {
-                let id = channel.recipient ? channel.recipient.id : channel.recipients[0].id;
+                if (channel.type == 1) {
+                    //Permission to DM
+                    
+                    //Need a complete user object for the relationships
+                    let otherID = channel.recipients[channel.recipients[0].id == sender.id ? 1 : 0].id;
+                    let other = await global.database.getAccountByUserId(otherID);
 
-                let userObject = await global.database.getAccountByUserId(id);
-
-                if (!userObject) {
-                    return res.status(403).json({
-                        code: 403,
-                        message: "Missing Permissions"
-                    });
-                }
-
-                let friends = globalUtils.areWeFriends(sender, userObject);
-
-                const guilds = await global.database.getUsersGuilds(id);
-
-                const sharedGuilds = guilds.filter(guild => 
-                    guild.members != null && 
-                    guild.members.length > 0 && 
-                    guild.members.some(member => member.id === sender.id)
-                );
-
-                if (!friends && sharedGuilds.length === 0) {
-                    return res.status(403).json({
-                        code: 403,
-                        message: "Missing Permissions"
-                    });
-                }
-
-                let counted = 0;
-
-                for(var guild of sharedGuilds) {
-                    if (userObject.settings.restricted_guilds.includes(guild.id)) {
-                        counted++;
+                    if (!other) {
+                        return res.status(403).json({
+                            code: 403,
+                            message: "Missing Permissions"
+                        });
                     }
-                }
 
-                if (counted === sharedGuilds.length && !friends) {
-                    return res.status(403).json({
-                        code: 403,
-                        message: "Missing Permissions"
-                    });
+                    let friends = globalUtils.areWeFriends(sender, other);
+
+                    const guilds = await global.database.getUsersGuilds(other);
+
+                    const sharedGuilds = guilds.filter(guild => 
+                        guild.members != null && 
+                        guild.members.length > 0 && 
+                        guild.members.some(member => member.id === sender.id)
+                    );
+
+                    if (!friends && sharedGuilds.length === 0) {
+                        return res.status(403).json({
+                            code: 403,
+                            message: "Missing Permissions"
+                        });
+                    }
+
+                    let counted = 0;
+
+                    for(var guild of sharedGuilds) {
+                        if (other.settings.restricted_guilds.includes(guild.id)) {
+                            counted++;
+                        }
+                    }
+
+                    if (counted === sharedGuilds.length && !friends) {
+                        return res.status(403).json({
+                            code: 403,
+                            message: "Missing Permissions"
+                        });
+                    }
+                } else if (channel.type == 3) {
+                    //Permission to send in group chat
+                    if (!channel.recipients.some(x => x.id == sender.id)) {
+                        console.log("Can't send in group chat, not in group chat");
+                        console.log(channel.recipients);
+                        return res.status(403).json({
+                            code: 403,
+                            message: "Missing Permissions"
+                        });
+                    }
                 }
             }
 

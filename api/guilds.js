@@ -476,7 +476,9 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
 
         channel.type = typeof req.body.type === 'string' ? req.body.type : number_type;
 
-        await global.dispatcher.dispatchEventInGuild(req.guild, "CHANNEL_CREATE", channel);
+        await global.dispatcher.dispatchEventInGuild(req.guild, "CHANNEL_CREATE", function() {
+            return globalUtils.personalizeChannelObject(this.socket, channel);
+        });
 
         return res.status(200).json(channel);
     } catch(error) {

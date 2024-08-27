@@ -97,7 +97,10 @@ router.put("/:messageid", channelMiddleware, async (req, res) => {
 
         message.pinned = true;
 
-        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_UPDATE", message);
+        if (channel.type == 1 || channel.type == 3)
+            await global.dispatcher.dispatchEventInPrivateChannel(channel, "MESSAGE_UPDATE", message);
+        else
+            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_UPDATE", message);
 
         return res.status(204).send();
     } catch(error) {
@@ -160,7 +163,10 @@ router.delete("/:messageid", channelMiddleware, async (req, res) => {
 
         message.pinned = false;
 
-        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_UPDATE", message);
+        if (channel.type == 1 || channel.type == 3)
+            await global.dispatcher.dispatchEventInPrivateChannel(channel, "MESSAGE_UPDATE", message);
+        else
+            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "MESSAGE_UPDATE", message);
 
         return res.status(204).send();
     } catch(error) {

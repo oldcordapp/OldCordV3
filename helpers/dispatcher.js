@@ -10,25 +10,6 @@ const dispatcher = {
             sessions[z].dispatch(type, payload);
         }
     },
-    dispatchEventInDM: async (author_id, recipient_id, type, payload) => {
-        let sessions1 = global.userSessions.get(author_id);
-        
-        if (!sessions1 || sessions1.size === 0) return false;
-
-        let sessions2 = global.userSessions.get(recipient_id);
-
-        if (!sessions2 || sessions2.size === 0) return false;
-        
-        for(let z = 0; z < sessions1.length; z++) {
-            sessions1[z].dispatch(type, payload);
-        }
-
-        for(let w = 0; w < sessions2.length; w++) {
-            sessions2[w].dispatch(type, payload);
-        }
-
-        return true;
-    },
     dispatchGuildMemberUpdateToAllTheirGuilds: async (user_id, new_user) => {
         let sessions = global.userSessions.get(user_id);
         
@@ -119,15 +100,13 @@ const dispatcher = {
 
         return true;
     },
-    dispatchEventInGroupChannel: async (channel, type, payload) => {
-        if (channel === null) return false;
+    dispatchEventInPrivateChannel: async (channel, type, payload) => {
+        if (channel === null || !channel.recipients) return false;
 
         for(let i = 0; i < channel.recipients.length; i++) {
-            let recipient = channel.recipients[i];
+            let recipient = channel.recipients[i].id;
 
-            if (!recipient) continue;
-
-            let uSessions = global.userSessions.get(recipient.id);
+            let uSessions = global.userSessions.get(recipient);
 
             if (!uSessions || uSessions.size === 0) continue;
 

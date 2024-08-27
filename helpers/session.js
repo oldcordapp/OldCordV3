@@ -7,30 +7,6 @@ const zlib = require('zlib');
 const BUFFER_LIMIT = 500; //max dispatch event backlog before terminating?
 const SESSION_TIMEOUT = 60 * 2 * 1000; //2 mins
 
-function nineteeneightyfour(socket, type, payload) {
-    if (type == "CHANNEL_CREATE" || type == "CHANNEL_UPDATE") {
-        if (socket.channel_types_are_ints) {
-            if (payload.recipients) {
-                payload.type = payload.recipients.length > 2 ? 3 : 1; //dm channel / group dm
-            }
-
-            if (payload.type === 1 && payload.recipients.length > 1) {
-                payload.recipients = payload.recipients.filter(x => x.id !== socket.user.id);
-            } //fix for self dm channel_create event
-
-            if (typeof payload.type == 'string') {
-                payload.type = payload.type == "voice" ? 2 : 0;
-            }
-        } else if (socket.client_build.endsWith("2015")) {
-            if (typeof payload.type == 'number') {
-                payload.type = payload.type == 2 ? "voice" : "text"
-            }
-        }
-    }
-
-    return payload;
-}
-
 class session {
     constructor(id, socket, user, token, ready, presence) {
         this.id = id;
@@ -50,7 +26,6 @@ class session {
         this.unavailable_guilds = [];
         this.presences = [];
         this.read_states = [];
-        this.dm_list = [];
         this.relationships = [];
     }
     onClose(code) {
@@ -95,7 +70,7 @@ class session {
             logText(error, "error");
         }
     }
-    dispatch(type, payload) {
+    async dispatch(type, payload) {
         if (!this.ready) return;
         if (this.dead) return;
 
@@ -118,14 +93,19 @@ class session {
             })
         }
 
-        payload = nineteeneightyfour(this.socket, type, payload);
+        //Evaluate dynamic payload
+        if ((typeof payload) == "function") {
+            payload = await payload.call(this);
+        }
 
-        this.send({
-            op: 0,
-            t: type,
-            s: sequence,
-            d: payload
-        });
+        if (payload) {
+            this.send({
+                op: 0,
+                t: type,
+                s: sequence,
+                d: payload
+            });
+        }
     }
     async dispatchPresenceUpdate() {
         let current_guilds = await global.database.getUsersGuilds(this.user.id);
@@ -365,58 +345,19 @@ class session {
                 ]
             }
 
-            let fetched_dms = await global.database.getPrivateChannels(this.user.id);
-
-            for(var dm of fetched_dms) {
-                if (dm.type === 1) {
-                    if (dm.open) {
-                        if (year === 2015 || (month <= 8 && year === 2016)) {
-                            if (dm.recipients.length > 2) {
-                                fetched_dms = fetched_dms.filter(x => x.id !== dm.id); //remove group dms on older clients temporarily
-                            }
-                            
-                            dm.recipient = dm.recipients[0];
-    
-                            delete dm.recipient.owner;
-                            delete dm.recipients;
-    
-                            dm.type = "text";
-                            dm.is_private = true;
-                        }
-        
-                        if (dm.recipients) {
-                            dm.recipients = dm.recipients.filter(x => x.id !== this.user.id);
-    
-                            for(var recipient of dm.recipients) {
-                                delete recipient.owner;
-                            }
-                        }
-                        
-                        delete dm.open;
-    
-                        this.dm_list.push(dm);
-                    } //ignore closed dms
-                } else if (dm.type === 3) {
-                    //group dm logic
-
-                    let fixed_recipients = [];
-
-                    for (let recipient of dm.recipients) {
-                        if (recipient.owner) {
-                            dm.owner_id = recipient.id;         
-                        } else {
-                            delete recipient.owner;
-                            
-                            fixed_recipients.push(recipient);
-                        }
-                    }
-
-                    delete dm.open;
-
-                    dm.recipients = fixed_recipients;
-
-                    this.dm_list.push(dm);
-                } 
+            let chans = await database.getPrivateChannels(this.user.id);
+            let filteredDMs = [];
+            
+            for (var chan_id of chans) {
+                let chan = await database.getChannelById(chan_id);
+                if (!chan)
+                    continue;
+                
+                chan = globalUtils.personalizeChannelObject(this.socket, chan);
+                if (!chan)
+                    continue;
+                
+                filteredDMs.push(chan);
             }
             
             let connectedAccounts = await global.database.getConnectedAccounts(this.user.id);
@@ -427,7 +368,7 @@ class session {
             this.readyUp({
                 guilds: this.guilds ?? [],
                 presences: this.presences ?? [],
-                private_channels: this.dm_list ?? [],
+                private_channels: filteredDMs,
                 relationships: this.relationships ?? [],
                 read_state: this.read_states ?? [],
                 tutorial: tutorial,
