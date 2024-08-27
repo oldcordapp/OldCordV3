@@ -1330,6 +1330,7 @@ const database = {
             }
 
             return {
+                guild_id: rows[0].guild_id == 'NULL' ? null : rows[0].guild_id,
                 id: rows[0].message_id,
                 content: rows[0].content,
                 channel_id: rows[0].channel_id,
