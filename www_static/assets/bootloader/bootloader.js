@@ -131,10 +131,10 @@ function patchJS(script, kind) {
             script = script.replace(/(\w)\.globals\.features/, "$1.features")
             script = script.replace(/(\w)\.globals\[(\w)\]/, "$1[$2]")
         }
-
-        //Electron compatibility (Universal)
-        script = script.replaceAll(/"discord:\/\/"/g, `"oldcord://"`);
     }
+
+    //Electron compatibility (Universal)
+    script = script.replaceAll(/"discord:\/\/"/g, `"oldcord://"`);
 
     return script;
 }
