@@ -145,11 +145,13 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             fs.writeFileSync(file_path, req.file.buffer);
             
             //I hate this, but image-size softlocks when taking a buffer
-            let dimensions = await sizeOf(file_path);
-            if (dimensions) {
-                file_details.width = dimensions.width;
-                file_details.height = dimensions.height;
-            }
+            try {
+                const dimensions = await sizeOf(file_path);
+                if (dimensions) {
+                    file_details.width = dimensions.width;
+                    file_details.height = dimensions.height;
+                }
+            } catch {}
         }
 
         if (!req.channel.recipients) {
