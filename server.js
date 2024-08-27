@@ -304,58 +304,6 @@ app.get("/channels/:guildid/:channelid", (_, res) => {
     return res.redirect("/");
 });
 
-/*
-app.get("/widget", (req, res) => {
-    try {
-        if (!req.client_build) {
-            return res.redirect("/selector");
-        }
-
-        if (!fs.existsSync(`./www_static/assets/clients/${req.client_build}`)) {
-            return res.redirect("/selector");
-        }
-
-        res.send(fs.readFileSync(`./www_static/assets/clients/${req.client_build}/widget.html`, 'utf8'));
-    }
-    catch(error) {
-        logText(error, "error");
-
-        return res.redirect("/selector");
-    }
-});
-*/
-
-/*
-app.get('/developers/*', (req, res) => {
-	try {
-        if (!req.client_build) {
-            return res.redirect("/selector");
-        }
-
-        if (!fs.existsSync(`./www_static/assets/clients/${req.client_build}`)) {
-            return res.redirect("/selector");
-        }
-
-        let year = req.client_build.split('_')[2];
-
-        if (year.includes("2015")) {
-            return res.redirect("https://www.youtube.com/watch?v=jeg_TJvkSjg"); //wtf r u doing lol
-        }
-
-        res.send(fs.readFileSync(`./www_static/assets/developer_${year}/app.html`, 'utf8'));
-    }
-    catch(error) {
-        logText(error, "error");
-
-        return res.redirect("/selector");
-    }
-});
-
-app.get('/developers', (req, res) => {
-	res.redirect('/developers/');
-});
-*/
-
 app.get("/bootloaderConfig", (req, res) => {
     const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
     const base_url = config.base_url + portAppend;
