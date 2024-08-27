@@ -97,6 +97,9 @@ function patchJS(script, kind) {
         script = script.replace("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
 
     //Electron compatibiliy for <2018 (Not entirely complete!)
+    if (kind == "root") {
+        
+    }
     if (release_date.endsWith("_2015") || release_date.endsWith("_2016") || release_date.endsWith("_2017")) {
         script = script.replace(/\/\^win\/\.test\(this\.platform\)/, "/^win/.test(window.DiscordNative.process.platform)");
         script = script.replace(/"darwin"===this.platform/, `"darwin"===window.DiscordNative.process.platform`);
@@ -108,15 +111,19 @@ function patchJS(script, kind) {
         script = script.replace(/window.__require\?"Discord Client"/, `window.DiscordNative?"Discord Client"`)
         script = script.replaceAll(/\w\.remote\.getCurrentWindow\(\)/g, `window.DiscordNative.window`);
         script = script.replaceAll(/\w\.remote\.require\((\w)\)/g, "window.DiscordNative.nativeModules.requireModule($1)");
+    }
 
-        // These are botches for specific builds
+    // These are botches for specific builds
+    if (release_date.endsWith("_2016") || (release_date.startsWith("january") && release_date.endsWith("_2017"))) {
+        script = script.replace(/\w\.setObservedGamesCallback/, `window.DiscordNative.nativeModules.requireModule("discord_utils").setObservedGamesCallback`);
         script = script.replaceAll(/var (\w+)=\w\["default"\]\.requireElectron\("powerMonitor",!0\);/g, `var $1=window.DiscordNative.powerMonitor;`);
+        script = script.replace(/var \w=\w\["default"\]\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\["default"\]\.Messages\)}\)/, "");
+    }
+    if (release_date.endsWith("_2017") && !release_date.startsWith("janurary")) {
+        script = script.replaceAll(/this\.getDiscordUtils\(\)/g, `window.DiscordNative.nativeModules.requireModule("discord_utils")`);
         script = script.replaceAll(/\w\.default\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
         script = script.replaceAll(/this\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
-        script = script.replace(/\w\.setObservedGamesCallback/, `window.DiscordNative.nativeModules.requireModule("discord_utils").setObservedGamesCallback`);
-        script = script.replaceAll(/this\.getDiscordUtils\(\)/g, `window.DiscordNative.nativeModules.requireModule("discord_utils")`);
-        script = script.replace(/var \w=\w\.default\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\.default\.Messages\)}\)/, ""); // There is no webContents in DiscordNative.window anymore
-        script = script.replace(/var \w=\w\["default"\]\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\["default"\]\.Messages\)}\)/, "");
+        script = script.replace(/var \w=\w\.default\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\.default\.Messages\)}\)/, "");
     }
 
     //Desktop Native API fix for 2018+ (Not entirely complete!)
