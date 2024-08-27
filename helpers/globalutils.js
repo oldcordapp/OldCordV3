@@ -87,7 +87,8 @@ const globalUtils = {
             
             obj.client_build = client_build;
             obj.client_build_date = date;
-            obj.channel_types_are_ints = (date.getFullYear() == 2016 && date.getMonth() >= 6) || date.getFullYear() >= 2017;
+            obj.plural_recipients = (date.getFullYear() == 2016 && date.getMonth() >= 6) || date.getFullYear() >= 2017;
+            obj.channel_types_are_ints = obj.plural_recipients;
             return true;
         }
     },
@@ -451,6 +452,85 @@ const globalUtils = {
         }
 
         return result;
+    },
+    pingPrivateChannel: async (channel) => {
+        for(var recipient of channel.recipients) {
+            await globalUtils.pingPrivateChannelUser(channel, recipient.id);
+        }
+    },
+    pingPrivateChannelUser: async (private_channel, recipient_id) => {
+        let userPrivChannels = await database.getPrivateChannels(recipient_id);
+        
+        let sendCreate = false;
+        if (!userPrivChannels) {
+            //New
+            userPrivChannels = [private_channel.id];
+            sendCreate = true;
+        } else {
+            if (userPrivChannels.includes(private_channel.id)) {
+                //Remove old entry
+                const oldIndex = userPrivChannels.indexOf(private_channel.id);
+                userPrivChannels.splice(oldIndex, 1);
+            } else {
+                sendCreate = true;
+            }
+
+            //Add to top
+            userPrivChannels.unshift(private_channel.id);
+        }
+
+        await database.setPrivateChannels(recipient_id, userPrivChannels);
+        
+        if (sendCreate) {
+            await global.dispatcher.dispatchEventTo(recipient_id, "CHANNEL_CREATE", function() {
+                return globalUtils.personalizeChannelObject(this.socket, private_channel);
+            });
+        }
+    },
+    channelTypeToString: (type) => {
+        switch (type) {
+            case 0: return "text";
+            case 1: return "dm";
+            case 2: return "voice";
+            case 3: return "group_dm";
+            case 4: return "category";
+            default: return "text";
+        }
+    },
+    personalizeChannelObject: (req, channel) => {
+        if (!req)
+            return channel;
+        
+        if (!req.plural_recipients && channel.type >= 2)
+            return null;
+        
+        let clone = {}
+        Object.assign(clone, channel);
+        
+        if (channel.recipients)
+            clone.recipients = channel.recipients.filter(r => r.id != req.user.id);
+        
+        if (!req.plural_recipients) {
+            clone.is_private = channel.type > 0;
+            clone.recipient = clone.recipients[0];
+            delete clone.recipients;
+        }
+        
+        if (!req.channel_types_are_ints)
+            clone.type = globalUtils.channelTypeToString(parseInt(channel.type));
+        
+        return clone;
+    },
+    usersToIDs: (array) => {
+        let IDs = [];
+        
+        for (let i = 0; i < array.length; i++)
+            if (array[i].id)
+                IDs.push(array[i].id);
+            else if ((typeof array[i]) == "string")
+                IDs.push(array[i]);
+            
+        return IDs;
     },
     miniUserObject: (user) => {
         return {

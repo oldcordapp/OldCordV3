@@ -107,13 +107,20 @@ const database = {
                 disabled_reason TEXT DEFAULT NULL
            );`, []); // 4 = Everyone, 3 = Friends of Friends & Server Members, 2 = Friends of Friends, 1 = Server Members, 0 = No one
 
-           //[{id, open, recipients, group_dm}]
+           await database.runQuery(`
+            CREATE TABLE IF NOT EXISTS dm_channels (
+                id TEXT,
+                user1 TEXT,
+                user2 TEXT
+            );`, []);
 
            await database.runQuery(`
             CREATE TABLE IF NOT EXISTS group_channels (
                 id TEXT,
                 icon TEXT DEFAULT NULL,
-                name TEXT DEFAULT NULL
+                name TEXT DEFAULT NULL,
+                owner_id TEXT DEFAULT NULL,
+                recipients TEXT DEFAULT '[]'
             );`, []);
 
            await database.runQuery(`
@@ -145,7 +152,6 @@ const database = {
                 last_message_id TEXT DEFAULT '0',
                 permission_overwrites TEXT,
                 name TEXT,
-                recipients TEXT DEFAULT '[]',
                 nsfw INTEGER DEFAULT 0,
                 position INTEGER DEFAULT 0
            );`, []); //type 0, aka "text", 1 for "dm", 2 for "voice" - and so on and so forth
@@ -284,71 +290,6 @@ const database = {
             return false;
         }
     },
-    createPrivateChannel: async (owner, handle_recipients, dont_add_for_them) => {
-        try {
-            let recipients = [];
-
-            for(var recipient of handle_recipients) {
-                recipients.push({
-                    ...globalUtils.miniUserObject(recipient),
-                    owner: false
-                }); 
-            }
-
-            recipients.push({
-                ...globalUtils.miniUserObject(owner),
-                owner: true
-            })
-
-            let channel = await database.createChannel(null, null, 0, 0, recipients);
-
-            if (!channel) {
-                return null;
-            }
-
-            if (!dont_add_for_them) {
-                for(var recipient of recipients) {
-                    let priv_channels = await database.getPrivateChannels(recipient.id);
-    
-                    if (!priv_channels || priv_channels.find(x => x.id == owner.id)) continue;
-    
-                    priv_channels.push({
-                        id: channel.id,
-                        open: false
-                    });
-
-                    await database.setPrivateChannels(recipient.id, priv_channels);
-                }
-            }
-
-            let ourPrivateChannels = await database.getPrivateChannels(owner.id);
-
-            if (!ourPrivateChannels) return null;
-            
-            ourPrivateChannels.push({
-                id: channel.id,
-                open: true
-            });
-
-            await database.setPrivateChannels(owner.id, ourPrivateChannels);
-            
-            for(var recipient of channel.recipients) {
-                delete recipient.owner;
-            }
-
-            if (channel.type === 1) {
-                channel.recipients = channel.recipients.filter(x => x.id !== owner.id);
-            } else if (channel.type === 3) {
-                channel.owner_id = owner.id;
-            }
-
-            return channel;
-        } catch (error) {
-            logText(error, "error");
-
-            return null;
-        }
-    },
     setPrivateChannels: async (user_id, private_channels) => {
         try {
             await database.runQuery(`
@@ -365,52 +306,35 @@ const database = {
     getPrivateChannels: async (user_id) => {
         try {
             const rows = await database.runQuery(`
-                SELECT * FROM users WHERE id = $1
+                SELECT private_channels FROM users WHERE id = $1 LIMIT 1
             `, [user_id]);
-
-            let ret = [];
-
+            
             if (rows == null || rows.length == 0) {
                 return [];
             }
-
-            let chans = JSON.parse(rows[0].private_channels);
-
-            if (chans && chans.length > 0) {
-                for(var chan of chans) {
-                    let actual_channel = await database.getChannelById(chan.id);
-
-                    if (!actual_channel) continue;
-    
-                    let recipients = actual_channel.recipients; //people in the channel, user objects
-
-                    let obj = {
-                        guild_id: null,
-                        id: chan.id,
-                        type: actual_channel.type,
-                        last_message_id: actual_channel.last_message_id ?? "0",
-                        recipients: recipients ?? [],
-                        open: chan.open
-                    };
-                    
-                    if (actual_channel.type === 3) {
-                        let group_dm_info = await database.getGroupDMInfo(actual_channel.id);
-
-                        if (group_dm_info != null) {
-                            obj.icon = group_dm_info.icon;
-                            obj.name = group_dm_info.name;
-                        }
-                    }
-
-                    ret.push(obj);
-                }
-
-                return ret;
-            } else return [];
+            
+            return JSON.parse(rows[0].private_channels) ?? [];
         } catch (error) {  
             logText(error, "error");
 
             return [];
+        }
+    },
+    findPrivateChannel: async (user1_id, user2_id) => {
+        try {
+            const rows = await database.runQuery(`
+                SELECT id FROM dm_channels WHERE (user1 = $1 AND user2 = $2) OR (user1 = $2 AND user2 = $1) LIMIT 1
+            `, [user1_id, user2_id]);
+
+            if (rows == null || rows.length == 0)
+                return null;
+
+            //TODO: Foul solution but more maintainable than copying and pasting
+            return await database.getChannelById(rows[0].id);
+        } catch(error) {
+            logText(error, "error");
+
+            return null;
         }
     },
     getLatestAcknowledgement: async (user_id, channel_id) => {
@@ -560,6 +484,9 @@ const database = {
             const rows = await database.runQuery(`
                 SELECT * FROM users WHERE token = $1
             `, [token]);
+            
+            if (!rows || rows.length == 0)
+                return null;
 
             if (rows === null || rows.length === 0) {
                 return null;
@@ -660,6 +587,9 @@ const database = {
     },
     getAccountByUserId: async (id) => {
         try {
+            if (!id)
+                return null;
+            
             if (id.startsWith("WEBHOOK_")) {
                 let webhookId = id.split('_')[1];
                 let overrideId = id.split('_')[2];
@@ -1162,37 +1092,62 @@ const database = {
             return false;
         }
     },
-    createChannel: async (guild_id, name, type, position, recipients = []) => {
+    createChannel: async (guild_id, name, type, position, recipients = [], owner_id = null) => {
         try {
             const channel_id = Snowflake.generate();
 
-            if (guild_id === null && recipients.length > 0) {
+            if (type === 1 || type === 3) {
                 //create dm channel / group dm
+                
+                //Convert recipients to user snowflakes, discard other data
+                let recipientIDs = globalUtils.usersToIDs(recipients);
 
-                let type = recipients.length > 2 ? 3 : 1;
+                await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [channel_id, type, 'NULL', 'NULL', '0', 'NULL', 'NULL', 0]);
 
-                await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position, recipients) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [channel_id, type, 'NULL', 'NULL', '0', 'NULL', 'NULL', 0, JSON.stringify(recipients)]);
+                //Convert recipient snowflakes to users
+                let recipientUsers = [];
+                for (let i = 0; i < recipients.length; i++) {
+                    if (!recipients)
+                        continue;
+                    
+                    let user;
+                    if ((typeof recipients[i]) == "string") {
+                        user = await database.getAccountByUserId(recipients[i]);
+                        if (!user)
+                            continue;
+                        
+                        user = globalUtils.miniUserObject(user);
+                    } else {
+                        user = recipients[i];
+                    }
+                    if (user)
+                        recipientUsers.push(user);
+                }
 
-                if (type === 3) {
-                    await database.runQuery(`INSERT INTO group_channels (id, icon, name) VALUES ($1, $2, $3)`, [channel_id, 'NULL', '']);
+                if (type === 1) {
+                    //DM channel
+                    await database.runQuery(`INSERT INTO dm_channels (id, user1, user2) VALUES ($1, $2, $3)`, [channel_id, recipientIDs[0], recipientIDs[1]]);
+                    
+                    return {
+                        id: channel_id,
+                        guild_id: null,
+                        type: type,
+                        last_message_id: "0",
+                        recipients: recipientUsers ?? []
+                    };
+                } else if (type === 3) {
+                    //Group channel
+                    await database.runQuery(`INSERT INTO group_channels (id, icon, name, owner_id, recipients) VALUES ($1, $2, $3, $4, $5)`, [channel_id, 'NULL', '', owner_id, JSON.stringify(recipientIDs)]);
 
                     return {
                         id: channel_id,
                         guild_id: null,
-                        type: recipients.length > 2 ? 3 : 1,
+                        type: type,
                         last_message_id: "0",
-                        recipients: recipients ?? [],
+                        recipients: recipientUsers ?? [],
                         name: "",
                         icon: null,
-                        owner_id: recipients ? (recipients.find(x => x.owner === true).id) : null //wtf
-                    };
-                } else {
-                    return {
-                        id: channel_id,
-                        guild_id: null,
-                        type: recipients.length > 2 ? 3 : 1,
-                        last_message_id: "0",
-                        recipients: recipients ?? []
+                        owner_id: owner_id,
                     };
                 }
             }
@@ -1242,6 +1197,22 @@ const database = {
             }
 
             await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, nsfw = $4, permission_overwrites = $5, position = $6 WHERE id = $7`, [channel.last_message_id, channel.name, channel.topic, channel.nsfw ? 1 : 0, overwrites, channel.position, channel_id]);
+
+            return true;    
+        } catch(error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
+    updateChannelRecipients: async (channel_id, recipients) => {
+        try {
+            if (!recipients)
+                return false;
+            
+            let recipientIDs = globalUtils.usersToIDs(recipients);
+            
+            await database.runQuery(`UPDATE group_channels SET recipients = $1 WHERE id = $2`, [JSON.stringify(recipientIDs), channel_id]);
 
             return true;    
         } catch(error) {
@@ -1532,14 +1503,49 @@ const database = {
 
             if (row.guild_id === 'NULL') {
                 //dm channel / group dm
-
-                return {
+                
+                let privChannel = {
                     id: row.id,
                     guild_id: null,
                     type: row.type,
                     last_message_id: row.last_message_id ?? "0",
-                    recipients: JSON.parse(row.recipients)
+                };
+                
+                if (privChannel.type === 1) {
+                    let dm_info = await database.getDMInfo(privChannel.id);
+
+                    let recipientIDs = dm_info.recipients;
+                    let recipients = [];
+                    for (let i = 0; i < dm_info.recipients.length; i++) {
+                        let user = await database.getAccountByUserId(recipientIDs[i]);
+                        if (user)
+                            recipients.push(globalUtils.miniUserObject(user));
+                    }
+
+                    if (dm_info != null) {
+                        privChannel.recipients = recipients;
+                    }
                 }
+                
+                if (privChannel.type === 3) {
+                    let group_info = await database.getGroupDMInfo(privChannel.id);
+                    if (group_info != null) {
+                        let recipientIDs = JSON.parse(group_info.recipients);
+                        let recipients = [];
+                        for (let i = 0; i < group_info.recipients.length; i++) {
+                            let user = await database.getAccountByUserId(recipientIDs[i]);
+                            if (user)
+                                recipients.push(globalUtils.miniUserObject(user));
+                        }
+                        
+                        privChannel.icon = group_info.icon;
+                        privChannel.name = group_info.name;
+                        privChannel.owner_id = group_info.owner_id;
+                        privChannel.recipients = recipients;
+                    }
+                }
+
+                return privChannel;
             }
 
             let overwrites = [];
@@ -2518,6 +2524,26 @@ const database = {
             return false;
         }
     },
+    getDMInfo: async (channel_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT user1, user2 FROM dm_channels WHERE id = $1`, [channel_id]);
+  
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+            
+            let user1 = rows[0].user1 == 'NULL' ? null : rows[0].user1;
+            let user2 = rows[0].user2 == 'NULL' ? null : rows[0].user2;
+
+            return {
+                recipients: [user1, user2],
+            };
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
     getGroupDMInfo: async (channel_id) => {
         try {
             const rows = await database.runQuery(`SELECT * FROM group_channels WHERE id = $1`, [channel_id]);
@@ -2528,7 +2554,9 @@ const database = {
 
             return {
                 icon: rows[0].icon == 'NULL' ? null : rows[0].icon,
-                name: rows[0].name == 'NULL' ? '' : rows[0].name
+                name: rows[0].name == 'NULL' ? '' : rows[0].name,
+                owner_id: rows[0].owner_id == 'NULL' ? null : rows[0].owner_id,
+                recipients: rows[0].recipients == 'NULL' ? null : rows[0].recipients,
             };
         } catch (error) {
             logText(error, "error");

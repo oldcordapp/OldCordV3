@@ -17,12 +17,6 @@ router.param('channelid', async (req, res, next, channelid) => {
 
         req.channel = await global.database.getChannelById(channelid); 
 
-        if (!req.guild && req.channel && req.channel.guild_id == null) {
-            //dm channel / group dm
-
-            delete req.channel.open; //??
-        }
-        
         return next();
     }
 
@@ -43,6 +37,12 @@ router.param('channelid', async (req, res, next, channelid) => {
     if (!req.guild && req.channel.guild_id != null) {
         req.guild = await global.database.getGuildById(req.channel.guild_id);
     } //just in case there is a guild and it's not resolved yet - for future use
+
+    next();
+});
+
+router.param('recipientid', async (req, res, next, recipientid) => {
+    req.recipient = await global.database.getAccountByUserId(recipientid);
 
     next();
 });
@@ -70,44 +70,8 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
                 message: "Unknown Channel"
             });
         }
-
-        if (channel.recipient) { //legacy support
-            await global.dispatcher.dispatchEventInDM(typer.id, channel.recipient.id, "TYPING_START", {
-                channel_id: req.params.channelid,
-                guild_id: channel.guild_id,
-                user_id: typer.id,
-                timestamp: new Date(),
-                member: null
-            })
-    
-            return res.status(204).send();
-        }
-
-        if (channel.recipients) {
-            if (channel.recipients.length > 1) {
-                //handle group dm
-                return res.status(204).send();
-            } else {
-                await global.dispatcher.dispatchEventInDM(typer.id, channel.recipients[0].id, "TYPING_START", {
-                    channel_id: req.params.channelid,
-                    guild_id: null,
-                    user_id: typer.id,
-                    timestamp: new Date(),
-                    member: null
-                })
         
-                return res.status(204).send();
-            }
-        }
-
-        if (!channel.guild_id) {
-            return res.status(404).json({
-                code: 404,
-                message: "Unknown Channel"
-            });
-        }
-
-        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "TYPING_START", {
+        const payload = {
             channel_id: req.params.channelid,
             guild_id: channel.guild_id,
             user_id: typer.id,
@@ -119,7 +83,20 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
                 mute: false,
                 user: globalUtils.miniUserObject(typer)
             }
-        })
+        };
+        
+        if (!req.guild) {
+            if (!req.channel.recipients) {
+                return res.status(404).json({
+                    code: 404,
+                    message: "Unknown Channel"
+                });
+            }
+            
+            await global.dispatcher.dispatchEventInPrivateChannel(channel, "TYPING_START", payload);
+        } else {
+            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "TYPING_START", payload);
+        }
 
         return res.status(204).send();
       } catch (error) {
@@ -596,6 +573,82 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
     }
 });
 
+//TODO: should have its own rate limit
+router.put("/:channelid/recipients/:recipientid", channelMiddleware, rateLimitMiddleware(global.config.ratelimit_config.updateMember.maxPerTimeFrame, global.config.ratelimit_config.updateMember.timeFrame), async (req, res) => {
+    try {
+        const sender = req.account;
+        
+        if (!sender) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+        
+        let channel = req.channel;
+
+        if (channel == null) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
+            });
+        }
+        
+        if (channel.type != 3) {
+            return res.status(403).json({
+                code: 403,
+                message: "Cannot add members to this type of channel."
+            });
+        }
+        
+        if (channel.recipients.length > 9) {
+            return res.status(403).json({
+                code: 403,
+                message: "Maximum number of members for group reached (10)."
+            })
+        }
+        
+        const recipient = req.recipient;
+        
+        if (recipient == null) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown user"
+            });
+        }
+        
+        if (!globalUtils.areWeFriends(sender, recipient)) {
+            return res.status(403).json({
+                code: 403,
+                message: "You are not friends with the recipient."
+            });
+        }
+        
+        //Add recipient
+        channel.recipients.push(recipient);
+        
+        if (!await global.database.updateChannelRecipients(channel.id, channel.recipients))
+            throw "Failed to update recipients list in channel";
+        
+        //Notify everyone else
+        await global.dispatcher.dispatchEventInPrivateChannel(channel, "CHANNEL_UPDATE", async function() {
+            return globalUtils.personalizeChannelObject(this.socket, channel);
+        });
+        
+        //Notify new recipient
+        await globalUtils.pingPrivateChannelUser(channel, recipient.id);
+        
+        return res.status(204).send();
+    } catch(error) {
+        logText(error, "error");
+        
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
 router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(global.config.ratelimit_config.deleteChannel.maxPerTimeFrame, global.config.ratelimit_config.deleteChannel.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
@@ -616,37 +669,28 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
             });
         }
 
-        if (!req.channel_types_are_ints) {
-            channel.type = channel.type == 2 ? "voice" : "text";
-        }
+        if (channel.type == 1 || channel.type == 3) {
+            //Leaving a private channel
+            let userPrivateChannels = await global.database.getPrivateChannels(sender.id);
 
-        if (!channel.guild_id) {
-            let dmChannelStates = await global.database.getPrivateChannels(sender.id);
-
-            if (!dmChannelStates) {
+            if (!userPrivateChannels) {
                 return res.status(404).json({
                     code: 404,
                     message: "Unknown Channel"
                 });
             }
 
-            let dmChannelState = dmChannelStates.find(x => x.id === channel.id);
+            //TODO: Elegant but inefficient
+            let newUserPrivateChannels = userPrivateChannels.filter(id => id != channel.id);
 
-            if (!dmChannelState) {
+            if (newUserPrivateChannels.length == userPrivateChannels.length) {
                 return res.status(404).json({
                     code: 404,
                     message: "Unknown Channel"
                 });
             }
 
-            dmChannelState.open = false;
-
-            await global.dispatcher.dispatchEventTo(sender.id, "CHANNEL_DELETE", {
-                id: channel.id,
-                guild_id: null
-            });
-
-            let tryUpdate = await global.database.setPrivateChannels(sender.id, dmChannelStates);
+            let tryUpdate = await global.database.setPrivateChannels(sender.id, newUserPrivateChannels);
 
             if (!tryUpdate) {
                 return res.status(500).json({
@@ -654,40 +698,59 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
                     message: "Internal Server Error"
                 });
             }
-
-            return res.status(204).send();
-        } 
-
-        if (req.params.channelid == req.params.guildid) {
-            return res.status(403).json({
-                code: 403,
-                message: "The main channel cannot be deleted."
+            
+            await global.dispatcher.dispatchEventTo(sender.id, "CHANNEL_DELETE", {
+                id: channel.id,
+                guild_id: null
             });
-        }
+            
+            if (channel.type == 3) {
+                //Remove user from recipients list
+                channel.recipients = channel.recipients.filter(user => user.id != sender.id);
+                
+                if (!await global.database.updateChannelRecipients(channel.id, channel.recipients))
+                    throw "Failed to update recipients list in channel";
 
-        await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "CHANNEL_DELETE", {
-            id: channel.id,
-            guild_id: channel.guild_id
-        });
+                await global.dispatcher.dispatchEventInPrivateChannel(channel, "CHANNEL_UPDATE", async function() {
+                    return globalUtils.personalizeChannelObject(this.socket, channel);
+                });
+            }
 
-        if (!await global.database.deleteChannel(channel.id)) {
-            await globalUtils.unavailableGuild(req.guild, "Something went wrong while deleting a channel");
+        } else {
+            //Deleting a guild channel
+            if (req.params.channelid == req.params.guildid) {
+                //TODO: Allow on 2018+ guilds
+                return res.status(403).json({
+                    code: 403,
+                    message: "The main channel cannot be deleted."
+                });
+            }
 
-            return res.status(500).json({
-                code: 500,
-                message: "Internal Server Error"
+            await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "CHANNEL_DELETE", {
+                id: channel.id,
+                guild_id: channel.guild_id
             });
+
+            if (!await global.database.deleteChannel(channel.id)) {
+                await globalUtils.unavailableGuild(req.guild, "Something went wrong while deleting a channel");
+
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
         }
 
         return res.status(204).send();
     } catch(error) {
         logText(error, "error");
-    
-        await globalUtils.unavailableGuild(req.guild, error);
+        
+        if (req.guild)
+            await globalUtils.unavailableGuild(req.guild, error);
         
         return res.status(500).json({
-          code: 500,
-          message: "Internal Server Error"
+            code: 500,
+            message: "Internal Server Error"
         });
     }
 });
