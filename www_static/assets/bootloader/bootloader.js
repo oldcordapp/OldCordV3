@@ -126,10 +126,12 @@ function patchJS(script, kind) {
         }
 
         //Desktop Native API fix for 2018+ (Not entirely complete!)
-        if (release_date.endsWith("_2018")) {
+        if (release_date.endsWith("_2018") && kind == "root") {
             script = script.replace(/(\w)\.globals\.releaseChannel/, "$1.app.getReleaseChannel()")
             script = script.replace(/(\w)\.globals\.features/, "$1.features")
             script = script.replace(/(\w)\.globals\[(\w)\]/, "$1[$2]")
+            script = script.replace(/return \w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){\w\.emit\("devtools-opened"\)}\),\w/, "");
+            script = script.replace(/var \w=\w\.default\.window\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\.default\.Messages\)}\)/, "");
         }
     }
 
