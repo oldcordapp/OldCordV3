@@ -150,6 +150,10 @@ function patchCSS(css) {
     return css;
 }
 
+async function timer(ms) {
+    return new Promise(res => setTimeout(res, ms));
+}
+
 (async function() {
     loadLog("Build: " + release_date);
     
@@ -165,6 +169,9 @@ function patchCSS(css) {
 
     if (window.DiscordNative && release_date == "april_1_2018") {
         loadLog("This build does not work on desktop client due to missing important scripts.", true, true)
+        loadLog(`Redirecting back to the selector in 3 seconds...`, false, true)
+        await timer(3000);
+        window.location.replace("/selector");
         return
     }
 
