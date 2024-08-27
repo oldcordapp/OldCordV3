@@ -97,41 +97,43 @@ function patchJS(script, kind) {
         script = script.replace("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
 
     //Electron compatibiliy for <2018 (Not entirely complete!)
-    if (release_date.endsWith("_2015") || release_date.endsWith("_2016") || release_date.endsWith("_2017")) {
-        script = script.replace(/\/\^win\/\.test\(this\.platform\)/, "/^win/.test(window.DiscordNative.process.platform)");
-        script = script.replace(/"darwin"===this.platform/, `"darwin"===window.DiscordNative.process.platform`);
-        script = script.replace(/"linux"===this.platform/, `"linux"===window.DiscordNative.process.platform`);
-        script = script.replaceAll(/(\w)=\w\?\w.remote.require\(".\/Utils"\):null/g, `$1=window.DiscordNative?window.DiscordNative.nativeModules.requireModule("discord_utils"):null`);
-        script = script.replaceAll(/return (\w)\?(\w).remote\[(\w)\]:(\w)\[(\w)\]/g, ""); // Stubbing
-        script = script.replaceAll(/this\.require\(".\/VoiceEngine",!0\)/g, `window.DiscordNative.nativeModules.requireModule("discord_voice")`);
-        script = script.replace(/(\w)\.isMaximized\(\)\?\w\.unmaximize\(\):\w\.maximize\(\)/, `$1.maximize()`);
-        script = script.replace(/window.__require\?"Discord Client"/, `window.DiscordNative?"Discord Client"`)
-        script = script.replaceAll(/\w\.remote\.getCurrentWindow\(\)/g, `window.DiscordNative.window`);
-        script = script.replaceAll(/\w\.remote\.require\((\w)\)/g, "window.DiscordNative.nativeModules.requireModule($1)");
-    }
+    if (navigator.userAgent.includes("Oldcord")) {
+        if (release_date.endsWith("_2015") || release_date.endsWith("_2016") || release_date.endsWith("_2017")) {
+            script = script.replace(/\/\^win\/\.test\(this\.platform\)/, "/^win/.test(window.DiscordNative.process.platform)");
+            script = script.replace(/"darwin"===this.platform/, `"darwin"===window.DiscordNative.process.platform`);
+            script = script.replace(/"linux"===this.platform/, `"linux"===window.DiscordNative.process.platform`);
+            script = script.replaceAll(/(\w)=\w\?\w.remote.require\(".\/Utils"\):null/g, `$1=window.DiscordNative?window.DiscordNative.nativeModules.requireModule("discord_utils"):null`);
+            script = script.replaceAll(/return (\w)\?(\w).remote\[(\w)\]:(\w)\[(\w)\]/g, ""); // Stubbing
+            script = script.replaceAll(/this\.require\(".\/VoiceEngine",!0\)/g, `window.DiscordNative.nativeModules.requireModule("discord_voice")`);
+            script = script.replace(/(\w)\.isMaximized\(\)\?\w\.unmaximize\(\):\w\.maximize\(\)/, `$1.maximize()`);
+            script = script.replace(/window.__require\?"Discord Client"/, `window.DiscordNative?"Discord Client"`)
+            script = script.replaceAll(/\w\.remote\.getCurrentWindow\(\)/g, `window.DiscordNative.window`);
+            script = script.replaceAll(/\w\.remote\.require\((\w)\)/g, "window.DiscordNative.nativeModules.requireModule($1)");
+        }
 
-    // These are botches for specific builds
-    if (release_date.endsWith("_2016") || (release_date.startsWith("january") && release_date.endsWith("_2017"))) {
-        script = script.replace(/\w\.setObservedGamesCallback/, `window.DiscordNative.nativeModules.requireModule("discord_utils").setObservedGamesCallback`);
-        script = script.replaceAll(/var (\w+)=\w\["default"\]\.requireElectron\("powerMonitor",!0\);/g, `var $1=window.DiscordNative.powerMonitor;`);
-        script = script.replace(/var \w=\w\["default"\]\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\["default"\]\.Messages\)}\)/, "");
-    }
-    if (release_date.endsWith("_2017") && !release_date.startsWith("janurary")) {
-        script = script.replaceAll(/this\.getDiscordUtils\(\)/g, `window.DiscordNative.nativeModules.requireModule("discord_utils")`);
-        script = script.replaceAll(/\w\.default\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
-        script = script.replaceAll(/this\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
-        script = script.replace(/var \w=\w\.default\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\.default\.Messages\)}\)/, "");
-    }
+        // These are botches for specific builds
+        if (release_date.endsWith("_2016") || (release_date.startsWith("january") && release_date.endsWith("_2017"))) {
+            script = script.replace(/\w\.setObservedGamesCallback/, `window.DiscordNative.nativeModules.requireModule("discord_utils").setObservedGamesCallback`);
+            script = script.replaceAll(/var (\w+)=\w\["default"\]\.requireElectron\("powerMonitor",!0\);/g, `var $1=window.DiscordNative.powerMonitor;`);
+            script = script.replace(/var \w=\w\["default"\]\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\["default"\]\.Messages\)}\)/, "");
+        }
+        if (release_date.endsWith("_2017") && !release_date.startsWith("janurary")) {
+            script = script.replaceAll(/this\.getDiscordUtils\(\)/g, `window.DiscordNative.nativeModules.requireModule("discord_utils")`);
+            script = script.replaceAll(/\w\.default\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
+            script = script.replaceAll(/this\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
+            script = script.replace(/var \w=\w\.default\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\.default\.Messages\)}\)/, "");
+        }
 
-    //Desktop Native API fix for 2018+ (Not entirely complete!)
-    if (release_date.endsWith("_2018")) {
-        script = script.replace(/(\w)\.globals\.releaseChannel/, "$1.app.getReleaseChannel()")
-        script = script.replace(/(\w)\.globals\.features/, "$1.features")
-        script = script.replace(/(\w)\.globals\[(\w)\]/, "$1[$2]")
-    }
+        //Desktop Native API fix for 2018+ (Not entirely complete!)
+        if (release_date.endsWith("_2018")) {
+            script = script.replace(/(\w)\.globals\.releaseChannel/, "$1.app.getReleaseChannel()")
+            script = script.replace(/(\w)\.globals\.features/, "$1.features")
+            script = script.replace(/(\w)\.globals\[(\w)\]/, "$1[$2]")
+        }
 
-    //Electron compatibility (Universal)
-    script = script.replaceAll(/"discord:\/\/"/g, `"oldcord://"`);
+        //Electron compatibility (Universal)
+        script = script.replaceAll(/"discord:\/\/"/g, `"oldcord://"`);
+    }
 
     return script;
 }
