@@ -97,9 +97,6 @@ function patchJS(script, kind) {
         script = script.replace("if(!this.has(e))throw new Error('", "if(!this.has(e))return noop('");
 
     //Electron compatibiliy for <2018 (Not entirely complete!)
-    if (kind == "root") {
-        
-    }
     if (release_date.endsWith("_2015") || release_date.endsWith("_2016") || release_date.endsWith("_2017")) {
         script = script.replace(/\/\^win\/\.test\(this\.platform\)/, "/^win/.test(window.DiscordNative.process.platform)");
         script = script.replace(/"darwin"===this.platform/, `"darwin"===window.DiscordNative.process.platform`);
