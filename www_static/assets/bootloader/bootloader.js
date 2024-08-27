@@ -153,7 +153,7 @@ function patchCSS(css) {
     loadLog("Build: " + release_date);
 
     if (window.DiscordNative && release_date == "april_1_2018") {
-        loadLog("This build does not work on desktop client due to missing imporant chunks.", true, true)
+        loadLog("This build does not work on desktop client due to missing important chunks.", true, true)
         throw "does_not_work";
     }
     
