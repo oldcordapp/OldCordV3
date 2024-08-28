@@ -5,7 +5,7 @@ Current code for OldCord (Rewritten) as typescript sucks for this kinda project.
 
 # Credits
 ziad - token generation, permissions, sessions references, and some middleware references <br>
-Deskehs - electron client stuff & modern discord client shenanigans (Wumpdle, repacker & reupdater) <br>
+Deskehs - electron client stuff & modern discord client shenanigans (Wumpdle, rePacker, reUpdater & Electron compat patch) <br>
 dogsong - client patcher & the patches <br>
 discord.js - snowflake <br>
 noia - everything else <br>
