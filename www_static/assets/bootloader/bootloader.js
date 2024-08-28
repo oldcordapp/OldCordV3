@@ -32,17 +32,20 @@ function patchJS(script, kind) {
     script = script.replace('__[STANDALONE]__', '');
     
     //Branding
-    function sanitize(js) {
-        return js.replaceAll(/"/g, '"').replaceAll(/\n|\r/g, "");
+    if (!release_date.endsWith("_2018") && !release_date.endsWith("_2019")) {
+        //TODO: Fix for 2018+
+        function sanitize(js) {
+            return js.replaceAll(/"/g, '"').replaceAll(/\n|\r/g, "");
+        }
+        script = script.replaceAll(/\"Discord\"|'Discord'/g, `"${sanitize(config.instance_name)}"`);
     }
-    script = script.replaceAll(/\"Discord\"|'Discord'/g, `"${sanitize(config.instance_name)}"`);
     
     //Disable HTTPS in insecure mode (for local testing)
     if (location.protocol != "https")
         script = script.replaceAll("https://", location.protocol + "//");
 
     //Make fields consistent
-    if (release_date.endsWith("2015"))
+    if (release_date.endsWith("_2015"))
         script = script.replaceAll(".presence.", ".presences.");
 
     //Set URLs
@@ -192,6 +195,37 @@ async function timer(ms) {
             }
         }, 1000);
     }
+    
+    window.GLOBAL_ENV = {
+        "API_ENDPOINT": "//" + location.host + "/api",
+        "API_VERSION": 6,
+        "GATEWAY_ENDPOINT": `wss://127.0.0.1:11001`,
+        "WEBAPP_ENDPOINT": cdn_url,
+        "CDN_HOST": "//" + location.host,
+        "ASSET_ENDPOINT": cdn_url,
+        "MEDIA_PROXY_ENDPOINT": "//" + location.host,
+        "WIDGET_ENDPOINT": "",
+        "INVITE_HOST": "//" + config.custom_invite_url,
+        "GUILD_TEMPLATE_HOST": location.host,
+        "GIFT_CODE_HOST": location.host,
+        "RELEASE_CHANNEL": "staging",
+        "MARKETING_ENDPOINT": "",
+        "BRAINTREE_KEY": "",
+        "STRIPE_KEY": "",
+        "NETWORKING_ENDPOINT": "",
+        "RTC_LATENCY_ENDPOINT": "",
+        "ACTIVITY_APPLICATION_HOST": "",
+        "PROJECT_ENV": "development",
+        "REMOTE_AUTH_ENDPOINT": "",
+        "SENTRY_TAGS": {
+            "buildId": "0",
+            "buildType": "CLIENT_MOD_PLEASE_IGNORE"
+        },
+        "MIGRATION_SOURCE_ORIGIN": "",
+        "MIGRATION_DESTINATION_ORIGIN": "",
+        "HTML_TIMESTAMP": 1724751950316,
+        "ALGOLIA_KEY": ""
+    };
 
     loadLog("Downloading application");
     let html;
