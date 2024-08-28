@@ -107,8 +107,8 @@ function patchJS(script, kind) {
 
     
     if (window.DiscordNative) {
-        //Electron compatibiliy for <2018 (Not entirely complete!)
-        if (release_date.endsWith("_2015") || release_date.endsWith("_2016") || release_date.endsWith("_2017")) {
+        //Polyfilling Desktop Native API on <April 2018  (Not entirely complete!)
+        if (release_date.endsWith("_2015") || release_date.endsWith("_2016") || release_date.endsWith("_2017") || (release_date.endsWith("_2018") && (release_date.startsWith("january") || release_date.startsWith("february") || release_date.startsWith("march")))) {
             script = script.replace(/\/\^win\/\.test\(this\.platform\)/, "/^win/.test(window.DiscordNative.process.platform)");
             script = script.replace(/"darwin"===this.platform/, `"darwin"===window.DiscordNative.process.platform`);
             script = script.replace(/"linux"===this.platform/, `"linux"===window.DiscordNative.process.platform`);
@@ -121,13 +121,13 @@ function patchJS(script, kind) {
             script = script.replaceAll(/\w\.remote\.require\((\w)\)/g, "window.DiscordNative.nativeModules.requireModule($1)");
         }
 
-        // These are botches for specific builds
+        // Polyfill botches for specific builds
         if (release_date.endsWith("_2016") || (release_date.startsWith("january") && release_date.endsWith("_2017"))) {
             script = script.replace(/\w\.setObservedGamesCallback/, `window.DiscordNative.nativeModules.requireModule("discord_utils").setObservedGamesCallback`);
             script = script.replaceAll(/var (\w+)=\w\["default"\]\.requireElectron\("powerMonitor",!0\);/g, `var $1=window.DiscordNative.powerMonitor;`);
             script = script.replace(/var \w=\w\["default"\]\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\["default"\]\.Messages\)}\)/, "");
         }
-        if (release_date.endsWith("_2017") && !release_date.startsWith("january")) {
+        if ((release_date.endsWith("_2017") && !release_date.startsWith("january")) || (release_date.endsWith("_2018") && (release_date.startsWith("january") || release_date.startsWith("february") || release_date.startsWith("march")))) {
             script = script.replaceAll(/this\.getDiscordUtils\(\)/g, `window.DiscordNative.nativeModules.requireModule("discord_utils")`);
             script = script.replaceAll(/\w\.default\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
             script = script.replaceAll(/this\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
