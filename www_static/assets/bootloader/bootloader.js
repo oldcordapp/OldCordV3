@@ -70,7 +70,7 @@ function patchJS(script, kind) {
     script = script.replace(/n\.p\+"[a-z0-9]+\.worker\.js"/, `window.userSearchWorker()`);
 
     //Enable april fools @someone experiment
-    if (release_date == "april_1_2018")
+    if (release_date == "april_1_2018" || release_date == "april_23_2018")
         script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true");
 
     //Allow emojis anywhere
