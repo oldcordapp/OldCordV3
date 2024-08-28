@@ -4,7 +4,6 @@
     "@google-cloud/storage": "^7.12.1",
     "base64url": "^3.0.1",
     "bcrypt": "^5.1.1",
-    "cheerio": "^1.0.0-rc.12",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.19.2",

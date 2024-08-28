@@ -1,5 +1,4 @@
 const request = require('request');
-const cheerio = require('cheerio');
 const ytdl = require('@distube/ytdl-core');
 const { logText } = require('./logger');
 const globalUtils = require('./globalutils');
