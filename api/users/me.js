@@ -231,7 +231,7 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
       }
     }
 
-    account = await global.database.getAccountByEmail(update.email != account.email ? update.email : account.email);
+    account = await global.database.getAccountByUserId(account.id);
 
     if (!account) {
       return res.status(500).json({
