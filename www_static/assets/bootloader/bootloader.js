@@ -28,6 +28,10 @@ let release_date = (function() {
 })();
 
 function patchJS(script, kind) {
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+    }
+    
     //Fix client misidentification
     script = script.replace('__[STANDALONE]__', '');
     
@@ -153,6 +157,9 @@ function patchJS(script, kind) {
         script = script.replaceAll("f.default.getUserAffinitiesUserIds().has(t.id)", "false");
         script = script.replaceAll(/\w\.userAffinties/g, "[]");
     }
+    
+    //Remove VIDEO_PROVIDER_CHECK_UNIX_TIMESTAMP hack
+    script = script.replace("1492472454139", "0");
 
     return script;
 }

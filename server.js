@@ -83,8 +83,13 @@ app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
     try {
         let { width, height } = req.query;
         const url = req.url;
-
-        if (!url || !width || !height || url.includes(".gif")) {
+        
+        if (!url || !width || !height) {
+            return res.status(200).sendFile(baseFilePath);
+        }
+        
+        let urlWithoutParams = url.split('?', 2)[0];
+        if (urlWithoutParams.endsWith(".gif") || urlWithoutParams.endsWith(".mp4")|| urlWithoutParams.endsWith(".webm")) {
             return res.status(200).sendFile(baseFilePath);
         }
 

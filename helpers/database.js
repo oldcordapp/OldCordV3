@@ -2625,7 +2625,7 @@ const database = {
             return null;
         }
     },
-    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone, webhookOverride = null, webhook_embeds = []) => {
+    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone, webhookOverride = null, webhook_embeds = null) => {
         try {
             const id = Snowflake.generate();
             const date = new Date().toISOString();
@@ -2663,7 +2663,7 @@ const database = {
                 content = "";
             }
 
-            let embeds = await embedder.generateMsgEmbeds(content);
+            let embeds = await embedder.generateMsgEmbeds(content, attachment);
 
             if (webhook_embeds) {
                 embeds = webhook_embeds;   
@@ -2693,17 +2693,11 @@ const database = {
                     attachment.height,
                     attachment.width,
                     attachment.size,
-                    `${config.secure ? 'https' : 'http'}://${config.base_url}${globalUtils.nonStandardPort ? `:${config.port}` : ''}/attachments/${channel_id}/${attachment.id}/${attachment.name}`
+                    attachment.url,
                 ]);
             }
 
-            const message = await database.getMessageById(id);
-
-            if (message == null) {
-                return null;
-            }
-
-            return message;
+            return await database.getMessageById(id);
         } catch(error) {
             logText(error, "error");
 

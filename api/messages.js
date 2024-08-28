@@ -117,43 +117,6 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         //Coerce tts field to boolean
         req.body.tts = req.body.tts === true || req.body.tts === "true";
 
-        let file_details = null;
-
-        if (req.file) {
-            file_details = {
-                id: Snowflake.generate(),
-                size: req.file.size,
-            };
-
-            file_details.name = globalUtils.replaceAll(req.file.originalname, ' ', '_').replace(/[^A-Za-z0-9_\-.()\[\]]/g, '');
-
-            if (!file_details.name || file_details.name == "") {
-                return res.status(403).json({
-                    code: 403,
-                    message: "Invalid filename"
-                });
-            }
-
-            const channelDir = path.join('.', 'www_dynamic', 'attachments', req.channel.id);
-            const attachmentDir = path.join(channelDir, file_details.id);
-            const file_path = path.join(attachmentDir, file_details.name);
-
-            if (!fs.existsSync(attachmentDir)) {
-                fs.mkdirSync(attachmentDir, { recursive: true });
-            }
-
-            fs.writeFileSync(file_path, req.file.buffer);
-            
-            //I hate this, but image-size softlocks when taking a buffer
-            try {
-                const dimensions = await sizeOf(file_path);
-                if (dimensions) {
-                    file_details.width = dimensions.width;
-                    file_details.height = dimensions.height;
-                }
-            } catch {}
-        }
-
         if (!req.channel.recipients) {
             if (!req.guild) {
                 return res.status(403).json({
@@ -295,6 +258,45 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 //Not allowed
                 req.body.tts = false;
             }
+        }
+        
+        let file_details = null;
+
+        if (req.file) {
+            file_details = {
+                id: Snowflake.generate(),
+                size: req.file.size,
+            };
+
+            file_details.name = globalUtils.replaceAll(req.file.originalname, ' ', '_').replace(/[^A-Za-z0-9_\-.()\[\]]/g, '');
+
+            if (!file_details.name || file_details.name == "") {
+                return res.status(403).json({
+                    code: 403,
+                    message: "Invalid filename"
+                });
+            }
+
+            const channelDir = path.join('.', 'www_dynamic', 'attachments', req.channel.id);
+            const attachmentDir = path.join(channelDir, file_details.id);
+            const file_path = path.join(attachmentDir, file_details.name);
+            
+            file_details.url = `${globalUtils.config.secure ? 'https' : 'http'}://${globalUtils.config.base_url}${globalUtils.nonStandardPort ? `:${globalUtils.config.port}` : ''}/attachments/${req.channel.id}/${file_details.id}/${file_details.name}`;
+
+            if (!fs.existsSync(attachmentDir)) {
+                fs.mkdirSync(attachmentDir, { recursive: true });
+            }
+
+            fs.writeFileSync(file_path, req.file.buffer);
+            
+            //I hate this, but image-size softlocks when taking a buffer
+            try {
+                const dimensions = await sizeOf(file_path);
+                if (dimensions) {
+                    file_details.width = dimensions.width;
+                    file_details.height = dimensions.height;
+                }
+            } catch {}
         }
 
         //Write message
