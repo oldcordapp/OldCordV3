@@ -57,6 +57,10 @@ app.get("/activities", (req, res) => {
     return res.status(200).json([]);
 });
 
+app.get("/activities/detectable", (req, res) => {
+    return res.status(200).json([]);
+});
+
 app.get("/gateway", (req, res) => {
     return res.status(200).json({
         url: globalUtils.generateGatewayURL(req)

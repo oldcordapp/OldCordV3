@@ -55,6 +55,7 @@ function patchJS(script, kind) {
     script = script.replaceAll(/discordcdn.com/g, location.host); //??? DISCORDCDN.COM?!!11
     script = script.replaceAll(/discord.gg/g, config.custom_invite_url);
     script = script.replaceAll(/discordapp.com/g, location.host);
+    script = script.replaceAll(/([a-z]+\.)?discord.media/g, location.host);
     
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
     
@@ -146,6 +147,9 @@ function patchJS(script, kind) {
 
     //Electron compatibility (Universal)
     script = script.replaceAll(/"discord:\/\/"/g, `"oldcord://"`);
+
+    script = script.replaceAll("f.default.getUserAffinitiesUserIds().has(t.id)", "false");
+    script = script.replaceAll(/\w\.userAffinties/g, "[]");
 
     return script;
 }

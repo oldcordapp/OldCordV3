@@ -698,4 +698,12 @@ router.get("/billing/payment-sources", (req, res) => {
     return res.status(200).json([]);
 });
 
+router.get("/affinities/users", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/affinities/guilds", (req, res) => {
+    return res.status(200).json([]);
+});
+
 module.exports = router;
