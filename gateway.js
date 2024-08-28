@@ -170,6 +170,7 @@ const gateway = {
                         let sesh = new session(globalUtils.generateString(16), socket, user, packet.d.token, false, {
                             game_id: null,
                             status: "offline",
+                            activities: [],
                             user: globalUtils.miniUserObject(socket.user)
                         });
 
@@ -213,6 +214,7 @@ const gateway = {
                             let sesh = new session(globalUtils.generateString(16), socket, socket.user, packet.d.token, false, {
                                 game_id: null,
                                 status: socket.user.settings.status,
+                                activities: [],
                                 user: globalUtils.miniUserObject(socket.user)
                             });
 

@@ -58,6 +58,9 @@ function patchJS(script, kind) {
     
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
     
+    //Do NOT interact with sentry. Better to error than send telemetry.
+    script = script.replaceAll("sentry.io", "0.0.0.0");
+    
     //Use unified UserSearch worker script
     window.userSearchWorker = function(url) {
         const wwScript = `importScripts("${cdn_url}/assets/UserSearch.worker.js");`;
@@ -196,6 +199,17 @@ async function timer(ms) {
         }, 1000);
     }
     
+    //Disables certain types of logging
+    window.BetterDiscord = true;
+    
+    if (!window.Firebug) {
+        window.Firebug = {
+            chrome: {
+                isInitialized: false
+            }
+        };
+    }
+    
     window.GLOBAL_ENV = {
         "API_ENDPOINT": "//" + location.host + "/api",
         "API_VERSION": 6,
@@ -281,7 +295,7 @@ async function timer(ms) {
     }
 
     //Copy react roots
-    for (let div of body.matchAll(/<div[^>]*><\/div>/g)) {
+    for (let div of body.matchAll(/<div[^>]*>[^]*<\/div>/g)) {
         document.body.innerHTML = div[0] + document.body.innerHTML;
     }
 
@@ -318,7 +332,7 @@ async function timer(ms) {
         document.getElementById("loadingTxt").remove();
     } else {
         let interval = setInterval(function() {
-            if (document.getElementsByClassName("guilds").length == 0)
+            if (document.getElementsByClassName("theme-dark").length == 0)
                 return;
 
             document.getElementById("loadingTxt").remove();

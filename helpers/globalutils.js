@@ -526,6 +526,23 @@ const globalUtils = {
         
         return clone;
     },
+    personalizePresenceObject: (req, presence, guild) => {
+        if (req.client_build_date.getFullYear() < 2018)
+            return presence;
+        
+        //late 2018 requires roles in presences to not crash. horseshit design
+        let newPresence = [];
+        Object.assign(newPresence, presence);
+        
+        if (guild) {
+            let member = guild.members.find(x => x.id === this.user.id);
+            newPresence.roles = member ? [] : member.roles;
+        } else { 
+            newPresence.roles = [];
+        }
+        
+        return newPresence;
+    },
     usersToIDs: (array) => {
         let IDs = [];
         

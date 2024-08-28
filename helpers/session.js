@@ -135,8 +135,11 @@ class session {
                 if (this.presence.status == "dnd") this.presence.status = "online";
                 else if (this.presence.status == "invisible") this.presence.status = "offline"; 
             }
-
-            await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", this.presence);
+            
+            let _presence = this.presence;
+            await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", function() {
+                globalUtils.personalizePresenceObject(this.socket, _presence);
+            });
         }
     }
     async dispatchSelfUpdate() {
@@ -304,6 +307,7 @@ class session {
                     this.presences.push({
                         game_id: null,
                         user: globalUtils.miniUserObject(presence.user),
+                        activities: [],
                         status: presence.status
                     })
                 }

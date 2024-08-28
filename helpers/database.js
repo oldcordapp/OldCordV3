@@ -1799,6 +1799,7 @@ const database = {
                     presences.push({                             
                         game_id: null,
                         status: 'offline',
+                        activities: [],
                         user: globalUtils.miniUserObject(member.user)
                     });
                 } else {
@@ -1808,6 +1809,7 @@ const database = {
                         presences.push({                             
                             game_id: null,
                             status: 'offline',
+                            activities: [],
                             user: globalUtils.miniUserObject(member.user)
                         });
                     } else presences.push(session.presence);
@@ -2864,15 +2866,17 @@ const database = {
                     presences.push({                             
                         game_id: null,
                         status: 'offline',
+                        activities: [],
                         user: globalUtils.miniUserObject(member.user)
                     });
                 } else {
                     let session = sessions[sessions.length - 1]
     
                     if (!session.presence) {
-                        presences.push({                             
+                        presences.push({
                             game_id: null,
                             status: 'offline',
+                            activities: [],
                             user: globalUtils.miniUserObject(member.user)
                         });
                     } else presences.push(session.presence);
@@ -3101,6 +3105,7 @@ const database = {
                 presences: [{
                     game_id: null,
                     status: "online",
+                    activities: [],
                     user: globalUtils.miniUserObject(owner),
                 }],
                 icon: icon,

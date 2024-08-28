@@ -13,6 +13,7 @@ const channels = require('./channels');
 const connections = require('./connections');
 const admin = require('./admin');
 const webhooks = require('./webhooks');
+const store = require('./store');
 
 global.config = globalUtils.config;
 //just in case
@@ -44,6 +45,18 @@ app.get("/experiments", (req, res) => {
     return res.status(200).json({assignments:[]});
 });
 
+app.get("/promotions", (req, res) => {
+    return res.status(200).json([]);
+});
+
+app.get("/applications", (req, res) => {
+    return res.status(200).json([]);
+});
+
+app.get("/activities", (req, res) => {
+    return res.status(200).json([]);
+});
+
 app.get("/gateway", (req, res) => {
     return res.status(200).json({
         url: globalUtils.generateGatewayURL(req)
@@ -60,6 +73,7 @@ app.use("/guilds", guilds);
 app.use("/channels", channels);
 app.use("/invite", invites);
 app.use("/webhooks", webhooks);
+app.use("/store", store);
 
 app.use("/track", (_, res) => {
     return res.status(204).send();

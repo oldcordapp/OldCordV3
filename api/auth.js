@@ -95,6 +95,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                     await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", {
                         game_id: null,
                         status: "online",
+                        activities: [],
                         user: globalUtils.miniUserObject(account),
                         guild_id: invite.guild.id
                     });
@@ -132,6 +133,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                 await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", {
                     game_id: null,
                     status: "online",
+                    activities: [],
                     user: globalUtils.miniUserObject(account),
                     guild_id: guildId
                 });

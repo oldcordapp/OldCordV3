@@ -670,4 +670,32 @@ router.get("/mentions", async (req, res) => {
   }
 })
 
+router.get("/activities", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/activities/statistics/applications", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/library", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/feed", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/feed/settings", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/entitlements/gifts", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/billing/payment-sources", (req, res) => {
+    return res.status(200).json([]);
+});
+
 module.exports = router;
