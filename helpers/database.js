@@ -3124,6 +3124,7 @@ const database = {
         }
     },
     createAccount: async (username, email, password) => {
+        // New accounts via invite (unclaimed account) have null email and null password.
         try {
             let user = await database.getAccountByEmail(email);
 
@@ -3144,7 +3145,7 @@ const database = {
             }
 
             let salt = await genSalt(10);
-            let pwHash = await hash(password, salt);
+            let pwHash = await hash(password ?? globalUtils.generateString(20), salt);
             let id = Snowflake.generate();
             let date = new Date().toISOString();
             let discriminator = Math.round(Math.random() * 9999);
@@ -3155,7 +3156,7 @@ const database = {
 
             let token = globalUtils.generateToken(id, pwHash);
 
-            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, username, discriminator.toString(), email, pwHash, token, date, 'NULL'])
+            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, username, discriminator.toString(), email, password ? pwHash : null, token, date, 'NULL'])
 
             return {
                 token: token
@@ -3210,9 +3211,9 @@ const database = {
             return false;
         }
     },
-    updateAccount: async (avatar, email, username, discriminator, password, new_pw, new_em) => {
+    updateAccount: async (userid, avatar, username, discriminator, password, new_pw, new_em) => {
         try {
-            const account = await database.getAccountByEmail(email);
+            const account = await database.getAccountByUserId(userid);
     
             if (!account) {
                 return -1;
@@ -3305,10 +3306,12 @@ const database = {
                 }
 
                 if (new_pw != null && new_password != account.password) {
-                    const checkPassword = await database.doesThisMatchPassword(password, account.password);
+                    if (account.password) {
+                        const checkPassword = await database.doesThisMatchPassword(password, account.password);
     
-                    if (!checkPassword) {
-                        return 2; //invalid password
+                        if (!checkPassword) {
+                            return 2; //invalid password
+                        }
                     }
         
                     const salt = await genSalt(10);

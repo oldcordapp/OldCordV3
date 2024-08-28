@@ -47,6 +47,9 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         });
     }
 
+    // New accounts via invite (unclaimed account) have null email and null password.
+    // By genius Discord engineering if they claim an account it does not use new_password it uses password.
+
     let update = {
       avatar: null,
       email: null,
@@ -61,29 +64,37 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         update.avatar = req.body.avatar;
     }
 
-    if (req.body.email) {
-      update.email = req.body.email;
+    if (account.email) {
+      if (req.body.email) {
+        update.email = req.body.email;
+      }
+  
+      if (update.email && update.email != account.email) {
+        update.new_email = update.email;
+        update.email = account.email;
+      }
+    } else {
+      if (req.body.email) {
+        update.new_email = req.body.email;
+      }
     }
 
-    if (update.email && update.email != account.email) {
-      update.new_email = update.email;
-      update.email = account.email;
-    }
-
-    if (req.body.new_password) {
-      update.new_password = req.body.new_password;
-    }
-
-    if (req.body.password) {
-       update.password = req.body.password;
+    if (account.password) {
+      if (req.body.new_password) {
+        update.new_password = req.body.new_password;
+      }
+  
+      if (req.body.password) {
+         update.password = req.body.password;
+      }
+    } else {
+      if (req.body.password) {
+        update.new_password = req.body.password;
+      }
     }
 
     if (req.body.username) {
       update.username = req.body.username;
-    }
-
-    if (req.body.password) {
-      update.password = req.body.password;
     }
 
     if (req.body.discriminator) {
@@ -93,7 +104,7 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
     if (update.email == account.email && update.new_password == null && update.password == null && update.username == account.username && update.discriminator == account.discriminator) {
        //avatar change
        
-       let tryUpdate = await global.database.updateAccount(update.avatar, account.email, account.username, account.discriminator, null, null);
+       let tryUpdate = await global.database.updateAccount(account.id, update.avatar, account.username, account.discriminator, null, null);
 
        if (tryUpdate !== 3 && tryUpdate !== 2) {
           return res.status(500).json({
@@ -120,14 +131,14 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
        return res.status(200).json(retAccount);
     }
 
-    if (update.password == null) {
+    if (account.password && update.password == null) {
       return res.status(400).json({
         code: 400,
         password: "This field is required"
       });
     }
 
-    if (update.email == null) {
+    if (account.email && update.email == null) {
       return res.status(400).json({
         code: 400,
         email: "This field is required"
@@ -150,7 +161,14 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
       });
     }
 
-    if (update.email.length < 2 || update.email.length > 32) {
+    if (update.email && (update.email.length < 2 || update.email.length > 32)) {
+      return res.status(400).json({
+        code: 400,
+        email: "Must be between 2 and 32 characters"
+      });
+    }
+
+    if (update.new_email && (update.new_email.length < 2 || update.new_email.length > 32)) {
       return res.status(400).json({
         code: 400,
         email: "Must be between 2 and 32 characters"
@@ -170,16 +188,18 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         return res.status(goodUsername.code).json(goodUsername);
     }
 
-    const correctPassword = await global.database.doesThisMatchPassword(update.password, account.password);
+    if (update.password) {
+      const correctPassword = await global.database.doesThisMatchPassword(update.password, account.password);
 
-    if (!correctPassword) {
-      return res.status(400).json({
-        code: 400,
-        password: "Incorrect password"
-      })
+      if (!correctPassword) {
+        return res.status(400).json({
+          code: 400,
+          password: "Incorrect password"
+        })
+      }
     }
 
-    const attemptToUpdate = await global.database.updateAccount(update.avatar, update.email, update.username, update.discriminator, update.password, update.new_password, update.new_email);
+    const attemptToUpdate = await global.database.updateAccount(account.id, update.avatar, update.username, update.discriminator, update.password, update.new_password, update.new_email);
 
     if (attemptToUpdate !== 3) {
       if (attemptToUpdate === -1) {
