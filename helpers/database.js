@@ -1768,6 +1768,7 @@ const database = {
                     deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                     mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
                     roles: member_roles,
+                    joined_at: Date.now(),
                     user: globalUtils.miniUserObject(user)
                 })
             }
@@ -1857,7 +1858,9 @@ const database = {
                 afk_timeout: rows[0].afk_timeout,
                 channels: channels,
                 exclusions: rows[0].exclusions ? JSON.parse(rows[0].exclusions) : [],
+                member_count: members.length,
                 members: members,
+                large: false,
                 roles: roles,
                 emojis: emojis,
                 webhooks: webhooks,
@@ -2836,6 +2839,7 @@ const database = {
                     deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                     mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
                     roles: member_roles,
+                    joined_at: Date.now(),
                     user: globalUtils.miniUserObject(user)
                 })
             }
@@ -2925,7 +2929,9 @@ const database = {
                 afk_timeout: rows[0].afk_timeout,
                 channels: channels,
                 exclusions: rows[0].exclusions ? JSON.parse(rows[0].exclusions) : [],
+                member_count: members.length,
                 members: members,
+                large: false,
                 roles: roles,
                 emojis: emojis,
                 webhooks: webhooks,
@@ -3094,6 +3100,7 @@ const database = {
                     id: id,
                     guild_id: id
                 }],
+                member_count: 1,
                 members: [{
                     deaf: false,
                     mute: false,
