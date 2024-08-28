@@ -148,8 +148,11 @@ function patchJS(script, kind) {
     //Electron compatibility (Universal)
     script = script.replaceAll(/"discord:\/\/"/g, `"oldcord://"`);
 
-    script = script.replaceAll("f.default.getUserAffinitiesUserIds().has(t.id)", "false");
-    script = script.replaceAll(/\w\.userAffinties/g, "[]");
+    if (release_date.endsWith("_2019")) {
+        //Lazily fix 2019. We don't implement user affinities.
+        script = script.replaceAll("f.default.getUserAffinitiesUserIds().has(t.id)", "false");
+        script = script.replaceAll(/\w\.userAffinties/g, "[]");
+    }
 
     return script;
 }
