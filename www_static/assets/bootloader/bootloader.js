@@ -199,7 +199,7 @@ async function timer(ms) {
     window.GLOBAL_ENV = {
         "API_ENDPOINT": "//" + location.host + "/api",
         "API_VERSION": 6,
-        "GATEWAY_ENDPOINT": `wss://127.0.0.1:11001`,
+        "GATEWAY_ENDPOINT": config.gateway,
         "WEBAPP_ENDPOINT": cdn_url,
         "CDN_HOST": "//" + location.host,
         "ASSET_ENDPOINT": cdn_url,

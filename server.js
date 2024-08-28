@@ -311,6 +311,7 @@ app.get("/bootloaderConfig", (req, res) => {
         instance_name: config.instance_name,
         instance_description: config.instance_description,
         custom_invite_url: config.custom_invite_url == "" ? base_url + "/invite" : config.custom_invite_url,
+        gateway: globalUtils.generateGatewayURL(req),
     });
 });
 
