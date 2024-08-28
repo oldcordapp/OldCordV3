@@ -699,11 +699,15 @@ router.get("/billing/payment-sources", (req, res) => {
 });
 
 router.get("/affinities/users", (req, res) => {
-    return res.status(200).json([]);
+    return res.status(200).json({
+        user_affinities: [],
+    });
 });
 
 router.get("/affinities/guilds", (req, res) => {
-    return res.status(200).json([]);
+    return res.status(200).json({
+        guild_affinities: [],
+    });
 });
 
 module.exports = router;
