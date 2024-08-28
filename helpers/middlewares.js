@@ -223,7 +223,7 @@ function staffAccessMiddleware(privilege_needed) {
 
 async function authMiddleware(req, res, next) {
     try {
-        if (req.url.includes("/webhooks/") || req.url.includes("/invite/")) return next(); //exclude webhooks and invites from this
+        if (req.url.includes("/webhooks/") || req.url.includes("/invite/") && req.method === "GET") return next(); //exclude webhooks and invites from this
 
         let token = req.headers['authorization'];
         
@@ -541,8 +541,6 @@ function channelPermissionsMiddleware(permission) {
                 } else if (channel.type == 3) {
                     //Permission to send in group chat
                     if (!channel.recipients.some(x => x.id == sender.id)) {
-                        console.log("Can't send in group chat, not in group chat");
-                        console.log(channel.recipients);
                         return res.status(403).json({
                             code: 403,
                             message: "Missing Permissions"
