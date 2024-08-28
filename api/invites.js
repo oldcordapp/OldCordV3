@@ -18,15 +18,6 @@ router.param('code', async (req, res, next, memberid) => {
 
 router.get("/:code", async (req, res) => {
     try {
-        const sender = req.account;
-
-        if (sender == null) {
-            return res.status(401).json({
-                code: 401,
-                message: "Unauthorized"
-            });
-        }
-
         const invite = req.invite;
 
         if (!invite) {
