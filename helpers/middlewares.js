@@ -92,30 +92,46 @@ async function assetsMiddleware(req, res) {
 
     const filePath = `./www_dynamic/assets/${req.params.asset}`;
 
-    if (!fs.existsSync(filePath)) {
-        logText(`[LOG] Saving ${req.params.asset} -> https://discordapp.com/assets/${req.params.asset}...`, 'debug');
+    if (fs.existsSync(filePath)) {
+        return res.sendFile(filePath);
+    }
 
-        let timestamps = await wayback.getTimestamps(`https://discordapp.com/assets/${req.params.asset}`);
-        let isOldBucket = false;
+    let doWayback = true;
+    let isOldBucket = false;
 
-        if (timestamps == null || timestamps.first_ts.includes("1999") || timestamps.first_ts.includes("2000")) {
-            timestamps = await wayback.getTimestamps(`https://d3dsisomax34re.cloudfront.net/assets/${req.params.asset}`);
+    if (req.client_build_date.getFullYear() === 2018 && req.client_build_date.getMonth() >= 6 || req.client_build_date.getFullYear() >= 2019) {
+        doWayback = false;
+    } //check if older than june 2018 to request from cdn
+
+    async function handleRequest(doWayback) {
+        let timestamp = null;
+        let snapshot_url = `https://cdn.oldcordapp.com/assets/${req.params.asset}`; //try download from oldcord cdn first
+
+        if (doWayback) {
+            let timestamps = await wayback.getTimestamps(`https://discordapp.com/assets/${req.params.asset}`);
 
             if (timestamps == null || timestamps.first_ts.includes("1999") || timestamps.first_ts.includes("2000")) {
-                cached404s[req.params.asset] = 1;
-
-                return res.status(404).send("File not found");
+                timestamps = await wayback.getTimestamps(`https://d3dsisomax34re.cloudfront.net/assets/${req.params.asset}`);
+    
+                if (timestamps == null || timestamps.first_ts.includes("1999") || timestamps.first_ts.includes("2000")) {
+                    cached404s[req.params.asset] = 1;
+                    
+                    return res.status(404).send("File not found");
+                }
+    
+                isOldBucket = true;
             }
 
-            isOldBucket = true;
+            timestamp = timestamps.first_ts;
+
+            if (isOldBucket) {
+                snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://d3dsisomax34re.cloudfront.net/assets/${req.params.asset}`;
+            } else {
+                snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://discordapp.com/assets/${req.params.asset}`;
+            }
         }
 
-        let timestamp = timestamps.first_ts;
-        let snapshot_url = ``;
-
-        if (isOldBucket) {
-            snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://d3dsisomax34re.cloudfront.net/assets/${req.params.asset}`;
-        } else snapshot_url = `https://web.archive.org/web/${timestamp}im_/https://discordapp.com/assets/${req.params.asset}`;
+        logText(`[LOG] Saving ${req.params.asset} from ${snapshot_url}...`, 'debug');
 
         request(snapshot_url, { encoding: null }, async function (err, resp, body) {
             if (err) {
@@ -126,11 +142,17 @@ async function assetsMiddleware(req, res) {
                 return res.status(404).send("File not found");
             }
 
+            if (resp.statusCode === 404 && !doWayback) {
+                doWayback = true;
+
+                return await handleRequest(doWayback);
+            }
+
             if (resp.statusCode >= 400) {
-                logText(`!! Error saving asset: ${snapshot_url} - Archive.org reports ${resp.statusCode} !!`, 'debug');
+                logText(`!! Error saving asset: ${snapshot_url} - reports ${resp.statusCode} !!`, 'debug');
                 
                 cached404s[req.params.asset] = 1;
-
+                
                 return res.status(404).send("File not found");
             }
 
@@ -138,7 +160,7 @@ async function assetsMiddleware(req, res) {
                 let path = `${config.gcs_config.gcStorageFolder}/${req.params.asset}`;
 
                 const cloudFile = bucket.file(path);
-    
+
                 await cloudFile.save(body, { contentType: resp.headers["content-type"] });
 
                 logText(`[LOG] Uploaded ${req.params.asset} to Google Cloud Storage successfully.`, 'debug');
@@ -148,10 +170,12 @@ async function assetsMiddleware(req, res) {
 
             logText(`[LOG] Saved ${req.params.asset} from ${snapshot_url} successfully.`, 'debug');
 
-            res.writeHead(resp.statusCode, { "Content-Type": resp.headers["content-type"] })
+            res.writeHead(resp.statusCode, { "Content-Type": resp.headers["content-type"] });
             res.status(resp.statusCode).end(body);
         });
     }
+
+    await handleRequest(doWayback);
 }
 
 function staffAccessMiddleware(privilege_needed) {
