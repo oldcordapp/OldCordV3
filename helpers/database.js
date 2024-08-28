@@ -1343,7 +1343,6 @@ const database = {
                 nonce: rows[0].nonce,
                 edited_timestamp: rows[0].edited_timestamp == 'NULL' ? null : rows[0].edited_timestamp,
                 timestamp: rows[0].timestamp,
-                mention_roles: [],
                 reactions: reactionRet,
                 tts: rows[0].tts == 1,
                 pinned: rows[0].pinned == 1,
@@ -1868,6 +1867,7 @@ const database = {
                 creation_date: rows[0].creation_date,
                 features: rows[0].features ? JSON.parse(rows[0].features) : [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
+                joined_at: Date.now(),
                 verification_level: rows[0].verification_level ?? 0
             }
         } catch (error) {
@@ -2935,6 +2935,7 @@ const database = {
                 creation_date: rows[0].creation_date,
                 features: rows[0].features ? JSON.parse(rows[0].features) : [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
+                joined_at: Date.now(),
                 verification_level: rows[0].verification_level ?? 0
             }
         } catch (error) {
@@ -3113,6 +3114,7 @@ const database = {
                 id: id,
                 name: name,
                 owner_id: owner_id,
+                joined_at: date,
                 region: region,
                 voice_states: [],
                 roles: [{
