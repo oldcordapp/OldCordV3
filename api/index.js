@@ -57,7 +57,7 @@ app.get("/activities", (req, res) => {
     return res.status(200).json([]);
 });
 
-app.get("/activities/detectable", (req, res) => {
+app.get("/applications/detectable", (req, res) => {
     return res.status(200).json([]);
 });
 
