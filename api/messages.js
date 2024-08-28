@@ -1,11 +1,10 @@
-const util = require('util');
 const express = require('express');
 const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { channelPermissionsMiddleware, rateLimitMiddleware } = require('../helpers/middlewares');
 const fs = require('fs');
 const multer = require('multer');
-const sizeOf = util.promisify(require('image-size'));
+const Jimp = require('jimp');
 const Snowflake = require('../helpers/snowflake');
 const reactions = require('./reactions');
 const path = require('path');
@@ -289,12 +288,11 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
 
             fs.writeFileSync(file_path, req.file.buffer);
             
-            //I hate this, but image-size softlocks when taking a buffer
             try {
-                const dimensions = await sizeOf(file_path);
-                if (dimensions) {
-                    file_details.width = dimensions.width;
-                    file_details.height = dimensions.height;
+                const image = await Jimp.read(req.file.buffer);
+                if (image) {
+                    file_details.width = image.getWidth();
+                    file_details.height = image.getHeight();
                 }
             } catch {}
         }
