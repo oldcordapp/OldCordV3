@@ -191,11 +191,14 @@ async function timer(ms) {
     }
 
     if ((release_date == "november_16_2017" ||
-         release_date == "december_21_2017" ||
-         release_date == "april_1_2018")
+        release_date == "december_21_2017" ||
+        release_date == "january_27_2018" ||
+        release_date == "march_24_2018" ||
+        release_date == "april_1_2018" ||
+        release_date == "april_23_2018")
          && localStorage && !localStorage.getItem("token")) {
-        loadLog("Warning: You aren't logged in, and the login page is BROKEN on this build. Switching to October 5 2017 temporarily.", true, true);
-        release_date = "october_5_2017";
+        loadLog("Warning: You aren't logged in, and the login page is BROKEN on this build. Switching to February 25 2018 temporarily.", true, true);
+        release_date = "february_25_2018";
         
         //Wait until the user has logged in, then refresh
         let waitForLogin = setInterval(() => {
