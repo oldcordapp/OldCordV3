@@ -1985,7 +1985,8 @@ const database = {
                             name: isThereGuild.name,
                             icon: isThereGuild.icon,
                             splash: isThereGuild.splash,
-                            owner_id: isThereGuild.owner_id
+                            owner_id: isThereGuild.owner_id,
+                            features: isThereGuild.features
                         },
                         channel: {
                             id: isThereGuild.channels[0].id,
@@ -2028,7 +2029,8 @@ const database = {
                     name: guild.name,
                     icon: guild.icon,
                     splash: guild.splash,
-                    owner_id: guild.owner_id
+                    owner_id: guild.owner_id,
+                    features: guild.features
                 },
                 channel: {
                     id: channel.id,
