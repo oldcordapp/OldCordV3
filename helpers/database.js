@@ -168,6 +168,7 @@ const database = {
                 name TEXT,
                 icon TEXT DEFAULT NULL,
                 splash TEXT DEFAULT NULL,
+                banner TEXT DEFAULT NULL,
                 region TEXT DEFAULT NULL,
                 owner_id TEXT,
                 afk_channel_id TEXT,
@@ -1852,6 +1853,7 @@ const database = {
                 name: rows[0].name,
                 icon: rows[0].icon == 'NULL' ? null : rows[0].icon,
                 splash: rows[0].splash == 'NULL' ? null : rows[0].splash,
+                banner: rows[0].banner == 'NULL' ? null : rows[0].banner,
                 region: rows[0].region,
                 owner_id: rows[0].owner_id,
                 afk_channel_id: rows[0].afk_channel_id == 'NULL' ? null : rows[0].afk_channel_id,
@@ -2917,6 +2919,7 @@ const database = {
                 name: rows[0].name,
                 icon: rows[0].icon == 'NULL' ? null : rows[0].icon,
                 splash: rows[0].splash == 'NULL' ? null : rows[0].splash,
+                banner: rows[0].banner == 'NULL' ? null : rows[0].banner,
                 region: rows[0].region,
                 owner_id: rows[0].owner_id,
                 afk_channel_id: rows[0].afk_channel_id == 'NULL' ? null : rows[0].afk_channel_id,
@@ -2967,10 +2970,11 @@ const database = {
             return -1; //error
         }
     },
-    updateGuild: async (guild_id, afk_channel_id, afk_timeout, icon, splash, name, default_message_notifications, verification_level) => {
+    updateGuild: async (guild_id, afk_channel_id, afk_timeout, icon, splash, banner, name, default_message_notifications, verification_level) => {
         try {
             let send_icon  = 'NULL';
             let send_splash = 'NULL';
+            let send_banner = 'NULL';
 
             if (icon != null) {
                 if (icon.includes("data:image")) {
@@ -3030,7 +3034,36 @@ const database = {
                 }
             }
 
-            await database.runQuery(`UPDATE guilds SET name = $1, icon = $2, splash = $3, afk_channel_id = $4, afk_timeout = $5, default_message_notifications = $6, verification_level = $7 WHERE id = $8`, [name, send_icon, send_splash, (afk_channel_id == null ? 'NULL' : afk_channel_id), afk_timeout, default_message_notifications, verification_level, guild_id]);
+            if (banner != null) {
+                if (banner.includes("data:image")) {
+                    var extension = banner.split('/')[1].split(';')[0];
+                    var imgData = banner.replace(`data:image/${extension};base64,`, "");
+                    var file_name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var hash = md5(file_name);
+            
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+            
+                    send_banner = hash.toString();
+            
+                    if (!fs.existsSync(`www_dynamic/banners`)) {
+                        fs.mkdirSync(`www_dynamic/banners`, { recursive: true });
+                    }
+    
+                    if (!fs.existsSync(`www_dynamic/banners/${guild_id}`)) {
+                        fs.mkdirSync(`www_dynamic/banners/${guild_id}`, { recursive: true });
+            
+                        fs.writeFileSync(`www_dynamic/banners/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                    } else {
+                        fs.writeFileSync(`www_dynamic/banners/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                    }
+                } else {
+                    send_banner = banner;
+                }
+            }
+
+            await database.runQuery(`UPDATE guilds SET name = $1, icon = $2, splash = $3, banner = $4, afk_channel_id = $5, afk_timeout = $6, default_message_notifications = $7, verification_level = $8 WHERE id = $9`, [name, send_icon, send_splash, send_banner, (afk_channel_id == null ? 'NULL' : afk_channel_id), afk_timeout, default_message_notifications, verification_level, guild_id]);
 
             return true;
         } catch(error) {
@@ -3112,6 +3145,7 @@ const database = {
                 }],
                 icon: icon,
                 splash: null,
+                banner: null,
                 id: id,
                 name: name,
                 owner_id: owner_id,

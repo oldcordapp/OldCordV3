@@ -280,7 +280,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             return res.status(200).json(what);
         }
 
-        const update = await global.database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.splash, req.body.name, req.body.default_message_notifications, req.body.verification_level);
+        const update = await global.database.updateGuild(req.params.guildid, req.body.afk_channel_id, req.body.afk_timeout, req.body.icon, req.body.splash, req.body.banner, req.body.name, req.body.default_message_notifications, req.body.verification_level);
 
         if (!update) {
             await globalUtils.unavailableGuild(what, "Something went wrong while updating guild");
