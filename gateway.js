@@ -255,7 +255,7 @@ const gateway = {
                         }
 
                         const online = related_presences
-                        .filter(p => p.presence.status === 'online')
+                        .filter(p => p.presence.status !== 'offline' && p.presence.status !== 'invisible')
                         .map(p => ({
                             member: {
                                 ...p.member,
