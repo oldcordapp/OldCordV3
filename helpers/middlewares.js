@@ -1,7 +1,7 @@
 const rateLimit = require('express-rate-limit');
 const { logText } = require('./logger');
 const globalUtils = require('./globalutils');
-const request = require('request');
+const fetch = require('node-fetch');
 const wayback = require('./wayback');
 const fs = require('fs');
 const { Storage } = require('@google-cloud/storage');
@@ -133,46 +133,47 @@ async function assetsMiddleware(req, res) {
 
         logText(`[LOG] Saving ${req.params.asset} from ${snapshot_url}...`, 'debug');
 
-        request(snapshot_url, { encoding: null }, async function (err, resp, body) {
-            if (err) {
-                console.log(err);
+        let r = await fetch(snapshot_url);
+        if (!r.ok) {
+            console.log(r.statusText);
 
-                cached404s[req.params.asset] = 1;
+            cached404s[req.params.asset] = 1;
 
-                return res.status(404).send("File not found");
-            }
+            return res.status(404).send("File not found");
+        }
 
-            if (resp.statusCode === 404 && !doWayback) {
-                doWayback = true;
+        if (r.status === 404 && !doWayback) {
+            doWayback = true;
 
-                return await handleRequest(doWayback);
-            }
+            return await handleRequest(doWayback);
+        }
 
-            if (resp.statusCode >= 400) {
-                logText(`!! Error saving asset: ${snapshot_url} - reports ${resp.statusCode} !!`, 'debug');
-                
-                cached404s[req.params.asset] = 1;
-                
-                return res.status(404).send("File not found");
-            }
+        if (r.status >= 400) {
+            logText(`!! Error saving asset: ${snapshot_url} - reports ${r.status} !!`, 'debug');
+            
+            cached404s[req.params.asset] = 1;
+            
+            return res.status(404).send("File not found");
+        }
+        
+        let bodyText = await r.text();
 
-            if (bucket !== null) {
-                let path = `${config.gcs_config.gcStorageFolder}/${req.params.asset}`;
+        if (bucket !== null) {
+            let path = `${config.gcs_config.gcStorageFolder}/${req.params.asset}`;
 
-                const cloudFile = bucket.file(path);
+            const cloudFile = bucket.file(path);
 
-                await cloudFile.save(body, { contentType: resp.headers["content-type"] });
+            await cloudFile.save(bodyText, { contentType: r.headers.get("content-type") });
 
-                logText(`[LOG] Uploaded ${req.params.asset} to Google Cloud Storage successfully.`, 'debug');
-            }
+            logText(`[LOG] Uploaded ${req.params.asset} to Google Cloud Storage successfully.`, 'debug');
+        }
 
-            fs.writeFileSync(filePath, body);
+        fs.writeFileSync(filePath, bodyText);
 
-            logText(`[LOG] Saved ${req.params.asset} from ${snapshot_url} successfully.`, 'debug');
+        logText(`[LOG] Saved ${req.params.asset} from ${snapshot_url} successfully.`, 'debug');
 
-            res.writeHead(resp.statusCode, { "Content-Type": resp.headers["content-type"] });
-            res.status(resp.statusCode).end(body);
-        });
+        res.writeHead(r.status, { "Content-Type": r.headers.get("content-type") });
+        res.status(r.status).end(bodyText);
     }
 
     await handleRequest(doWayback);

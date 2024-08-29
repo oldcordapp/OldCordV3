@@ -1,4 +1,3 @@
-const request = require('request');
 const ytdl = require('@distube/ytdl-core');
 const { logText } = require('./logger');
 const globalUtils = require('./globalutils');

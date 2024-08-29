@@ -1,4 +1,4 @@
-const request = require('request-promise');
+const fetch = require('node-fetch');
 const globalUtils = require('../globalutils');
 const { logText } = require('../logger');
 const twitchConfig = globalUtils.config.integration_config.find(x => x.platform == "twitch");
@@ -10,21 +10,20 @@ class Twitch {
     async getAccessToken () {
         if (!twitchConfig) return null;
         
+        const form = new FormData();
+        form.append("client_id", twitchConfig.client_id);
+        form.append("client_secret", twitchConfig.client_secret);
+        form.append("code", this.code);
+        form.append("grant_type", 'authorization_code');
+        form.append("redirect_uri", twitchConfig.redirect_uri);
+        
         const options = {
             method: 'POST',
-            url: 'https://id.twitch.tv/oauth2/token',
-            form: {
-                client_id: twitchConfig.client_id,
-                client_secret: twitchConfig.client_secret,
-                code: this.code,
-                grant_type: 'authorization_code',
-                redirect_uri: twitchConfig.redirect_uri
-            },
-            json: true
+            body: form,
         };
 
         try {
-            const response = await request(options);
+            const response = await (await request('https://id.twitch.tv/oauth2/token', options)).json();
 
             return response.access_token;
         } catch (error) {
@@ -37,16 +36,14 @@ class Twitch {
         if (!twitchConfig) return null;
 
         const options = {
-            url: 'https://api.twitch.tv/helix/users',
             headers: {
                 'Client-ID': twitchConfig.client_id,
                 'Authorization': `Bearer ${access_token}`
             },
-            json: true
         };
     
         try {
-            const response = await request(options);
+            const response = await (await request('https://api.twitch.tv/helix/users', options)).json();
 
             return response.data[0];
         } catch (error) {
