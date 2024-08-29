@@ -1768,7 +1768,7 @@ const database = {
                     deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                     mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
                     roles: member_roles,
-                    joined_at: Date.now(),
+                    joined_at: new Date().toISOString(),
                     user: globalUtils.miniUserObject(user)
                 })
             }
@@ -1870,7 +1870,7 @@ const database = {
                 creation_date: rows[0].creation_date,
                 features: rows[0].features ? JSON.parse(rows[0].features) : [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
-                joined_at: Date.now(),
+                joined_at: new Date().toISOString(),
                 verification_level: rows[0].verification_level ?? 0
             }
         } catch (error) {
@@ -2833,7 +2833,7 @@ const database = {
                     deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                     mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
                     roles: member_roles,
-                    joined_at: Date.now(),
+                    joined_at: new Date().toISOString(),
                     user: globalUtils.miniUserObject(user)
                 })
             }
@@ -2935,7 +2935,7 @@ const database = {
                 creation_date: rows[0].creation_date,
                 features: rows[0].features ? JSON.parse(rows[0].features) : [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
-                joined_at: Date.now(),
+                joined_at: new Date().toISOString(),
                 verification_level: rows[0].verification_level ?? 0
             }
         } catch (error) {

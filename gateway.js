@@ -3,6 +3,7 @@ const globalUtils = require('./helpers/globalutils');
 const WebSocket = require('ws').WebSocket;
 const session = require('./helpers/session');
 const zlib = require('zlib');
+const Snowflake = require('./helpers/snowflake');
 
 async function syncPresence(socket, packet) {
     let allSessions = global.userSessions.get(socket.user.id);
@@ -190,6 +191,126 @@ const gateway = {
                         if (!socket.session) return socket.close(4003, 'Not authenticated');
 
                         await syncPresence(socket, packet);
+                    } else if (packet.op == 14) {
+                        //UGHHHHHHHHHHHHHHHHHHHHHHHHHHH
+                        let guild_id = packet.d.guild_id;
+
+                        if (!guild_id) return socket.close(4000, 'Invalid payload'); // need to be more strict on this
+
+                        let guild = await global.database.getGuildById(guild_id);
+
+                        if (!guild) return socket.close(4000, 'Invalid payload');
+
+                        if (!guild.members.find(x => x.user.id === socket.user.id)) return socket.close(4000, 'Invalid payload');
+
+                        let typing = packet.d.typing; //Subscribe to typing events?
+
+                        if (!typing) {
+                            packet.d.typing = false;
+                        }
+
+                        let activities = packet.d.activities; //subscribe to game updates, etc
+
+                        if (!activities) {
+                            packet.d.activities = [];
+                        }
+
+                        let members = packet.d.members; //members array to subscribe to ??
+
+                        let channels = packet.d.channels;
+
+                        if (!channels) return socket.close(4000, 'Invalid payload');
+
+                        let channelId = Object.keys(packet.d.channels)[0];
+
+                        if (!channelId) return socket.close(4000, 'Invalid payload');
+
+                        let range = packet.d.channels[channelId][0];
+
+                        if (!range) return socket.close(4000, 'Invalid payload');
+
+                        let [startIndex, endIndex] = range;
+
+                        let channel = guild.channels.find(x => x.id === channelId);
+
+                        if (!channel) return socket.close(4000, 'Invalid payload'); //wtf?
+
+                        //to-do subscribe to events for specific members
+
+                        //check for perms to view channel in the payload and do some bullshit math for the list_id
+
+                        let selected_members = guild.members.slice(startIndex, endIndex + 1);
+
+                        let related_presences = [];
+
+                        for(var presence of guild.presences) {
+                            let member = selected_members.find(x => x.id === presence.user.id);
+
+                            if (member) {
+                                related_presences.push({
+                                    presence: presence,
+                                    member: member
+                                });
+                            }
+                        }
+
+                        const online = related_presences
+                        .filter(p => p.presence.status === 'online')
+                        .map(p => ({
+                            member: {
+                                ...p.member,
+                                presence: {
+                                    status: "online",
+                                    user: {
+                                        id: p.member.user.id,
+                                    },
+                                    game: null,
+                                    activities: [],
+                                    client_status: null
+                                }
+                            }
+                        }));
+
+                    const offline = related_presences
+                        .filter(p => p.presence.status === 'offline')
+                        .map(p => ({
+                            member: {
+                                ...p.member,
+                                presence: {
+                                    status: "offline",
+                                    user: {
+                                        id: p.member.user.id,
+                                    },
+                                    game: null,
+                                    activities: [],
+                                    client_status: null
+                                }
+                            }
+                        }));
+
+                        const items = [
+                            { group: { id: 'online', count: online.length } },
+                            ...online,
+                            { group: { id: 'offline', count: offline.length } },
+                            ...offline
+                        ];
+
+                        socket.session.dispatch("GUILD_MEMBER_LIST_UPDATE", {
+                            guild_id: guild.id,
+                            id: 'everyone',
+                            ops: [{
+                                op: "SYNC",
+                                range: range,
+                                items: items
+                            }],
+                            groups: [{
+                                count: online.length,
+                                id: 'online'
+                            }, {
+                                count: offline.length,
+                                id: 'offline'
+                            }],
+                        });
                     } else if (packet.op == 6) {
                         let token = packet.d.token;
                         let session_id = packet.d.session_id;

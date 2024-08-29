@@ -134,6 +134,7 @@ async function assetsMiddleware(req, res) {
         logText(`[LOG] Saving ${req.params.asset} from ${snapshot_url}...`, 'debug');
 
         let r = await fetch(snapshot_url);
+        
         if (!r.ok) {
             console.log(r.statusText);
 

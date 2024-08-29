@@ -27,6 +27,7 @@ class session {
         this.presences = [];
         this.read_states = [];
         this.relationships = [];
+        this.subscriptions = [];
     }
     onClose(code) {
         if (this.dead) return;
@@ -37,6 +38,29 @@ class session {
         if (code == 1006 || code == 1001) return this.terminate();
 
         this.timeout = setTimeout(this.terminate.bind(this), SESSION_TIMEOUT);
+    }
+    subscribe(subscriptionType, parameters) {
+        let valid_subs = [
+            "GUILD_MEMBER_LIST_UPDATE"
+        ]   
+
+        if (!valid_subs.includes(subscriptionType)) {
+            return false; //invalid event subscription type
+        }
+
+        if (subscriptionType === "GUILD_MEMBER_LIST_UPDATE") {
+            if (this.subscriptions.find(x => x.type === "GUILD_MEMBER_LIST_UPDATE" && x.channel === parameters.channel && x.range === parameters.range)) {
+                return false; //already subbed to member update events for this range in the channel
+            }
+
+            this.subscriptions.push({
+                type: "GUILD_MEMBER_LIST_UPDATE",
+                channel: parameters.channel,
+                range: parameters.range
+            })
+        }
+
+        return true;
     }
     async updatePresence(status, game_id = null, save_presence = true) {
         try {
@@ -309,7 +333,7 @@ class session {
                         user: globalUtils.miniUserObject(presence.user),
                         activities: [],
                         status: presence.status
-                    })
+                    });
                 }
 
                 for(var channel of guild.channels) {

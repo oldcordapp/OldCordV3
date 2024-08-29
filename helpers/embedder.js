@@ -8,7 +8,7 @@ const embedder = {
         return null; //to-do
     },
     embedAttachedVideo: (url) => {
-        return {
+        return { 
             type: "video",
             inlineMedia: true,
             thumbnail: {
