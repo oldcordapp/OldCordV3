@@ -102,7 +102,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -185,7 +185,7 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -211,7 +211,7 @@ router.get("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewar
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -279,7 +279,7 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -325,7 +325,7 @@ router.get("/:channelid/webhooks", channelMiddleware, channelPermissionsMiddlewa
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -384,7 +384,7 @@ router.post("/:channelid/webhooks",  channelMiddleware, channelPermissionsMiddle
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -498,7 +498,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
     } catch(error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -564,7 +564,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
     } catch(error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,
@@ -746,7 +746,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
         logText(error, "error");
         
         if (req.guild)
-            await globalUtils.unavailableGuild(req.guild, error);
+            
         
         return res.status(500).json({
             code: 500,

@@ -93,7 +93,7 @@ router.delete("/:code", rateLimitMiddleware(global.config.ratelimit_config.delet
     } catch (error) {
         logText(error, "error");
 
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
             code: 500,
@@ -162,7 +162,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(g
     } catch (error) {
         logText(error, "error");
 
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
             code: 500,

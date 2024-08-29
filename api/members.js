@@ -62,7 +62,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
     } catch (error) {
         console.log(error);
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,
@@ -201,7 +201,7 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,
@@ -245,7 +245,7 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,

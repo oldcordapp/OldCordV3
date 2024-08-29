@@ -40,7 +40,7 @@ router.get("/", channelMiddleware, async (req, res) => {
     }  catch(error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,
@@ -106,7 +106,7 @@ router.put("/:messageid", channelMiddleware, async (req, res) => {
     } catch(error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,
@@ -172,7 +172,7 @@ router.delete("/:messageid", channelMiddleware, async (req, res) => {
     } catch(error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,

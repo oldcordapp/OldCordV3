@@ -92,7 +92,7 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(gl
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,
@@ -164,7 +164,7 @@ async function guildDeleteRequest(req, res) {
     } catch(error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
             code: 500,
@@ -306,7 +306,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -349,7 +349,7 @@ router.get("/:guildid/embed", guildMiddleware, async (req, res) => {
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -395,7 +395,7 @@ router.patch("/:guildid/embed", guildMiddleware, guildPermissionsMiddleware("MAN
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -421,7 +421,7 @@ router.get("/:guildid/invites", guildMiddleware, guildPermissionsMiddleware("MAN
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -484,7 +484,7 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
     } catch(error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -547,7 +547,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
     } catch(error) {
         logText(error, "error");
 
-        await globalUtils.unavailableGuild(req.guild, error);
+        
     
         return res.status(500).json({
           code: 500,
@@ -580,7 +580,7 @@ router.get("/:guildid/webhooks", guildMiddleware, async (req, res) => {
     } catch (error) {
         logText(error, "error");
 
-        await globalUtils.unavailableGuild(req.guild, error);
+        
     
         return res.status(500).json({
           code: 500,
@@ -608,7 +608,7 @@ router.get("/:guildid/vanity-url", guildMiddleware, guildPermissionsMiddleware("
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -656,7 +656,7 @@ router.patch("/:guildid/vanity-url", guildMiddleware, guildPermissionsMiddleware
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,
