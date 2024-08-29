@@ -260,7 +260,7 @@ const gateway = {
                             member: {
                                 ...p.member,
                                 presence: {
-                                    status: "online",
+                                    status: p.presence.status,
                                     user: {
                                         id: p.member.user.id,
                                     },
@@ -277,7 +277,7 @@ const gateway = {
                             member: {
                                 ...p.member,
                                 presence: {
-                                    status: "offline",
+                                    status: p.presence.status,
                                     user: {
                                         id: p.member.user.id,
                                     },
