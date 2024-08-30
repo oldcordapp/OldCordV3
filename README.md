@@ -74,7 +74,7 @@ You <b>might</b> also need to configure cors for your use of the bucket accordin
 ❎ = No plan for support in the future <br>
 
 2015 🟢 <br>
-2016 🟠 <br>
+2016 🟢 <br>
 2017 🟠 <br>
 2018 🟠 <br>
 2019 ❎ (As much as I'd like to say we'd fully support this year one day, the amount of telemetry, commercial crap, and bloatware - along with big crucial infrastructure changes which are hardly documented for the year just makes me lose faith in even getting a fraction of the gateway up to speed for this year) <br>
