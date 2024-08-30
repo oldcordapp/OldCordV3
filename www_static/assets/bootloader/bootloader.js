@@ -349,7 +349,7 @@ async function timer(ms) {
         document.getElementById("loadingTxt").remove();
     } else {
         let interval = setInterval(function() {
-            if (document.getElementsByClassName("theme-dark").length == 0)
+            if (document.getElementsByClassName("theme-dark").length == 0 && document.getElementsByClassName("guilds").length == 0)
                 return;
 
             document.getElementById("loadingTxt").remove();
