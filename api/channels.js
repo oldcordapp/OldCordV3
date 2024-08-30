@@ -686,6 +686,15 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
             });
         }
 
+        if (channel.type !== 3 && channel.type !== 1) {
+            if (req.guild && req.guild.channels.length === 1) {
+                return res.status(400).json({
+                    code: 400,
+                    message: "You cannot delete all channels in this server"
+                });
+            }
+        }
+
         if (channel.type == 1 || channel.type == 3) {
             //Leaving a private channel
             let userPrivateChannels = await global.database.getPrivateChannels(sender.id);

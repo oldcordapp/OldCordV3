@@ -73,7 +73,7 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(gl
             } else if (year != 2016) selected_region = "everything";
         }
 
-        const guild = await global.database.createGuild(creator.id, req.body.icon, req.body.name, req.body.region, exclusions);
+        const guild = await global.database.createGuild(creator.id, req.body.icon, req.body.name, req.body.region, exclusions, client_date);
 
         if (guild == null) {
             return res.status(500).json({
@@ -463,7 +463,27 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
             number_type = req.body.type == "text" ? 0 : 1;
         } else number_type = req.body.type;
 
-        const channel = await global.database.createChannel(req.params.guildid, req.body.name, number_type, req.guild.channels.length + 1);
+        let send_parent_id = null;
+
+        if (req.body.parent_id) {
+            if (!req.guild.channels.find(x => x.id === req.body.parent_id && x.type === 4)) {
+                return res.status(404).json({
+                    code: 404,
+                    message: "Unknown Category"
+                });
+            }
+
+            if (number_type !== 0 && number_type !== 2) {
+                return res.status(400).json({
+                    code: 400,
+                    message: "You're a wizard harry, how the bloody hell did you manage to do that?"
+                });
+            }
+
+            send_parent_id = req.body.parent_id;
+        }
+
+        const channel = await global.database.createChannel(req.params.guildid, req.body.name, number_type, req.guild.channels.length + 1, [], null, send_parent_id);
 
         if (channel == null) {
             await globalUtils.unavailableGuild(req.guild, "Something went wrong while creating a channel");
@@ -509,6 +529,7 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
         for(var shit of req.body) {
             var channel_id = shit.id;
             var position = shit.position;
+            var parent_id = shit.parent_id;
 
             const channel = req.guild.channels.find(x => x.id === channel_id);
 
@@ -522,6 +543,12 @@ router.patch("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("
             }
 
             channel.position = position;
+
+            if (parent_id) {
+                if (parent_id === null) channel.parent_id = null;
+
+                if (req.guild.channels.find(x => x.id === parent_id && x.type === 4)) channel.parent_id = parent_id;
+            }
 
             const outcome = await global.database.updateChannel(channel_id, channel);
 

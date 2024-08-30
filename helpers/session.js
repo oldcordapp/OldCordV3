@@ -354,6 +354,15 @@ class session {
                     if (getLatestAcknowledgement) {
                         this.read_states.push(getLatestAcknowledgement);
                     }
+
+                    /*
+                    if ((year === 2017 && month < 9) || year < 2017) {
+                        if (channel.type === 4) {
+                            channel.type = 0;
+                            
+                        }
+                    }
+                    */
                 }
             }
 
@@ -378,10 +387,12 @@ class session {
             
             for (var chan_id of chans) {
                 let chan = await database.getChannelById(chan_id);
+
                 if (!chan)
                     continue;
                 
                 chan = globalUtils.personalizeChannelObject(this.socket, chan);
+
                 if (!chan)
                     continue;
                 

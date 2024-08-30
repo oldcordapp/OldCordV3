@@ -345,7 +345,7 @@ async function timer(ms) {
     //Cleanup
     document.body.style = null;
     let appMount = document.getElementById("app-mount");
-    if (!appMount) {
+    if (appMount) {
         document.getElementById("loadingTxt").remove();
     } else {
         let interval = setInterval(function() {
