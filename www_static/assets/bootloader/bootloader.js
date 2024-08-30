@@ -236,7 +236,7 @@ async function timer(ms) {
         "ASSET_ENDPOINT": cdn_url,
         "MEDIA_PROXY_ENDPOINT": "//" + location.host,
         "WIDGET_ENDPOINT": "",
-        "INVITE_HOST": "//" + config.custom_invite_url,
+        "INVITE_HOST": config.custom_invite_url,
         "GUILD_TEMPLATE_HOST": location.host,
         "GIFT_CODE_HOST": location.host,
         "RELEASE_CHANNEL": "staging",
