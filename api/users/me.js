@@ -659,6 +659,8 @@ router.get("/mentions", async (req, res) => {
 
     let recentMentions = await global.database.getRecentMentions(account.id, before, limit, include_roles, include_everyone_mentions, guild_id);
 
+    recentMentions = recentMentions.filter(x => x.guild_id !== null); //so it turns out guild_id crashes december 2018? - fix this function so it doesnt return entries with null guild ids
+
     return res.status(200).json(recentMentions);
   } catch (error) {
     logText(error, "error");
