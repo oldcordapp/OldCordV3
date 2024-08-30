@@ -1213,8 +1213,8 @@ const database = {
     },
     updateChannel: async (channel_id, channel) => {
         try {
-            if (channel.type === 0 || channel.type === 2) {
-                //text channel
+            if (channel.type === 0 || channel.type === 2 || channel.type === 4) {
+                //text channel, voice channel, category
                 let overwrites = 'NULL';
 
                 if (channel.permission_overwrites) {
