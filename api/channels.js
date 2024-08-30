@@ -178,7 +178,7 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
         }
 
         if (channel.type === 3) {
-            channel = await global.database.getChannelById(channel.id); //i know we're supposed to be efficient here but groups need this for icon changes :sob:
+            channel = outcome;
 
             if (!channel) {
                 return res.status(500).json({
@@ -186,8 +186,6 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
                     message: "Internal Server Error"
                 });
             }
-
-            channel.recipients = channel.recipients.filter(user => user.id != sender.id);
 
             await global.dispatcher.dispatchEventInPrivateChannel(channel, "CHANNEL_UPDATE", async function() {
                 return globalUtils.personalizeChannelObject(this.socket, channel);
@@ -725,8 +723,6 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
             
             if (channel.type == 3) {
                 //Remove user from recipients list
-                channel.recipients = channel.recipients.filter(user => user.id != sender.id);
-                
                 if (!await global.database.updateChannelRecipients(channel.id, channel.recipients))
                     throw "Failed to update recipients list in channel";
 

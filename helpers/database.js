@@ -1213,7 +1213,7 @@ const database = {
         try {
             if (channel.type === 0 || channel.type === 2) {
                 //text channel
-                let overwrites  = 'NULL';
+                let overwrites = 'NULL';
 
                 if (channel.permission_overwrites) {
                     let out = globalUtils.SerializeOverwritesToString(channel.permission_overwrites);
@@ -1225,7 +1225,7 @@ const database = {
     
                 await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, nsfw = $4, permission_overwrites = $5, position = $6 WHERE id = $7`, [channel.last_message_id, channel.name, channel.topic, channel.nsfw ? 1 : 0, overwrites, channel.position, channel_id]);
     
-                return true;   
+                return channel;   
             } else if (channel.type === 3) {
                 //group channel
 
@@ -1249,21 +1249,25 @@ const database = {
      
                     fs.writeFileSync(`./www_dynamic/group_icons/${channel_id}/${name_hash}.${extension}`, imgData, "base64");
 
+                    channel.icon = icon;
+
                     await database.runQuery(`UPDATE group_channels SET icon = $1 WHERE id = $2`, [icon, channel_id]);
                 } else if (process_icon === null) {
+                    channel.icon = null;
+
                     await database.runQuery(`UPDATE group_channels SET icon = $1 WHERE id = $2`, ['NULL', channel_id]);
                 }
 
                 await database.runQuery(`UPDATE group_channels SET name = $1 WHERE id = $2`, [channel.name ?? '', channel_id]);
 
-                return true;
+                return channel;
             }
              
-            return false; //unknown channel type?
+            return null; //unknown channel type?
         } catch(error) {
             logText(error, "error");
 
-            return false;
+            return null;
         }
     },
     updateChannelRecipients: async (channel_id, recipients) => {
