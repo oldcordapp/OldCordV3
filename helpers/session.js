@@ -5,7 +5,7 @@ const zlib = require('zlib');
 //Adapted from Hummus' handling of sessions & whatnot
 
 const BUFFER_LIMIT = 500; //max dispatch event backlog before terminating?
-const SESSION_TIMEOUT = 15 * 1000; //2 mins
+const SESSION_TIMEOUT = 15 * 1000; //15 seconds brooo
 
 class session {
     constructor(id, socket, user, token, ready, presence) {
