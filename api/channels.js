@@ -122,7 +122,7 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
             });
         }
 
-        const channel = req.channel;
+        let channel = req.channel;
 
         if (channel == null) {
             return res.status(404).json({
@@ -131,48 +131,69 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
             });
         }
 
-        if (!channel.guild_id) {
+        if (!channel.guild_id && channel.type !== 3) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Channel"
-            }); //Can only modify guild channels lol
+            }); //Can only modify guild channels lol -- okay update, they can modify group channels too
         }
 
-        if (!req.body.name) {
-            return res.status(400).json({
-                code: 404,
-                name: "This field is required.",
-            });
-        } 
-
-        if (req.body.name.length < 1) {
-            return res.status(400).json({
-                code: 400,
-                name: "Must be between 1 and 30 characters",
-            });
+        if (req.body.icon) {
+            channel.icon = req.body.icon;
         }
 
-        if (req.body.name.length > 30) {
+        if (req.body.icon === null) {
+            channel.icon = null;
+        }
+
+        if (req.body.name && req.body.name.length < 1) {
             return res.status(400).json({
                 code: 400,
                 name: "Must be between 1 and 30 characters",
             });
         }
 
-        channel.name = req.body.name;
-        channel.position = req.body.position;
-        channel.topic = req.body.topic ?? null;
-        channel.nsfw = req.body.nsfw ?? false;
+        if (req.body.name && req.body.name.length > 30) {
+            return res.status(400).json({
+                code: 400,
+                name: "Must be between 1 and 30 characters",
+            });
+        }
+
+        channel.name = req.body.name ?? channel.name;
+
+        if (channel.type !== 3 && channel.type !== 1) {
+            channel.position = req.body.position ?? channel.position;
+            channel.topic = req.body.topic ?? channel.topic;
+            channel.nsfw = req.body.nsfw ?? channel.nsfw;
+        } //do this for only guild channels
 
         const outcome = await global.database.updateChannel(channel.id, channel);
 
-        if (channel == null || !outcome) {
-            await globalUtils.unavailableGuild(req.guild, "Something went wrong while updating a channel");
-
+        if (!outcome) {
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
             });
+        }
+
+        if (channel.type === 3) {
+            channel = await global.database.getChannelById(channel.id); //i know we're supposed to be efficient here but groups need this for icon changes :sob:
+
+            if (!channel) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+
+            channel.recipients = channel.recipients.filter(user => user.id != sender.id);
+
+            await global.dispatcher.dispatchEventInPrivateChannel(channel, "CHANNEL_UPDATE", async function() {
+                return globalUtils.personalizeChannelObject(this.socket, channel);
+            });
+
+            return res.status(200).json(channel);
         }
 
         if (!req.channel_types_are_ints) {
@@ -185,8 +206,6 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
       } catch (error) {
         logText(error, "error");
     
-        
-
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"

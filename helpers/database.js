@@ -1211,19 +1211,55 @@ const database = {
     },
     updateChannel: async (channel_id, channel) => {
         try {
-            let overwrites  = 'NULL';
+            if (channel.type === 0 || channel.type === 2) {
+                //text channel
+                let overwrites  = 'NULL';
 
-            if (channel.permission_overwrites) {
-                let out = globalUtils.SerializeOverwritesToString(channel.permission_overwrites);
-
-                if (out != null) {
-                    overwrites = out;
+                if (channel.permission_overwrites) {
+                    let out = globalUtils.SerializeOverwritesToString(channel.permission_overwrites);
+    
+                    if (out != null) {
+                        overwrites = out;
+                    }
                 }
+    
+                await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, nsfw = $4, permission_overwrites = $5, position = $6 WHERE id = $7`, [channel.last_message_id, channel.name, channel.topic, channel.nsfw ? 1 : 0, overwrites, channel.position, channel_id]);
+    
+                return true;   
+            } else if (channel.type === 3) {
+                //group channel
+
+                let process_icon = channel.icon;
+
+                if (process_icon != null && process_icon.includes("data:image/")) {
+                    var extension = process_icon.split('/')[1].split(';')[0];
+                    var imgData = process_icon.replace(`data:image/${extension};base64,`, "");
+                    var name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var name_hash = md5(name);
+    
+                    let icon = name_hash;
+        
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+    
+                    if (!fs.existsSync(`./www_dynamic/group_icons/${channel_id}`)) {
+                        fs.mkdirSync(`./www_dynamic/group_icons/${channel_id}`, { recursive: true });
+                    }
+     
+                    fs.writeFileSync(`./www_dynamic/group_icons/${channel_id}/${name_hash}.${extension}`, imgData, "base64");
+
+                    await database.runQuery(`UPDATE group_channels SET icon = $1 WHERE id = $2`, [icon, channel_id]);
+                } else if (process_icon === null) {
+                    await database.runQuery(`UPDATE group_channels SET icon = $1 WHERE id = $2`, ['NULL', channel_id]);
+                }
+
+                await database.runQuery(`UPDATE group_channels SET name = $1 WHERE id = $2`, [channel.name ?? '', channel_id]);
+
+                return true;
             }
-
-            await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, nsfw = $4, permission_overwrites = $5, position = $6 WHERE id = $7`, [channel.last_message_id, channel.name, channel.topic, channel.nsfw ? 1 : 0, overwrites, channel.position, channel_id]);
-
-            return true;    
+             
+            return false; //unknown channel type?
         } catch(error) {
             logText(error, "error");
 
