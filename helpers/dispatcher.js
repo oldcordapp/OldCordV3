@@ -50,8 +50,8 @@ const dispatcher = {
                 let uSession = uSessions[z];
                 
                 if (guild.owner_id != member.id && uSession && uSession.socket) { //Skip checks if owner
-                    let guildPermCheck = await global.permissions.hasGuildPermissionTo(guild.id, member.id, permission_check, uSession.socket.client_build);
-                    
+                    let guildPermCheck = await global.permissions.hasGuildPermissionTo(guild, member.id, permission_check, uSession.socket.client_build);
+
                     if (!guildPermCheck)
                         break; //No access to guild
 
