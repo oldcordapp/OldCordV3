@@ -25,6 +25,15 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
             });
         }
 
+        let guild = req.guild;
+
+        if (!guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });
+        }
+
         let roles = req.guild.roles;
 
         if (roles.length == 0) {
@@ -50,35 +59,22 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
             });
         }
 
-        req.body.permissions = req.body.permissions ?? role.permissions;
-        req.body.color = req.body.color ?? role.color;
-        req.body.hoist = req.body.hoist ?? role.hoist;
-        req.body.mentionable = req.body.mentionable ?? role.mentionable;
-        req.body.name = req.body.name || "new role";
-        req.body.position = req.body.position ?? role.position;
+        role.permissions = req.body.permissions ?? role.permissions;
+        role.color = req.body.color ?? role.color;
+        role.hoist = req.body.hoist ?? role.hoist;
+        role.mentionable = req.body.mentionable ?? role.mentionable;
+        role.name = req.body.name || "new role";
+        role.position = req.body.position ?? role.position;
 
-        const attempt = await global.database.updateRole(
-            req.params.roleid,
-            req.body.name,
-            req.body.color,
-            req.body.hoist,
-            req.body.mentionable,
-            req.body.permissions,
-            req.body.position
-        );
+        const attempt = await global.database.updateRole(role);
 
         if (attempt) {
             role.name = req.body.name;
             role.permissions = req.body.permissions ?? 0;
             role.position = req.body.position ?? role.position;
-            
-            await global.dispatcher.dispatchEventTo(sender.id, "GUILD_ROLE_UPDATE", {
-                guild_id: req.params.guildid,
-                role: role
-            });
 
-            await global.dispatcher.dispatchEventToAllPerms(req.params.guildid, null, "MANAGE_ROLES", "GUILD_ROLE_UPDATE", {
-                guild_id: req.params.guildid,
+            await global.dispatcher.dispatchEventInGuild(guild, "GUILD_ROLE_UPDATE", {
+                guild_id: guild.id,
                 role: role
             });
 
@@ -93,8 +89,6 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
         }
     } catch (error) {
         logText(error, "error");
-    
-        
 
         return res.status(500).json({
           code: 500,
@@ -142,8 +136,85 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
         return res.status(204).send();
     } catch (error) {
         logText(error, "error");
-    
-        
+
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        });
+    }
+});
+
+router.patch("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware(global.config.ratelimit_config.updateRole.maxPerTimeFrame, global.config.ratelimit_config.createRole.timeFrame), async (req, res) => {
+    try {
+        const sender = req.account;
+
+        if (sender == null) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        let guild = req.guild;
+
+        if (!guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });
+        }
+
+        let roles = req.body;
+
+        if (!Array.isArray(roles)) {
+            return res.status(400).json({
+                code: 400,
+                message: "Bad payload"
+            });
+        }
+
+        let success = 0;
+        let retRoles = [];
+
+        for(var role of roles) {
+            if (!role.id || !role.position) continue;
+
+            if (Object.keys(role).length > 2) continue; //fuck you
+
+            let guildRole = guild.roles.find(x => x.id === role.id);
+
+            if (!guildRole) continue;
+            
+            let update_this_role = guildRole.position != role.position;
+
+            if (update_this_role) {
+                guildRole.position = role.position;
+
+                let tryUpdate = await global.database.updateRole(guildRole);
+
+                if (!tryUpdate) continue;
+
+                await global.dispatcher.dispatchEventInGuild(guild, "GUILD_ROLE_UPDATE", {
+                    guild_id: guild.id,
+                    role: guildRole
+                });
+            }
+
+            retRoles.push(guildRole);
+
+            success++;
+        }
+
+        if (success !== roles.length) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+
+        return res.status(200).json(retRoles);
+    } catch (error) {
+        logText(error, "error");
 
         return res.status(500).json({
           code: 500,
@@ -162,6 +233,15 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
                 message: "Unauthorized"
             });
         }
+
+        let guild = req.guild;
+
+        if (!guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            });
+        }
         
         const role = await global.database.createRole(req.params.guildid, "new role", req.guild.roles.length + 1);
 
@@ -174,8 +254,8 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
             });
         }
 
-        await global.dispatcher.dispatchEventToAllPerms(req.params.guildid, null, "MANAGE_ROLES", "GUILD_ROLE_CREATE", {
-            guild_id: req.params.guildid,
+        await global.dispatcher.dispatchEventInGuild(guild, "GUILD_ROLE_UPDATE", {
+            guild_id: guild.id,
             role: role
         });
 

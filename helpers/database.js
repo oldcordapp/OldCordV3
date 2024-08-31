@@ -2830,9 +2830,9 @@ const database = {
             return null;
         }
     },
-    updateRole: async (role_id, name, color, hoist, mentionable, permissions, position) => {
+    updateRole: async (role) => {
         try {
-            await database.runQuery(`UPDATE roles SET name = $1, permissions = $2, position = $3, color = $4, hoist = $5, mentionable = $6 WHERE role_id = $7`, [name, permissions, position, color, hoist ? 1 : 0, mentionable ? 1 : 0, role_id]);
+            await database.runQuery(`UPDATE roles SET name = $1, permissions = $2, position = $3, color = $4, hoist = $5, mentionable = $6 WHERE role_id = $7`, [role.name, role.permissions, role.position, role.color, role.hoist ? 1 : 0, role.mentionable ? 1 : 0, role.id]);
 
             return true;
         } catch(error) {
