@@ -11,6 +11,7 @@ class Twitch {
         if (!twitchConfig) return null;
         
         const form = new FormData();
+        
         form.append("client_id", twitchConfig.client_id);
         form.append("client_secret", twitchConfig.client_secret);
         form.append("code", this.code);
@@ -23,7 +24,7 @@ class Twitch {
         };
 
         try {
-            const response = await (await request('https://id.twitch.tv/oauth2/token', options)).json();
+            const response = await (await fetch('https://id.twitch.tv/oauth2/token', options)).json();
 
             return response.access_token;
         } catch (error) {
@@ -43,7 +44,7 @@ class Twitch {
         };
     
         try {
-            const response = await (await request('https://api.twitch.tv/helix/users', options)).json();
+            const response = await (await fetch('https://api.twitch.tv/helix/users', options)).json();
 
             return response.data[0];
         } catch (error) {

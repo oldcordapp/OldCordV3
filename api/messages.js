@@ -60,6 +60,10 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
         let messages = await global.database.getChannelMessages(channel.id, limit, req.query.before, req.query.after, includeReactions);
 
         for(var msg of messages) {
+            if (msg.id === '1279218211430105089') {
+                msg.content = msg.content.replace("[YEAR]", req.client_build_date.getFullYear());
+            }
+
             if (msg.reactions) {
                 for(var reaction of msg.reactions) {
                     reaction.me = reaction.user_ids.includes(creator.id);
@@ -72,8 +76,6 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
         return res.status(200).json(messages);
     } catch (error) {
         logText(error, "error");
-
-        
 
         return res.status(500).json({
             code: 500,

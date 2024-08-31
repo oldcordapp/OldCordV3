@@ -156,6 +156,38 @@ app.get('/icons/:serverid/:file', async (req, res) => {
     }
 });
 
+app.get("/app-assets/:applicationid/store/:file", async(req, res) => {
+    try {
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'app_assets');
+
+        if (!fs.existsSync(directoryPath)) {
+            return res.status(404).send("File not found");
+        }
+
+        let files = fs.readdirSync(directoryPath);
+        let matchedFile = null;
+
+        if (req.params.file.includes(".mp4")) {
+            matchedFile = files[1];
+        } else matchedFile = files[0];
+
+        if (!matchedFile) {
+            return res.status(404).send("File not found");
+        }
+
+        const filePath = path.join(directoryPath, matchedFile);
+
+        return res.status(200).sendFile(filePath);
+    } catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
 app.get('/channel-icons/:channelid/:file', async (req, res) => {
     try {
         const directoryPath = path.join(__dirname, 'www_dynamic', 'group_icons', req.params.channelid);

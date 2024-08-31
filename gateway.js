@@ -195,11 +195,11 @@ const gateway = {
                         //UGHHHHHHHHHHHHHHHHHHHHHHHHHHH
                         let guild_id = packet.d.guild_id;
 
-                        if (!guild_id) return socket.close(4000, 'Invalid payload'); // need to be more strict on this
+                        if (!guild_id); // need to be more strict on this
 
                         let guild = await global.database.getGuildById(guild_id);
 
-                        if (!guild) return socket.close(4000, 'Invalid payload');
+                        if (!guild);
 
                         if (!guild.members.find(x => x.user.id === socket.user.id)) return socket.close(4000, 'Invalid payload');
 
@@ -219,21 +219,21 @@ const gateway = {
 
                         let channels = packet.d.channels;
 
-                        if (!channels) return socket.close(4000, 'Invalid payload');
+                        if (!channels) return;
 
                         let channelId = Object.keys(packet.d.channels)[0];
 
-                        if (!channelId) return socket.close(4000, 'Invalid payload');
+                        if (!channelId) return;
 
                         let range = packet.d.channels[channelId][0];
 
-                        if (!range) return socket.close(4000, 'Invalid payload');
+                        if (!range) return;
 
                         let [startIndex, endIndex] = range;
 
                         let channel = guild.channels.find(x => x.id === channelId);
 
-                        if (!channel) return socket.close(4000, 'Invalid payload'); //wtf?
+                        if (!channel) return;
 
                         //to-do subscribe to events for specific members
 

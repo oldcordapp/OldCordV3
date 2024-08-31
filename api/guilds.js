@@ -45,7 +45,13 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(gl
 
         if (!req.body.region) {
             return res.status(400).json({
-                region: "A valid server region is required."
+                name: "A valid server region is required."
+            });
+        }
+
+        if (req.body.region != "everything" && req.client_build_date.getFullYear() != parseInt(req.body.region)) {
+            return res.status(400).json({
+                name: "Year must be your current client build year or pick everything."
             });
         }
 
@@ -204,7 +210,7 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             })
         }
 
-        if (req.body.region && req.body.region != what.region) {
+        if (req.body.region && req.body.region != what.region && req.body.region != "everything") {
             return res.status(400).json({
                 region: "Cannot change the oldcord year region for this server at this time. Try again later."
             });

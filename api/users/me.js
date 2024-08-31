@@ -4,6 +4,7 @@ const { rateLimitMiddleware, guildMiddleware } = require('../../helpers/middlewa
 const { logText } = require('../../helpers/logger');
 const router = express.Router();
 const relationships = require('./relationships');
+const Snowflake = require('../../helpers/snowflake');
 
 router.use("/relationships", relationships);
 
@@ -657,9 +658,11 @@ router.get("/mentions", async (req, res) => {
     let include_everyone_mentions = req.query.everyone == "true" ?? true;
     let before = req.query.before ?? null;
 
-    let recentMentions = await global.database.getRecentMentions(account.id, before, limit, include_roles, include_everyone_mentions, guild_id);
+    if (!guild_id) {
+      return res.status(200).json([]); //wtf why does this crash?
+    }
 
-    recentMentions = recentMentions.filter(x => x.guild_id !== null); //so it turns out guild_id crashes december 2018? - fix this function so it doesnt return entries with null guild ids
+    let recentMentions = await global.database.getRecentMentions(account.id, before, limit, include_roles, include_everyone_mentions, guild_id);
 
     return res.status(200).json(recentMentions);
   } catch (error) {
@@ -676,12 +679,19 @@ router.get("/activities", (req, res) => {
     return res.status(200).json([]);
 });
 
+router.get("/applications/:applicationid/entitlements", (req, res) => {
+  return res.status(200).json([]);
+})
+
 router.get("/activities/statistics/applications", (req, res) => {
     return res.status(200).json([]);
 });
 
 router.get("/library", (req, res) => {
-    return res.status(200).json([]);
+    return res.status(200).json([{
+       id: "1279311572212178955",
+       name: "Jason Citron Simulator 2024"
+    }]);
 });
 
 router.get("/feed", (req, res) => {

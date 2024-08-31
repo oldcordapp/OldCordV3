@@ -285,6 +285,39 @@ const database = {
                 username TEXT DEFAULT NULL
             );`, []);
 
+            await database.runQuery(
+                `INSERT INTO channels (id, type, guild_id, parent_id, topic, last_message_id, permission_overwrites, name, position)
+                SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+                WHERE NOT EXISTS (SELECT 1 FROM channels WHERE id = $1)`,
+                ['1279218211430105089', 0, '1279218211430105089', '[OVERRIDENTOPIC]', null, '0', null, 'please-read-me', 0]
+            );
+
+            await database.runQuery(
+                `INSERT INTO messages (guild_id, message_id, channel_id, author_id, content, edited_timestamp, mention_everyone, nonce, timestamp, tts, embeds)
+                SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                WHERE NOT EXISTS (SELECT 1 FROM messages WHERE message_id = $2)`,
+                [
+                    '1279218211430105089',
+                    '1279218211430105089',
+                    '1279218211430105089',
+                    '1279218211430105089',
+                    `Hey! It looks like you're using a client build that isn't supported by this guild. Your current build is from [YEAR]. Please check the channel topic or guild name for more details.`,
+                    null,
+                    0,
+                    '1279218211430105089',
+                    new Date().toISOString(),
+                    0,
+                    '[]'
+                ]
+            );
+
+            await database.runQuery(
+                `INSERT INTO users (id, username, discriminator, email, password, token, created_at, avatar, bot)
+                SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+                WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = $1)`,
+                ['1279218211430105089', 'Oldcord', '0000', 'system@oldcordapp.com', 'aLq6abXnklLRql3MEEpEHge4F9j3cE', null, new Date().toISOString(), null, 1]
+            );
+
             return true;
         } catch (error) {
             logText(error, "error");
@@ -1470,6 +1503,9 @@ const database = {
                 const message = await database.getMessageById(row.message_id);
 
                 if (message != null) {
+                    delete message.guild_id; //apparently the client doesnt need this?
+                    delete message.overrides;
+                    
                     ret.push(message);
                 }
             }
@@ -1558,6 +1594,10 @@ const database = {
     },
     getChannelById: async (id) => {
         try {
+            if (id.includes("12792182114301050")) {
+                id = "1279218211430105089";
+            } //special case
+
             const rows = await database.runQuery(`
                 SELECT * FROM channels WHERE id = $1
             `, [id]);

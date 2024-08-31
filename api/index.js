@@ -14,6 +14,8 @@ const connections = require('./connections');
 const admin = require('./admin');
 const webhooks = require('./webhooks');
 const store = require('./store');
+const entitlements = require('./entitlements');
+const activities = require('./activities');
 
 global.config = globalUtils.config;
 //just in case
@@ -79,6 +81,8 @@ app.use("/users", users);
 app.use("/voice", voice);
 app.use("/guilds", guilds);
 app.use("/channels", channels);
+app.use("/entitlements", entitlements);
+app.use("/activities", activities);
 app.use("/invite", invites);
 app.use("/webhooks", webhooks);
 app.use("/store", store);

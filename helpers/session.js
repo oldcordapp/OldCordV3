@@ -1,6 +1,7 @@
 const globalUtils = require('./globalutils');
 const { logText } = require("./logger");
 const zlib = require('zlib');
+const Snowflake = require('../helpers/snowflake');
 
 //Adapted from Hummus' handling of sessions & whatnot
 
@@ -317,8 +318,30 @@ class session {
                     continue;
                 }
 
-                if (guild.region != "everything" && year < parseInt(guild.region)) {
-                    this.guilds = this.guilds.filter(x => x.id !== guild.id);
+                if (guild.region != "everything" && year != parseInt(guild.region)) {
+                    guild.channels = [{
+                        type: this.socket.channel_types_are_ints ? 0 : "text",
+                        name: guild.name.replace(/" "/g, "_"),
+                        topic: `This server only supports ${guild.region} and you're using ${year}! Please change your client and try again.`,
+                        last_message_id: "0",
+                        id: `12792182114301050${Math.round(Math.random() * 100).toString()}`,
+                        parent_id: null,
+                        guild_id: guild.id,
+                        permission_overwrites: []
+                    }];
+            
+                    guild.roles = [{
+                        id: guild.id,
+                        name: "@everyone",
+                        permissions: 104186945,
+                        position: 0,
+                        color: 0,
+                        hoist: false,
+                        mentionable: false
+                    }]
+            
+                    guild.name = `${guild.region} ONLY! CHANGE BUILD`;
+                    guild.owner_id = "1279218211430105089";
 
                     continue;
                 }
@@ -355,14 +378,11 @@ class session {
                         this.read_states.push(getLatestAcknowledgement);
                     }
 
-                    /*
                     if ((year === 2017 && month < 9) || year < 2017) {
                         if (channel.type === 4) {
-                            channel.type = 0;
-                            
+                           guild.channels = guild.channels.filter(x => x.id !== channel.id);
                         }
                     }
-                    */
                 }
             }
 

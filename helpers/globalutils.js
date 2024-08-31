@@ -120,16 +120,16 @@ const globalUtils = {
     getRegions: () => {
         return [{
             id: "2016",
-            name: "Up to 2016"
+            name: "2016 Only"
         }, {
             id: "2017",
-            name: "Up to 2017"
+            name: "2017 Only"
         }, {
             id: "2018",
-            name: "Up to 2018"
+            name: "2018 Only"
         }, {
             id: "2019",
-            name: "Up to 2019"
+            name: "2019 Only"
         }, {
             id: "everything",
             name: "Everything"
@@ -194,6 +194,29 @@ const globalUtils = {
         }
 
         return sanitizedObject;
+    },
+    buildGuildObject: (guild, req) => {
+        if (!guild) return null;
+
+        if (!req.account) return null;
+
+        if (guild.region != "everything" && client_build.getFullYear() != parseInt(guild.region)) {
+            let sessions = global.userSessions.get(req.account.id);
+
+            if (!sessions) return guild; //fallback ig
+
+            let session = sessions.find(x => x.socket != null && x.socket.client_build === req.client_build);
+                
+            if (!session) return guild;
+            
+            let proper_guild = session.guilds.find(x => x.id === guild.id);
+
+            if (!session.guilds || !proper_guild) return guild; //man wtf
+
+            return proper_guild;
+        }
+
+        return guild;
     },
     unavailableGuild: async (guild, error) => {
         //danger zone buddy
