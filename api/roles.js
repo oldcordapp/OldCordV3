@@ -145,7 +145,7 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
             role_id: req.params.roleid
         });
 
-        if (member_with_role.roles.length > 0) {
+        if (members_with_role.length > 0) {
             for(var member_with_role of members_with_role) {
                 let member_with_roles = member_with_role.roles;
 
