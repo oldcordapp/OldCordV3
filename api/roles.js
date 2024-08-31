@@ -1,6 +1,7 @@
 const express = require('express');
 const { logText } = require('../helpers/logger');
 const { rateLimitMiddleware, guildPermissionsMiddleware } = require('../helpers/middlewares');
+const globalUtils = require('../helpers/globalutils');
 
 const router = express.Router({ mergeParams: true });
 
@@ -108,6 +109,15 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
             });
         }
 
+        let guild = req.guild;
+
+        if (!guild) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Guild"
+            }); 
+        }
+
         let role = req.role;
 
         if (role == null) {
@@ -116,6 +126,8 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
                 message: "Unknown Role"
             });
         }
+
+        let members_with_role = req.guild.members.filter(x => x.roles.some(y => y === role.id));
 
         const attempt = await global.database.deleteRole(req.params.roleid);
 
@@ -132,6 +144,21 @@ router.delete("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitM
             guild_id: req.params.guildid,
             role_id: req.params.roleid
         });
+
+        if (member_with_role.roles.length > 0) {
+            for(var member_with_role of members_with_role) {
+                let member_with_roles = member_with_role.roles;
+
+                member_with_roles = member_with_roles.filter(x => x !== role.id);
+    
+                await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_MEMBER_UPDATE", {
+                    roles: member_with_roles,
+                    user: globalUtils.miniUserObject(member_with_role.user),
+                    guild_id: req.guild.id,
+                    nick: member_with_role.nick
+                });
+            }
+        }
 
         return res.status(204).send();
     } catch (error) {
