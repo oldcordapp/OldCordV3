@@ -14,6 +14,7 @@ const connections = require('./connections');
 const admin = require('./admin');
 const webhooks = require('./webhooks');
 const store = require('./store');
+const oauth2 = require('./oauth2/index');
 const entitlements = require('./entitlements');
 const activities = require('./activities');
 
@@ -85,9 +86,14 @@ app.use("/entitlements", entitlements);
 app.use("/activities", activities);
 app.use("/invite", invites);
 app.use("/webhooks", webhooks);
+app.use("/oauth2", oauth2);
 app.use("/store", store);
 
 app.use("/track", (_, res) => {
+    return res.status(204).send();
+});
+
+app.use("/science", (_, res) => {
     return res.status(204).send();
 });
 

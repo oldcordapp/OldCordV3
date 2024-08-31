@@ -48,6 +48,44 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         });
     }
 
+    if (account.bot) {
+      if (req.body.username) {
+        account.username = req.body.username;
+      }
+
+      if (account.username.length < 2 || account.username.length > 30) {
+          return res.status(400).json({
+            code: 400,
+            username: "Must be between 2 and 30 characters"
+          });
+      }
+
+      let goodUsername = globalUtils.checkUsername(account.username);
+
+      if (goodUsername.code !== 200) {
+          return res.status(goodUsername.code).json(goodUsername);
+      }
+
+      if (req.body.avatar === "") {
+        account.avatar = null;
+      }
+
+      if (req.body.avatar) {
+        account.avatar = req.body.avatar;
+      }
+
+      account = await global.database.updateBotUser(account);
+
+      if (!account) {
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        });
+      }
+
+      return res.status(200).json(account);
+    }
+
     // New accounts via invite (unclaimed account) have null email and null password.
     // By genius Discord engineering if they claim an account it does not use new_password it uses password.
 

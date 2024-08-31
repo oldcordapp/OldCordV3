@@ -184,6 +184,28 @@ const database = {
                 verification_level INTEGER DEFAULT 0
            );`, []);
 
+           await database.runQuery(`
+           CREATE TABLE IF NOT EXISTS applications (
+               id TEXT PRIMARY KEY,
+               owner_id TEXT,
+               name TEXT DEFAULT 'My Application',
+               icon TEXT DEFAULT NULL,
+               secret TEXT DEFAULT NULL,
+               description TEXT DEFAULT NULL
+          );`, []);
+
+          await database.runQuery(`
+          CREATE TABLE IF NOT EXISTS bots (
+              id TEXT PRIMARY KEY,
+              application_id TEXT,
+              username TEXT,
+              discriminator TEXT,
+              avatar TEXT DEFAULT NULL,
+              public INTEGER DEFAULT 1,
+              require_code_grant INTEGER DEFAULT 0,
+              token TEXT DEFAULT NULL
+         );`, []);
+
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS roles (
                 guild_id TEXT,
@@ -516,35 +538,46 @@ const database = {
     },
     getAccountByToken: async (token) => {
         try {
-            const rows = await database.runQuery(`
-                SELECT * FROM users WHERE token = $1
+            let rows = await database.runQuery(`
+                    SELECT * FROM users WHERE token = $1
             `, [token]);
-            
-            if (!rows || rows.length == 0)
-                return null;
+                
+                if (!rows || rows.length == 0) {
+                    rows = await database.runQuery(`
+                        SELECT * FROM bots WHERE token = $1
+                    `, [token.split('Bot ')[1]]);
 
-            if (rows === null || rows.length === 0) {
-                return null;
-            }
+                    if (!rows || rows.length == 0)
+                        return null;
 
-            let contents = JSON.parse(rows[0].relationships);
-            let relationships = [];
-            
-            if (contents && contents.length > 0) {
-                for (var relationship of contents) {
-                    let user = await global.database.getRelationshipUserById(relationship.id);
-
-                    if (user && user.id != rows[0].id) {
-                        relationships.push({
-                            id: relationship.id,
-                            type: relationship.type,
-                            user: user
-                        })
+                    return {
+                        avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
+                        bot: true,
+                        discriminator: rows[0].discriminator,
+                        id: rows[0].id,
+                        token: rows[0].token,
+                        username: rows[0].username
                     }
                 }
-            }
 
-            return globalUtils.prepareAccountObject(rows, relationships);
+                let contents = JSON.parse(rows[0].relationships);
+                let relationships = [];
+                
+                if (contents && contents.length > 0) {
+                    for (var relationship of contents) {
+                        let user = await global.database.getRelationshipUserById(relationship.id);
+
+                        if (user && user.id != rows[0].id) {
+                            relationships.push({
+                                id: relationship.id,
+                                type: relationship.type,
+                                user: user
+                            })
+                        }
+                    }
+                }
+
+                return globalUtils.prepareAccountObject(rows, relationships);
         } catch (error) {
             logText(error, "error");
 
@@ -684,24 +717,45 @@ const database = {
                 SELECT * FROM users WHERE id = $1
             `, [id]);
 
-            let contents = JSON.parse(rows[0].relationships);
-            let relationships = [];
-            
-            if (contents && contents.length > 0) {
-                for (var relationship of contents) {
-                    let user = await global.database.getRelationshipUserById(relationship.id);
+            if (rows === null || rows.length === 0) {
+                rows = await database.runQuery(`
+                    SELECT * FROM bots WHERE id = $1
+                `, [id]);
 
-                    if (!user || user.id === id) continue;
-
-                    relationships.push({
-                        id: relationship.id,
-                        type: relationship.type,
-                        user: user
-                    })
+                if (rows === null || rows.length === 0) {
+                    return null;
                 }
             }
 
-            return globalUtils.prepareAccountObject(rows, relationships);
+            if (rows[0].require_code_grant != undefined) {
+                return {
+                    avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
+                    bot: true,
+                    discriminator: rows[0].discriminator,
+                    id: rows[0].id,
+                    token: rows[0].token,
+                    username: rows[0].username
+                }
+            } else {
+                let contents = JSON.parse(rows[0].relationships);
+                let relationships = [];
+                
+                if (contents && contents.length > 0) {
+                    for (var relationship of contents) {
+                        let user = await global.database.getRelationshipUserById(relationship.id);
+    
+                        if (!user || user.id === id) continue;
+    
+                        relationships.push({
+                            id: relationship.id,
+                            type: relationship.type,
+                            user: user
+                        })
+                    }
+                }
+    
+                return globalUtils.prepareAccountObject(rows, relationships);
+            }
         } catch (error) {
             logText(error, "error");
 
@@ -1446,6 +1500,277 @@ const database = {
                 if (message != null) {
                     ret.push(message);
                 }
+            }
+
+            return ret;
+        } catch (error) {
+            logText(error, "error");
+
+            return [];
+        }
+    },
+    getBotByApplicationId: async (application_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM bots WHERE application_id = $1`, [application_id]);
+           
+            if (rows == null || rows.length == 0) {
+                return null;
+            }
+
+            return {
+                avatar: rows[0].avatar === 'NULL' ? null : rows[0].avatar,
+                bot: true,
+                discriminator:  rows[0].discriminator,
+                id: rows[0].id,
+                public: rows[0].public == 1,
+                require_code_grant: rows[0].require_code_grant == 1,
+                token: rows[0].token,
+                username: rows[0].username
+            };
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    abracadabraApplication: async (application) => {
+        try {
+           let id = Snowflake.generate();
+           let salt = await genSalt(10);
+           let pwHash = await hash(globalUtils.generateString(30), salt);
+           let discriminator = Math.round(Math.random() * 9999);
+
+           while (discriminator < 1000) {
+               discriminator = Math.round(Math.random() * 9999);
+           }
+
+           let token = globalUtils.generateToken(id, pwHash);
+           
+           await database.runQuery(`INSERT INTO bots (id, application_id, username, discriminator, avatar, token) VALUES ($1, $2, $3, $4, $5, $6)`, [id, application.id, application.name, discriminator.toString(), 'NULL', token]);
+
+           return {
+             avatar: null,
+             bot: true,
+             discriminator: discriminator.toString(),
+             id: id,
+             public: true,
+             require_code_grant: false,
+             token: token,
+             username: application.name
+           }
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    updateBotUser: async (bot) => {
+        try {
+            let send_icon = 'NULL';
+
+            if (bot.avatar != null) {
+                if (bot.avatar.includes("data:image")) {
+                    var extension = bot.avatar.split('/')[1].split(';')[0];
+                    var imgData =  bot.avatar.replace(`data:image/${extension};base64,`, "");
+                    var file_name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var hash = md5(file_name);
+            
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+            
+                    send_icon = hash.toString();
+            
+                    if (!fs.existsSync(`www_dynamic/avatars`)) {
+                        fs.mkdirSync(`www_dynamic/avatars`, { recursive: true });
+                    }
+    
+                    if (!fs.existsSync(`www_dynamic/avatars/${bot.id}`)) {
+                        fs.mkdirSync(`www_dynamic/avatars/${bot.id}`, { recursive: true });
+            
+                        fs.writeFileSync(`www_dynamic/avatars/${bot.id}/${hash}.${extension}`, imgData, "base64");
+                    } else {
+                        fs.writeFileSync(`www_dynamic/avatars/${bot.id}/${hash}.${extension}`, imgData, "base64");
+                    }
+                } else {
+                    send_icon = bot.avatar;
+                }
+            }
+
+            await database.runQuery(`UPDATE bots SET avatar = $1, username = $2 WHERE id = $3`, [send_icon, bot.username, bot.id]);
+
+            bot.avatar = send_icon === 'NULL' ? null : send_icon;
+
+            return bot;
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    updateBot: async (bot) => {
+        try {
+            let send_icon = 'NULL';
+
+            if (bot.avatar != null) {
+                if (bot.avatar.includes("data:image")) {
+                    var extension = bot.avatar.split('/')[1].split(';')[0];
+                    var imgData =  bot.avatar.replace(`data:image/${extension};base64,`, "");
+                    var file_name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var hash = md5(file_name);
+            
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+            
+                    send_icon = hash.toString();
+            
+                    if (!fs.existsSync(`www_dynamic/avatars`)) {
+                        fs.mkdirSync(`www_dynamic/avatars`, { recursive: true });
+                    }
+    
+                    if (!fs.existsSync(`www_dynamic/avatars/${bot.id}`)) {
+                        fs.mkdirSync(`www_dynamic/avatars/${bot.id}`, { recursive: true });
+            
+                        fs.writeFileSync(`www_dynamic/avatars/${bot.id}/${hash}.${extension}`, imgData, "base64");
+                    } else {
+                        fs.writeFileSync(`www_dynamic/avatars/${bot.id}/${hash}.${extension}`, imgData, "base64");
+                    }
+                } else {
+                    send_icon = bot.avatar;
+                }
+            }
+
+            await database.runQuery(`UPDATE bots SET avatar = $1, username = $2, public = $3, require_code_grant = $4 WHERE id = $5`, [send_icon, bot.username, bot.public === true ? 1 : 0, bot.require_code_grant === true ? 1 : 0, bot.id]);
+
+            bot.avatar = send_icon;
+
+            return bot;
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    updateUserApplication: async (user, application) => {
+        try {
+            let send_icon = 'NULL';
+
+            if (application.icon != null) {
+                if (application.icon.includes("data:image")) {
+                    var extension = application.icon.split('/')[1].split(';')[0];
+                    var imgData =  application.icon.replace(`data:image/${extension};base64,`, "");
+                    var file_name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var hash = md5(file_name);
+            
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+            
+                    send_icon = hash.toString();
+            
+                    if (!fs.existsSync(`www_dynamic/applications_icons`)) {
+                        fs.mkdirSync(`www_dynamic/applications_icons`, { recursive: true });
+                    }
+    
+                    if (!fs.existsSync(`www_dynamic/applications_icons/${application.id}`)) {
+                        fs.mkdirSync(`www_dynamic/applications_icons/${application.id}`, { recursive: true });
+            
+                        fs.writeFileSync(`www_dynamic/applications_icons/${application.id}/${hash}.${extension}`, imgData, "base64");
+                    } else {
+                        fs.writeFileSync(`www_dynamic/applications_icons/${application.id}/${hash}.${extension}`, imgData, "base64");
+                    }
+                } else {
+                    send_icon = application.icon;
+                }
+            }
+
+            await database.runQuery(`UPDATE applications SET icon = $1, name = $2, description = $3 WHERE id = $4`, [send_icon, application.name, application.description, application.id]);
+
+            application.icon = send_icon === 'NULL' ? null : send_icon;
+
+            return application;
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    createUserApplication: async (user, name) => {
+        try {
+            let id = Snowflake.generate();
+            let secret = globalUtils.generateString(20);
+
+            await database.runQuery(`INSERT INTO applications (id, owner_id, name, icon, secret, description) VALUES ($1, $2, $3, $4, $5, $6)`, [id, user.id, name, 'NULL', secret, '']);
+
+            return {
+                id: id,
+                name: name,
+                icon: null,
+                description: "",
+                redirect_uris: [],
+                rpc_application_state: 0,
+                rpc_origins: [],
+                secret: secret,
+                owner: globalUtils.miniUserObject(user)
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    getApplicationById: async (application_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM applications WHERE id = $1`, [application_id]);
+           
+            if (rows == null || rows.length == 0) {
+                return null;
+            }
+
+            let owner = await database.getAccountByUserId(rows[0].owner_id);
+
+            if (!owner) return null;
+
+            return {
+                id: rows[0].id,
+                name: rows[0].name == 'NULL' ? 'My Application' : rows[0].name,
+                icon: rows[0].icon == 'NULL' ? null : rows[0].icon,
+                description: rows[0].description == 'NULL' ? '' : rows[0].description,
+                redirect_uris: [],
+                rpc_application_state: 0,
+                rpc_origins: [],
+                secret: rows[0].secret,
+                owner: globalUtils.miniUserObject(owner)
+            };
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    getUsersApplications: async (user) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM applications WHERE owner_id = $1`, [user.id]);
+           
+            if (rows == null || rows.length == 0) {
+                return [];
+            }
+
+            const ret = [];
+
+            for (const row of rows) {
+                ret.push({
+                    id: row.id,
+                    name: row.name == 'NULL' ? 'My Application' : row.name,
+                    icon: row.icon == 'NULL' ? null : row.icon,
+                    description: row.description == 'NULL' ? '' : row.description,
+                    redirect_uris: [],
+                    rpc_application_state: 0,
+                    rpc_origins: [],
+                    secret: row.secret,
+                    owner: globalUtils.miniUserObject(user)
+                })
             }
 
             return ret;

@@ -587,6 +587,11 @@ const globalUtils = {
             flags: user.flags,
             premium: user.premium
         };
+    },
+    miniBotObject: (bot) => {
+        delete bot.token;
+
+        return bot;
     }
 };
 

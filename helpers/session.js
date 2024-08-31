@@ -29,6 +29,7 @@ class session {
         this.read_states = [];
         this.relationships = [];
         this.subscriptions = [];
+        this.guildCache = [];
     }
     onClose(code) {
         if (this.dead) return;
@@ -301,91 +302,104 @@ class session {
 
             this.guilds = await global.database.getUsersGuilds(this.user.id);
 
-            for(var guild of this.guilds) {
-                if (guild.unavailable) {
-                    this.guilds = this.guilds.filter(x => x.id !== guild.id);
+            if (this.user.bot) {
+                for(var guild of this.guilds) {
+                    this.guildCache.push(guild);
 
-                    this.unavailable_guilds.push(guild.id);
-
-                    continue;
-                }
-                
-                if (globalUtils.unavailableGuildsStore.includes(guild.id)) {
-                    this.guilds = this.guilds.filter(x => x.id !== guild.id);
-
-                    this.unavailable_guilds.push(guild.id);
-
-                    continue;
-                }
-
-                if (guild.region != "everything" && year != parseInt(guild.region)) {
-                    guild.channels = [{
-                        type: this.socket.channel_types_are_ints ? 0 : "text",
-                        name: guild.name.replace(/" "/g, "_"),
-                        topic: `This server only supports ${guild.region} and you're using ${year}! Please change your client and try again.`,
-                        last_message_id: "0",
-                        id: `12792182114301050${Math.round(Math.random() * 100).toString()}`,
-                        parent_id: null,
-                        guild_id: guild.id,
-                        permission_overwrites: []
-                    }];
-            
-                    guild.roles = [{
+                    guild = {
                         id: guild.id,
-                        name: "@everyone",
-                        permissions: 104186945,
-                        position: 0,
-                        color: 0,
-                        hoist: false,
-                        mentionable: false
-                    }]
-            
-                    guild.name = `${guild.region} ONLY! CHANGE BUILD`;
-                    guild.owner_id = "1279218211430105089";
-
-                    continue;
+                        unavailable: true
+                    }; //bots cant get this here idk
                 }
-
-                let guild_presences = guild.presences;
-
-                if (guild_presences.length == 0) continue;
-
-                for(var presence of guild_presences) {
-                    this.presences.push({
-                        game_id: null,
-                        user: globalUtils.miniUserObject(presence.user),
-                        activities: [],
-                        status: presence.status
-                    });
-                }
-
-                for(var channel of guild.channels) {
-                    if (!this.socket.channel_types_are_ints) {
-                        channel.type = channel.type == 2 ? "voice" : "text";
-                    }
-
-                    let can_see = await global.permissions.hasChannelPermissionTo(channel, guild, this.user.id, "READ_MESSAGE_HISTORY");
-
-                    if (!can_see) {
-                        guild.channels = guild.channels.filter(x => x.id !== channel.id);
-
+            } else {
+                for(var guild of this.guilds) {
+                    if (guild.unavailable) {
+                        this.guilds = this.guilds.filter(x => x.id !== guild.id);
+    
+                        this.unavailable_guilds.push(guild.id);
+    
                         continue;
                     }
-
-                    let getLatestAcknowledgement = await global.database.getLatestAcknowledgement(this.user.id, channel.id);
-
-                    if (getLatestAcknowledgement) {
-                        this.read_states.push(getLatestAcknowledgement);
+                    
+                    if (globalUtils.unavailableGuildsStore.includes(guild.id)) {
+                        this.guilds = this.guilds.filter(x => x.id !== guild.id);
+    
+                        this.unavailable_guilds.push(guild.id);
+    
+                        continue;
                     }
-
-                    if ((year === 2017 && month < 9) || year < 2017) {
-                        if (channel.type === 4) {
-                           guild.channels = guild.channels.filter(x => x.id !== channel.id);
+    
+                    
+    
+                    if (guild.region != "everything" && year != parseInt(guild.region)) {
+                        guild.channels = [{
+                            type: this.socket.channel_types_are_ints ? 0 : "text",
+                            name: guild.name.replace(/" "/g, "_"),
+                            topic: `This server only supports ${guild.region} and you're using ${year}! Please change your client and try again.`,
+                            last_message_id: "0",
+                            id: `12792182114301050${Math.round(Math.random() * 100).toString()}`,
+                            parent_id: null,
+                            guild_id: guild.id,
+                            permission_overwrites: []
+                        }];
+                
+                        guild.roles = [{
+                            id: guild.id,
+                            name: "@everyone",
+                            permissions: 104186945,
+                            position: 0,
+                            color: 0,
+                            hoist: false,
+                            mentionable: false
+                        }]
+                
+                        guild.name = `${guild.region} ONLY! CHANGE BUILD`;
+                        guild.owner_id = "1279218211430105089";
+    
+                        continue;
+                    }
+    
+                    let guild_presences = guild.presences;
+    
+                    if (guild_presences.length == 0) continue;
+    
+                    for(var presence of guild_presences) {
+                        this.presences.push({
+                            game_id: null,
+                            user: globalUtils.miniUserObject(presence.user),
+                            activities: [],
+                            status: presence.status
+                        });
+                    }
+    
+                    for(var channel of guild.channels) {
+                        if (!this.socket.channel_types_are_ints) {
+                            channel.type = channel.type == 2 ? "voice" : "text";
+                        }
+    
+                        let can_see = await global.permissions.hasChannelPermissionTo(channel, guild, this.user.id, "READ_MESSAGE_HISTORY");
+    
+                        if (!can_see) {
+                            guild.channels = guild.channels.filter(x => x.id !== channel.id);
+    
+                            continue;
+                        }
+    
+                        let getLatestAcknowledgement = await global.database.getLatestAcknowledgement(this.user.id, channel.id);
+    
+                        if (getLatestAcknowledgement) {
+                            this.read_states.push(getLatestAcknowledgement);
+                        }
+    
+                        if ((year === 2017 && month < 9) || year < 2017) {
+                            if (channel.type === 4) {
+                               guild.channels = guild.channels.filter(x => x.id !== channel.id);
+                            }
                         }
                     }
                 }
             }
-
+            
             let tutorial = {
                 indicators_suppressed: true,
                 indicators_confirmed: [
@@ -460,6 +474,14 @@ class session {
                     unavailable: true,
                 })
             }
+
+            if (this.user.bot) {
+                for(var guild of this.guilds) {
+                    if (guild.unavailable) {
+                        await this.dispatch("GUILD_CREATE", this.guildCache.find(x => x.id == guild.id));
+                    }
+                }
+            } //ok
         } catch(error) { 
             logText(error, "error");
         }

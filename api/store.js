@@ -120,7 +120,6 @@ router.get("/published-listings/skus/:skuId", async (req, res) => {
             width: 600,
             height: 800
         },
-
         preview_video: {
             id: Snowflake.generate(),
             size: 1311923,

@@ -261,7 +261,9 @@ async function timer(ms) {
     loadLog("Downloading application");
     let html;
     try {
-        html = await (await fetch(`${cdn_url}/assets/clients/${release_date}/app.html`)).text();
+        if (location.href.includes('/developers')) {
+            html = await (await fetch(`${cdn_url}/assets/clients/developers_2018/app.html`)).text();
+        } else html = await (await fetch(`${cdn_url}/assets/clients/${release_date}/app.html`)).text();
     } catch (e) {
         loadLog("Fatal error occurred. Please check the console.", true, true);
         throw e;

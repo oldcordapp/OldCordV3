@@ -216,6 +216,34 @@ app.get('/channel-icons/:channelid/:file', async (req, res) => {
     }
 });
 
+app.get('/app-icons/:applicationid/:file', async (req, res) => {
+    try {
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'applications_icons', req.params.applicationid);
+
+        if (!fs.existsSync(directoryPath)) {
+            return res.status(404).send("File not found");
+        }
+
+        const files = fs.readdirSync(directoryPath);
+        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
+
+        if (!matchedFile) {
+            return res.status(404).send("File not found");
+        }
+
+        const filePath = path.join(directoryPath, matchedFile);
+
+        return res.status(200).sendFile(filePath);
+    } catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
 app.get('/splashes/:serverid/:file', async (req, res) => {
     try {
         const directoryPath = path.join(__dirname, 'www_dynamic', 'splashes', req.params.serverid);
@@ -400,6 +428,7 @@ app.get("/channels/:guildid/:channelid", (_, res) => {
 app.get("/bootloaderConfig", (req, res) => {
     const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
     const base_url = config.base_url + portAppend;
+
     res.json({
         instance_name: config.instance_name,
         instance_description: config.instance_description,
