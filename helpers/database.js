@@ -1543,7 +1543,7 @@ const database = {
                discriminator = Math.round(Math.random() * 9999);
            }
 
-           let token = globalUtils.generateToken(id, pwHash);
+           let token = globalUtils.generateToken(application.id, pwHash);
            
            await database.runQuery(`INSERT INTO bots (id, application_id, username, discriminator, avatar, token) VALUES ($1, $2, $3, $4, $5, $6)`, [application.id, application.id, application.name, discriminator.toString(), 'NULL', token]);
 
