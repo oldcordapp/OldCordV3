@@ -71,7 +71,7 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
     }
 });
 
-async function updateMember(res, member, guild, roles, nick) {
+async function updateMember(member, guild, roles, nick) {
     let rolesChanged = false;
     let guild_id = guild.id;
     if (!roles) {
@@ -107,10 +107,10 @@ async function updateMember(res, member, guild, roles, nick) {
             if (!await global.database.setRoles(guild, roles, member.id)) {
                 await globalUtils.unavailableGuild(guild, "Setting roles on " + member.id + " failed");
 
-                return res.status(500).json({
+                return {
                     code: 500,
                     message: "Internal Server Error"
-                });
+                };
             }
         }
     }
@@ -126,17 +126,17 @@ async function updateMember(res, member, guild, roles, nick) {
         } else {
             //Set new nick
             if (nick.length < 2) {
-                return res.status(400).json({
+                return {
                     code: 400,
                     nick: "Nickname must be between 2 and 30 characters."
-                });
+                };
             }
 
             if (nick.length > 30) {
-                return res.status(400).json({
+                return {
                     code: 400,
                     nick: "Nickname must be between 2 and 30 characters."
-                });
+                };
             }
         }
 
@@ -146,10 +146,10 @@ async function updateMember(res, member, guild, roles, nick) {
             if (!tryUpdateNick) {
                 await globalUtils.unavailableGuild(guild, "Updating nick failed");
 
-                return res.status(500).json({
+                return {
                     code: 500,
                     message: "Internal Server Error"
-                });
+                }
             }
 
             member.nick = nick;
@@ -187,7 +187,11 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
             });
         }
 
-        let newMember = await updateMember(res, req.member, req.guild, req.body.roles, req.body.nick);
+        let newMember = await updateMember(req.member, req.guild, req.body.roles, req.body.nick);
+
+        if (newMember.code) {
+            return res.status(newMember.code).json(newMember);
+        }
 
         return res.status(200).json({
             user: globalUtils.miniUserObject(newMember.user),
@@ -232,7 +236,11 @@ router.patch("/@me/nick", guildPermissionsMiddleware("CHANGE_NICKNAME"), rateLim
             });
         }
         
-        let newMember = await updateMember(res, member, req.guild, null, req.body.nick);
+        let newMember = await updateMember(member, req.guild, null, req.body.nick);
+
+        if (newMember.code) {
+            return res.status(newMember.code).json(newMember);
+        }
 
         await global.dispatcher.dispatchEventInGuild(req.guild, "GUILD_MEMBER_UPDATE", {
             roles: newMember.roles,
