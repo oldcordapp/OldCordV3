@@ -17,7 +17,7 @@ router.get("/guilds/search", staffAccessMiddleware(1), async (req, res) => {
         let tryNumber = parseInt(search);
         let isGuildId = false;
 
-        if (tryNumber !== NaN) {
+        if (!isNaN(tryNumber)) {
             isGuildId = true;
         }
 

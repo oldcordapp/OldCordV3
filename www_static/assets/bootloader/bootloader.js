@@ -262,7 +262,13 @@ async function timer(ms) {
     let html;
     try {
         if (location.href.includes('/developers')) {
-            html = await (await fetch(`${cdn_url}/assets/clients/developers_2018/app.html`)).text();
+            let dev_year = release_date.split('_')[2];
+
+            if (isNaN(parseInt(dev_year)) || (parseInt(dev_year) <= 2017 || parseInt(dev_year) > 2019)) {
+                dev_year = "2018";
+            }
+
+            html = await (await fetch(`${cdn_url}/assets/clients/developers_${dev_year}/app.html`)).text();
         } else html = await (await fetch(`${cdn_url}/assets/clients/${release_date}/app.html`)).text();
     } catch (e) {
         loadLog("Fatal error occurred. Please check the console.", true, true);

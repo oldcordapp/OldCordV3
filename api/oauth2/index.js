@@ -175,7 +175,7 @@ router.post("/authorize", async (req, res) => {
             });
         }
 
-        if (!permissions || permissions === NaN) {
+        if (!permissions || isNaN(permissions)) {
             permissions = 0;
         }
 

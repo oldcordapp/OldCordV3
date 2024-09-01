@@ -329,8 +329,6 @@ class session {
                         continue;
                     }
     
-                    
-    
                     if (guild.region != "everything" && year != parseInt(guild.region)) {
                         guild.channels = [{
                             type: this.socket.channel_types_are_ints ? 0 : "text",
