@@ -73,28 +73,27 @@ router.delete("/:memberid", guildPermissionsMiddleware("KICK_MEMBERS"), rateLimi
 
 async function updateMember(member, guild, roles, nick) {
     let rolesChanged = false;
+    let nickChanged = false;
     let guild_id = guild.id;
+
     if (!roles) {
-        //No change
         roles = member.roles;
     } else {
-        //New roles list
         let newRoles = [];
-        for(var role of roles) {
-            if (JSON.stringify(role).includes("id")) {
-                let RoleObj = role;
 
-                newRoles.push(RoleObj.id);
+        for (let role of roles) {
+            if (typeof role === "object" && role.hasOwnProperty("id")) {
+                newRoles.push(role.id);
             } else {
                 newRoles.push(role);
             }
         }
         
-        if (member.roles.length != newRoles.length) {
+        if (member.roles.length !== newRoles.length) {
             rolesChanged = true;
         } else {
             for (let i = 0; i < member.roles.length; i++) {
-                if (member.roles[i] != newRoles[i]) {
+                if (member.roles[i] !== newRoles[i]) {
                     rolesChanged = true;
                     break;
                 }
@@ -116,23 +115,12 @@ async function updateMember(member, guild, roles, nick) {
     }
 
     if (nick == null || nick === undefined) {
-        //No change
         nick = member.nick;
     } else {
-        //Change
-        if (nick === "" || nick == member.user.username) {
-            //Reset nick
+        if (nick === "" || nick === member.user.username) {
             nick = null;
         } else {
-            //Set new nick
-            if (nick.length < 2) {
-                return {
-                    code: 400,
-                    nick: "Nickname must be between 2 and 30 characters."
-                };
-            }
-
-            if (nick.length > 30) {
+            if (nick.length < 2 || nick.length > 30) {
                 return {
                     code: 400,
                     nick: "Nickname must be between 2 and 30 characters."
@@ -140,19 +128,17 @@ async function updateMember(member, guild, roles, nick) {
             }
         }
 
-        if (nick != member.nick) {
-            let tryUpdateNick = await global.database.updateGuildMemberNick(guild_id, member.user.id, nick);
+        if (nick !== member.nick) {
+            nickChanged = true;
 
-            if (!tryUpdateNick) {
+            if (!await global.database.updateGuildMemberNick(guild_id, member.user.id, nick)) {
                 await globalUtils.unavailableGuild(guild, "Updating nick failed");
 
                 return {
                     code: 500,
                     message: "Internal Server Error"
-                }
+                };
             }
-
-            member.nick = nick;
         }
     }
 
@@ -163,9 +149,13 @@ async function updateMember(member, guild, roles, nick) {
         nick: nick
     };
 
-    if (rolesChanged || newMember.nick !== member.nick)
+    if (rolesChanged || nickChanged) {
         await global.dispatcher.dispatchEventInGuild(guild, "GUILD_MEMBER_UPDATE", newMember);
-    
+    }
+
+    member.roles = roles;
+    member.nick = nick;
+
     return newMember;
 }
 
@@ -205,8 +195,6 @@ router.patch("/:memberid", guildPermissionsMiddleware("MANAGE_ROLES"), guildPerm
     } catch (error) {
         logText(error, "error");
     
-        
-        
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
