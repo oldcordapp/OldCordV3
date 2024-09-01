@@ -166,6 +166,12 @@ const gateway = {
                             return socket.close(4004, "Authentication failed");
                         }
 
+                        if (user.bot) {
+                            user.settings = {
+                                status: "online"
+                            }
+                        }
+
                         socket.user = user;
 
                         let sesh = new session(globalUtils.generateString(16), socket, user, packet.d.token, false, {
