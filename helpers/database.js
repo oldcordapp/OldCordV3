@@ -713,7 +713,7 @@ const database = {
                 }
             }
 
-            const rows = await database.runQuery(`
+            let rows = await database.runQuery(`
                 SELECT * FROM users WHERE id = $1
             `, [id]);
 
@@ -1535,7 +1535,6 @@ const database = {
     },
     abracadabraApplication: async (application) => {
         try {
-           let id = Snowflake.generate();
            let salt = await genSalt(10);
            let pwHash = await hash(globalUtils.generateString(30), salt);
            let discriminator = Math.round(Math.random() * 9999);
@@ -1546,13 +1545,13 @@ const database = {
 
            let token = globalUtils.generateToken(id, pwHash);
            
-           await database.runQuery(`INSERT INTO bots (id, application_id, username, discriminator, avatar, token) VALUES ($1, $2, $3, $4, $5, $6)`, [id, application.id, application.name, discriminator.toString(), 'NULL', token]);
+           await database.runQuery(`INSERT INTO bots (id, application_id, username, discriminator, avatar, token) VALUES ($1, $2, $3, $4, $5, $6)`, [application.id, application.id, application.name, discriminator.toString(), 'NULL', token]);
 
            return {
              avatar: null,
              bot: true,
              discriminator: discriminator.toString(),
-             id: id,
+             id: application.id,
              public: true,
              require_code_grant: false,
              token: token,

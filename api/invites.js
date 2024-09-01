@@ -106,7 +106,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(g
     try {
         const sender = req.account;
 
-        if (!sender) {
+        if (!sender || sender.bot) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"

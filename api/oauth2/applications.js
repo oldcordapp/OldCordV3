@@ -157,18 +157,11 @@ router.patch("/:applicationid", async (req, res) => {
 
         let application = req.application;
 
-        if (!application) {
+        if (!application || application.owner.id !== account.id) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Application"
             });
-        }
-
-        if (application.owner.id != account.id) {
-            return res.status(404).json({
-                code: 404,
-                message: "Unknown Application"
-            }); 
         }
 
         if (req.body.name) {
@@ -268,7 +261,7 @@ router.post("/:applicationid/bot", async (req, res) => {
 
         let application = req.application;
 
-        if (!application) {
+        if (!application || application.owner.id != account.id) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Application"

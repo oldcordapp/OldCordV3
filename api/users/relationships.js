@@ -20,6 +20,10 @@ router.get("/", async (req, res) => {
         });
     }
 
+    if (account.bot) {
+        return res.status(200).json([]); //bots.. ermm
+    }
+
     let relationships = account.relationships;
     
     return res.status(200).json(relationships);
@@ -45,6 +49,10 @@ router.delete("/:userid", async (req, res) => {
             });
         }
 
+        if (account.bot) {
+            return res.status(204).send();
+        }
+
         let user = req.user;
 
         if (!user) {
@@ -52,6 +60,10 @@ router.delete("/:userid", async (req, res) => {
                 code: 404,
                 message: "Unknown User"
             });
+        }
+
+        if (user.bot) {
+            return res.status(204).send(); //bots cannot add users
         }
 
         let ourFriends = account.relationships;
@@ -155,6 +167,10 @@ router.put("/:userid", async (req, res) => {
             });
         }
 
+        if (account.bot) {
+            return res.status(204).send();
+        }
+
         let user = req.user;
 
         if (!user) {
@@ -162,6 +178,10 @@ router.put("/:userid", async (req, res) => {
                 code: 404,
                 message: "Unknown User"
             });
+        }
+
+        if (user.bot) {
+            return res.status(204).send();
         }
 
         let type2 = req.body;
@@ -403,6 +423,13 @@ router.post("/", async (req, res) => {
             });
         }
 
+        if (account.bot) {
+            return res.status(403).json({
+                code: 403,
+                message: "Failed to send friend request"
+            });
+        }
+
         let email = null;
 
         if (req.body.email) {
@@ -511,6 +538,13 @@ router.post("/", async (req, res) => {
                 return res.status(404).json({
                     code: 404,
                     message: "Unknown User"
+                });
+            }
+
+            if (user.bot) {
+                return res.status(403).json({
+                    code: 403,
+                    message: "Failed to send friend request"
                 });
             }
 

@@ -368,7 +368,7 @@ router.get("/connections", async (req, res) => {
     try {
         let account = req.account;
 
-        if (!account) {
+        if (!account || account.bot) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -393,7 +393,7 @@ router.delete("/connections/:platform/:connectionid", async (req, res) => {
     try {
         let account = req.account;
 
-        if (!account) {
+        if (!account || account.bot) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -450,7 +450,7 @@ router.patch("/connections/:platform/:connectionid", async (req, res) => {
     try {
         let account = req.account;
 
-        if (!account) {
+        if (!account || account.bot) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"

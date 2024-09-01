@@ -138,22 +138,24 @@ router.get("/:userid/profile", userMiddleware, async (req, res) => {
 
         ret.mutual_guilds = mutualGuilds; 
 
-        let ourFriends = account.relationships;
-        let theirFriends = user.relationships;
-
         let sharedFriends = [];
-        
-        if (ourFriends.length > 0 && theirFriends.length > 0) {
-            let theirFriendsSet = new Set(theirFriends.map(friend => friend.user.id && friend.type == 1));
-        
-            for (let ourFriend of ourFriends) {
-                if (theirFriendsSet.has(ourFriend.user.id) && ourFriend.type == 1) {
-                    sharedFriends.push(ourFriend.user);
+
+        if (!user.bot) {
+            let ourFriends = account.relationships;
+            let theirFriends = user.relationships;
+
+            if (ourFriends.length > 0 && theirFriends.length > 0) {
+                let theirFriendsSet = new Set(theirFriends.map(friend => friend.user.id && friend.type == 1));
+            
+                for (let ourFriend of ourFriends) {
+                    if (theirFriendsSet.has(ourFriend.user.id) && ourFriend.type == 1) {
+                        sharedFriends.push(ourFriend.user);
+                    }
                 }
             }
         }
 
-        ret.mutual_friends = sharedFriends.length > 0 ? sharedFriends : [];
+        ret.mutual_friends = sharedFriends;
 
         let connectedAccounts = await global.database.getConnectedAccounts(user.id);
 
@@ -181,7 +183,7 @@ router.get("/:userid/relationships", userMiddleware, async (req, res) => {
     try {
         let account = req.account;
 
-        if (!account) {
+        if (!account || account.bot) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -195,6 +197,10 @@ router.get("/:userid/relationships", userMiddleware, async (req, res) => {
                 code: 404,
                 message: "Unknown User"
             });
+        }
+
+        if (user.bot) {
+            return res.status(200).json([]);
         }
 
         let ourFriends = account.relationships;
