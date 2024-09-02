@@ -360,6 +360,87 @@ const database = {
             return false;
         }
     },
+    op12getGuildMembersAndPresences: async (guild) => {
+        try {
+            if (guild.members.length !== 0) {
+                return {
+                    members: guild.members,
+                    presences: guild.presences
+                }
+            }
+    
+            const memberRows = await database.runQuery(`
+                SELECT * FROM members WHERE guild_id = $1
+            `, [guild.id]);
+    
+            if (memberRows === null || memberRows.length === 0) {
+                return null;
+            }
+    
+            let members = [];
+            let presences = [];
+            let offlineCount = 0;
+    
+            for (var row of memberRows) {
+                let member_roles = JSON.parse(row.roles) ?? [];
+    
+                member_roles = member_roles.filter(role_id => 
+                    roles.find(guild_role => guild_role.id === role_id) !== undefined
+                );
+    
+                const user = await database.getAccountByUserId(row.user_id);
+    
+                if (user == null) {
+                    continue;
+                }
+
+                const member = {
+                    id: user.id,
+                    nick: row.nick == 'NULL' ? null : row.nick,
+                    deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
+                    mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
+                    roles: member_roles,
+                    joined_at: new Date().toISOString(),
+                    user: globalUtils.miniUserObject(user)
+                };
+    
+                let sessions = global.userSessions.get(member.id);
+                let presenceStatus = 'offline';
+                let presence = {
+                    game_id: null,
+                    status: presenceStatus,
+                    activities: [],
+                    user: globalUtils.miniUserObject(member.user)
+                };
+    
+                if (sessions && sessions.length > 0) {
+                    let session = sessions[sessions.length - 1];
+
+                    if (session.presence) {
+                        presenceStatus = session.presence.status;
+                        presence = session.presence;
+                    }
+                }
+    
+                if (presenceStatus === 'online' || presenceStatus === 'idle' || presenceStatus === 'dnd') {
+                    members.push(member);
+                    presences.push(presence);
+                } else if (offlineCount <= 1000) {
+                    offlineCount++;
+                    members.push(member);
+                    presences.push(presence);
+                }
+            }
+    
+            return {
+                members: members,
+                presences: presences
+            };
+        } catch (error) {
+            logText(error, "error");
+            return [];
+        }
+    },
     getPrivateChannels: async (user_id) => {
         try {
             const rows = await database.runQuery(`

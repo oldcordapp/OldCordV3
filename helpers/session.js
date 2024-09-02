@@ -361,13 +361,27 @@ class session {
     
                     if (guild_presences.length == 0) continue;
     
+                    if (guild_presences.length >= 100) {
+                        guild_presences = [
+                            guild_presences.find(x => x.user.id === this.user.id)
+                        ]
+                    }
+
                     for(var presence of guild_presences) {
+                        if (this.presences.find(x => x.user.id === presence.user.id)) continue;
+
                         this.presences.push({
                             game_id: null,
                             user: globalUtils.miniUserObject(presence.user),
                             activities: [],
                             status: presence.status
                         });
+                    }
+
+                    if (guild.members.length >= 100) {
+                        guild.members = [
+                            guild.members.find(x => x.id === this.user.id)
+                        ]
                     }
     
                     for(var channel of guild.channels) {

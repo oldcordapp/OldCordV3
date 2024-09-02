@@ -197,17 +197,46 @@ const gateway = {
                         if (!socket.session) return socket.close(4003, 'Not authenticated');
 
                         await syncPresence(socket, packet);
+                    } else if (packet.op == 12) {
+                        if (!socket.session) return;
+
+                        let guild_ids = packet.d;
+
+                        if (guild_ids.length === 0) return;
+
+                        let usersGuilds = socket.session.guilds;
+
+                        if (usersGuilds.length === 0) return;
+
+                        for(var guild of guild_ids) {
+                            let guildObj = usersGuilds.find(x => x.id === guild);
+
+                            if (!guildObj) continue;
+
+                            let op12 = await global.database.op12getGuildMembersAndPresences(guildObj);
+
+                            if (op12 == null) continue;
+
+                            socket.session.dispatch("GUILD_SYNC", {
+                                id: guildObj.id,
+                                presences: op12.presences,
+                                members: op12.members
+                            });
+                        }
+                        //op12getGuildMembersAndPresences
                     } else if (packet.op == 14) {
                         //UGHHHHHHHHHHHHHHHHHHHHHHHHHHH
+                        if (!socket.session) return;
+
                         let guild_id = packet.d.guild_id;
 
                         if (!guild_id); // need to be more strict on this
 
-                        let guild = await global.database.getGuildById(guild_id);
+                        let usersGuilds = socket.session.guilds;
+
+                        let guild = usersGuilds.find(x => x.id === guild_id);
 
                         if (!guild);
-
-                        if (!guild.members.find(x => x.user.id === socket.user.id)) return socket.close(4000, 'Invalid payload');
 
                         let typing = packet.d.typing; //Subscribe to typing events?
 
