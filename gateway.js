@@ -19,7 +19,7 @@ async function syncPresence(socket, packet) {
         if (packet.d.idle_since != null) {
             setStatusTo = "idle";
         }
-    } else if (socket.client_build.includes("2016")) {
+    } else {
         gameField = packet.d.game || null;
 
         if (packet.d.status) {
