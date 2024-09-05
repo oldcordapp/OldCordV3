@@ -26,9 +26,13 @@ async function syncPresence(socket, packet) {
             setStatusTo = packet.d.status.toLowerCase();
         }
         
-        if (packet.d.afk && packet.d.afk === true) {
+        if (packet.d.afk) {
             setStatusTo = "idle";
         }
+
+        if (!packet.d.afk && packet.d.since && packet.d.since === 0) {
+            setStatusTo = "online"; //no longer afk?
+        } 
     }
 
     // Sync
