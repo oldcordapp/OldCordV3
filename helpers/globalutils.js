@@ -554,7 +554,8 @@ const globalUtils = {
             return presence;
         
         //late 2018 requires roles in presences to not crash. horseshit design
-        let newPresence = [];
+        let newPresence = {};
+        
         Object.assign(newPresence, presence);
         
         if (guild) {

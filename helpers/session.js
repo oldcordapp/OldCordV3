@@ -6,7 +6,7 @@ const Snowflake = require('../helpers/snowflake');
 //Adapted from Hummus' handling of sessions & whatnot
 
 const BUFFER_LIMIT = 500; //max dispatch event backlog before terminating?
-const SESSION_TIMEOUT = 15 * 1000; //15 seconds brooo
+const SESSION_TIMEOUT = 10 * 1000; //10 seconds brooo
 
 class session {
     constructor(id, socket, user, token, ready, presence) {
@@ -32,14 +32,10 @@ class session {
         this.guildCache = [];
     }
     onClose(code) {
-        if (this.dead) return;
-        
         this.dead = true;
         this.socket = null;
 
-        if (code == 1006 || code == 1001) return this.terminate();
-
-        this.timeout = setTimeout(this.terminate.bind(this), SESSION_TIMEOUT);
+        setTimeout(this.terminate.bind(this), SESSION_TIMEOUT);
     }
     subscribe(subscriptionType, parameters) {
         let valid_subs = [
@@ -88,6 +84,10 @@ class session {
                 //prevent users from saving offline as their last seen status... as u cant do that
             }
 
+            if (status === "invisible") {
+                status = "offline"; //they shouldnt be able to tell this
+            }
+
             this.presence.status = status.toLowerCase();
             this.presence.game_id = game_id;
             
@@ -103,8 +103,6 @@ class session {
         let sequence = ++this.seq;
 
         if (this.eventsBuffer.length > BUFFER_LIMIT) {
-            if (this.dead) return this.terminate();
-
             this.eventsBuffer.shift();
             this.eventsBuffer.push({
                 type: type,
@@ -136,53 +134,42 @@ class session {
     async dispatchPresenceUpdate() {
         let current_guilds = await global.database.getUsersGuilds(this.user.id);
 
-        if (this.guilds !== current_guilds) {
-            this.guilds = current_guilds; //track
-        }
+        this.guilds = current_guilds;
 
         if (current_guilds.length == 0) {
             this.presence.guild_id = null;
 
-            await this.dispatch("PRESENCE_UPDATE", this.presence);
-
-            return;
+            return await this.dispatch("PRESENCE_UPDATE", this.presence);
         }
 
         for(let i = 0; i < current_guilds.length; i++) {
             let guild = current_guilds[i];
-
-            if (!guild) continue;
-
-            if (guild.members.length == 0 || !guild.members) continue;
-
-            this.presence.guild_id = guild.id;
 
             if (globalUtils.serverRegionToYear(guild.region) == 2015) {
                 if (this.presence.status == "dnd") this.presence.status = "online";
                 else if (this.presence.status == "invisible") this.presence.status = "offline"; 
             }
             
-            let _presence = this.presence;
-            await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", function() {
-                globalUtils.personalizePresenceObject(this.socket, _presence);
-            });
+            this.presence.guild_id = guild.id;
+
+            let personalizedPresenceObj = this.presence;
+
+            if (this.socket) {
+                personalizedPresenceObj = globalUtils.personalizePresenceObject(this.socket, this.presence);
+            } //basically the socket has died from termination - bled out, whatever, so we cant customize their shit
+
+            await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", personalizedPresenceObj);
         }
     }
     async dispatchSelfUpdate() {
         let current_guilds = await global.database.getUsersGuilds(this.user.id);
 
-        if (this.guilds !== current_guilds) {
-            this.guilds = current_guilds; //track
-        }
+        this.guilds = current_guilds;
 
         if (current_guilds.length == 0) return;
 
         for(let i = 0; i < current_guilds.length; i++) {
             let guild = current_guilds[i];
-
-            if (!guild) continue;
-
-            if (guild.members.length == 0 || !guild.members) continue;
 
             let our_member = guild.members.find(x => x.id === this.user.id);
 
@@ -197,22 +184,8 @@ class session {
             await global.dispatcher.dispatchEventInGuild(guild, "USER_UPDATE", our_member);
         }
     }
-    async terminate(code = 1006) {
-        if (!this.dead) {
-            if (code == 1006) {
-                this.socket.send(JSON.stringify({
-                    op: 7
-                }));
-
-                setTimeout(() => {
-                    this.socket.close(code);
-                }, 10 * 1000);
-            }
-        }
-
-        this.dead = true;
-
-        if (this.timeout) clearTimeout(this.timeout);
+    async terminate() {
+        if (!this.dead) return; //resumed in time, lucky bastard
 
         let uSessions = global.userSessions.get(this.user.id);
 
@@ -229,7 +202,7 @@ class session {
         global.sessions.delete(this.id);
 
         if (uSessions.length == 0) {
-            this.updatePresence("offline", null);
+            await this.updatePresence("offline", null);
         } else await this.updatePresence(uSessions[uSessions.length - 1].presence.status, uSessions[uSessions.length - 1].presence.game_id);
     }
     send(payload) {
