@@ -28,21 +28,28 @@ let release_date = (function() {
 })();
 
 function patchJS(script, kind) {
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+    }
+    
     //Fix client misidentification
     script = script.replace('__[STANDALONE]__', '');
     
     //Branding
-    function sanitize(js) {
-        return js.replaceAll(/"/g, '"').replaceAll(/\n|\r/g, "");
+    if (!release_date.endsWith("_2018") && !release_date.endsWith("_2019")) {
+        //TODO: Fix for 2018+
+        function sanitize(js) {
+            return js.replaceAll(/"/g, '"').replaceAll(/\n|\r/g, "");
+        }
+        script = script.replaceAll(/\"Discord\"|'Discord'/g, `"${sanitize(config.instance_name)}"`);
     }
-    script = script.replaceAll(/\"Discord\"|'Discord'/g, `"${sanitize(config.instance_name)}"`);
     
     //Disable HTTPS in insecure mode (for local testing)
     if (location.protocol != "https")
         script = script.replaceAll("https://", location.protocol + "//");
 
     //Make fields consistent
-    if (release_date.endsWith("2015"))
+    if (release_date.endsWith("_2015"))
         script = script.replaceAll(".presence.", ".presences.");
 
     //Set URLs
@@ -52,8 +59,12 @@ function patchJS(script, kind) {
     script = script.replaceAll(/discordcdn.com/g, location.host); //??? DISCORDCDN.COM?!!11
     script = script.replaceAll(/discord.gg/g, config.custom_invite_url);
     script = script.replaceAll(/discordapp.com/g, location.host);
+    script = script.replaceAll(/([a-z]+\.)?discord.media/g, location.host);
     
     script = script.replaceAll(/e\.exports=n\.p/g, `e.exports="${cdn_url}/assets/"`);
+    
+    //Do NOT interact with sentry. Better to error than send telemetry.
+    script = script.replaceAll("sentry.io", "0.0.0.0");
     
     //Use unified UserSearch worker script
     window.userSearchWorker = function(url) {
@@ -63,7 +74,7 @@ function patchJS(script, kind) {
     script = script.replace(/n\.p\+"[a-z0-9]+\.worker\.js"/, `window.userSearchWorker()`);
 
     //Enable april fools @someone experiment
-    if (release_date == "april_1_2018")
+    if (release_date == "april_1_2018" || release_date == "april_23_2018")
         script = script.replaceAll("null!=e&&e.bucket!==f.ExperimentBuckets.CONTROL", "true");
 
     //Allow emojis anywhere
@@ -73,6 +84,8 @@ function patchJS(script, kind) {
     //Disable telemetry
     script = script.replace(/track:function\([^)]*\){/, "$&return;");
     script = script.replace(/(function \w+\(e\)){[^p]*post\({.*url:\w\.Endpoints\.TRACK[^}]*}\)}/, "$1{}");
+    script = script.replace(/return \w\["default"\]\.post\(.*url:\w\.Endpoints\.TRACK[^}]*}[^)]*?\)/g, "null;");
+    script = script.replace(/\w\["default"\]\.post\(.*url:\w\.Endpoints\.TRACK[^}]*}[^)]*?\)/g, "");
     script = script.replace(/t\.analyticsTrackingStoreMaker=function\(e\){/, "t\.analyticsTrackingStoreMaker=function(e){return;");
 
     //Replace text
@@ -98,8 +111,8 @@ function patchJS(script, kind) {
 
     
     if (window.DiscordNative) {
-        //Electron compatibiliy for <2018 (Not entirely complete!)
-        if (release_date.endsWith("_2015") || release_date.endsWith("_2016") || release_date.endsWith("_2017")) {
+        //Polyfilling Desktop Native API on <April 2018  (Not entirely complete!)
+        if (release_date.endsWith("_2015") || release_date.endsWith("_2016") || release_date.endsWith("_2017") || (release_date.endsWith("_2018") && (release_date.startsWith("january") || release_date.startsWith("february") || release_date.startsWith("march")))) {
             script = script.replace(/\/\^win\/\.test\(this\.platform\)/, "/^win/.test(window.DiscordNative.process.platform)");
             script = script.replace(/"darwin"===this.platform/, `"darwin"===window.DiscordNative.process.platform`);
             script = script.replace(/"linux"===this.platform/, `"linux"===window.DiscordNative.process.platform`);
@@ -112,13 +125,13 @@ function patchJS(script, kind) {
             script = script.replaceAll(/\w\.remote\.require\((\w)\)/g, "window.DiscordNative.nativeModules.requireModule($1)");
         }
 
-        // These are botches for specific builds
+        // Polyfill botches for specific builds
         if (release_date.endsWith("_2016") || (release_date.startsWith("january") && release_date.endsWith("_2017"))) {
             script = script.replace(/\w\.setObservedGamesCallback/, `window.DiscordNative.nativeModules.requireModule("discord_utils").setObservedGamesCallback`);
             script = script.replaceAll(/var (\w+)=\w\["default"\]\.requireElectron\("powerMonitor",!0\);/g, `var $1=window.DiscordNative.powerMonitor;`);
             script = script.replace(/var \w=\w\["default"\]\._getCurrentWindow\(\)\.webContents;\w\.removeAllListeners\("devtools-opened"\),\w\.on\("devtools-opened",function\(\){return\(0,\w\.consoleWarning\)\(\w\["default"\]\.Messages\)}\)/, "");
         }
-        if (release_date.endsWith("_2017") && !release_date.startsWith("january")) {
+        if ((release_date.endsWith("_2017") && !release_date.startsWith("january")) || (release_date.endsWith("_2018") && (release_date.startsWith("january") || release_date.startsWith("february") || release_date.startsWith("march")))) {
             script = script.replaceAll(/this\.getDiscordUtils\(\)/g, `window.DiscordNative.nativeModules.requireModule("discord_utils")`);
             script = script.replaceAll(/\w\.default\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
             script = script.replaceAll(/this\.requireElectron\("powerMonitor",!0\)/g, `window.DiscordNative.powerMonitor`);
@@ -138,6 +151,15 @@ function patchJS(script, kind) {
 
     //Electron compatibility (Universal)
     script = script.replaceAll(/"discord:\/\/"/g, `"oldcord://"`);
+
+    if (release_date.endsWith("_2019")) {
+        //Lazily fix 2019. We don't implement user affinities.
+        script = script.replaceAll("f.default.getUserAffinitiesUserIds().has(t.id)", "false");
+        script = script.replaceAll(/\w\.userAffinties/g, "[]");
+    }
+    
+    //Remove VIDEO_PROVIDER_CHECK_UNIX_TIMESTAMP hack
+    script = script.replace("1492472454139", "0");
 
     return script;
 }
@@ -176,11 +198,14 @@ async function timer(ms) {
     }
 
     if ((release_date == "november_16_2017" ||
-         release_date == "december_21_2017" ||
-         release_date == "april_1_2018")
+        release_date == "december_21_2017" ||
+        release_date == "january_27_2018" ||
+        release_date == "march_24_2018" ||
+        release_date == "april_1_2018" ||
+        release_date == "april_23_2018")
          && localStorage && !localStorage.getItem("token")) {
-        loadLog("Warning: You aren't logged in, and the login page is BROKEN on this build. Switching to October 5 2017 temporarily.", true, true);
-        release_date = "october_5_2017";
+        loadLog("Warning: You aren't logged in, and the login page is BROKEN on this build. Switching to February 25 2018 temporarily.", true, true);
+        release_date = "february_25_2018";
         
         //Wait until the user has logged in, then refresh
         let waitForLogin = setInterval(() => {
@@ -190,11 +215,61 @@ async function timer(ms) {
             }
         }, 1000);
     }
+    
+    //Disables certain types of logging
+    window.BetterDiscord = true;
+    
+    if (!window.Firebug) {
+        window.Firebug = {
+            chrome: {
+                isInitialized: false
+            }
+        };
+    }
+    
+    window.GLOBAL_ENV = {
+        "API_ENDPOINT": "//" + location.host + "/api",
+        "API_VERSION": 6,
+        "GATEWAY_ENDPOINT": config.gateway,
+        "WEBAPP_ENDPOINT": cdn_url,
+        "CDN_HOST": "//" + location.host,
+        "ASSET_ENDPOINT": cdn_url,
+        "MEDIA_PROXY_ENDPOINT": "//" + location.host,
+        "WIDGET_ENDPOINT": "",
+        "INVITE_HOST": config.custom_invite_url,
+        "GUILD_TEMPLATE_HOST": location.host,
+        "GIFT_CODE_HOST": location.host,
+        "RELEASE_CHANNEL": "staging",
+        "MARKETING_ENDPOINT": "",
+        "BRAINTREE_KEY": "",
+        "STRIPE_KEY": "",
+        "NETWORKING_ENDPOINT": "",
+        "RTC_LATENCY_ENDPOINT": "",
+        "ACTIVITY_APPLICATION_HOST": "",
+        "PROJECT_ENV": "development",
+        "REMOTE_AUTH_ENDPOINT": "",
+        "SENTRY_TAGS": {
+            "buildId": "0",
+            "buildType": "CLIENT_MOD_PLEASE_IGNORE"
+        },
+        "MIGRATION_SOURCE_ORIGIN": "",
+        "MIGRATION_DESTINATION_ORIGIN": "",
+        "HTML_TIMESTAMP": 1724751950316,
+        "ALGOLIA_KEY": ""
+    };
 
     loadLog("Downloading application");
     let html;
     try {
-        html = await (await fetch(`${cdn_url}/assets/clients/${release_date}/app.html`)).text();
+        if (location.href.includes('/developers')) {
+            let dev_year = release_date.split('_')[2];
+
+            if (isNaN(parseInt(dev_year)) || (parseInt(dev_year) <= 2017 || parseInt(dev_year) > 2019)) {
+                dev_year = "2018";
+            }
+
+            html = await (await fetch(`${cdn_url}/assets/clients/developers_${dev_year}/app.html`)).text();
+        } else html = await (await fetch(`${cdn_url}/assets/clients/${release_date}/app.html`)).text();
     } catch (e) {
         loadLog("Fatal error occurred. Please check the console.", true, true);
         throw e;
@@ -245,7 +320,7 @@ async function timer(ms) {
     }
 
     //Copy react roots
-    for (let div of body.matchAll(/<div[^>]*><\/div>/g)) {
+    for (let div of body.matchAll(/<div[^>]*>[^]*<\/div>/g)) {
         document.body.innerHTML = div[0] + document.body.innerHTML;
     }
 
@@ -278,11 +353,11 @@ async function timer(ms) {
     //Cleanup
     document.body.style = null;
     let appMount = document.getElementById("app-mount");
-    if (!appMount) {
+    if (appMount) {
         document.getElementById("loadingTxt").remove();
     } else {
         let interval = setInterval(function() {
-            if (document.getElementsByClassName("guilds").length == 0)
+            if (document.getElementsByClassName("theme-dark").length == 0 && document.getElementsByClassName("guilds").length == 0)
                 return;
 
             document.getElementById("loadingTxt").remove();

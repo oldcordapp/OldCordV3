@@ -16,6 +16,11 @@ const globalUtils = {
     config: config,
     nonStandardPort: config.secure ? config.port != 443 : config.port != 80,
     nonStandardWsPort: config.secure ? config.ws_port != 443 : config.ws_port != 80,
+    generateGatewayURL: (req) => {
+        let host = req.headers['host'];
+        if (host) host = host.split(':', 2)[0];
+        return `${config.secure ? 'wss' : 'ws'}://${config.gateway_url == "" ? (host ?? config.base_url) : config.gateway_url}:${config.ws_port}`;
+    },
     unavailableGuildsStore: [],
     generateString: (length) => {
         let result = '';
@@ -115,16 +120,16 @@ const globalUtils = {
     getRegions: () => {
         return [{
             id: "2016",
-            name: "Up to 2016"
+            name: "2016 Only"
         }, {
             id: "2017",
-            name: "Up to 2017"
+            name: "2017 Only"
         }, {
             id: "2018",
-            name: "Up to 2018"
+            name: "2018 Only"
         }, {
             id: "2019",
-            name: "Up to 2019"
+            name: "2019 Only"
         }, {
             id: "everything",
             name: "Everything"
@@ -189,6 +194,29 @@ const globalUtils = {
         }
 
         return sanitizedObject;
+    },
+    buildGuildObject: (guild, req) => {
+        if (!guild) return null;
+
+        if (!req.account) return null;
+
+        if (guild.region != "everything" && client_build.getFullYear() != parseInt(guild.region)) {
+            let sessions = global.userSessions.get(req.account.id);
+
+            if (!sessions) return guild; //fallback ig
+
+            let session = sessions.find(x => x.socket != null && x.socket.client_build === req.client_build);
+                
+            if (!session) return guild;
+            
+            let proper_guild = session.guilds.find(x => x.id === guild.id);
+
+            if (!session.guilds || !proper_guild) return guild; //man wtf
+
+            return proper_guild;
+        }
+
+        return guild;
     },
     unavailableGuild: async (guild, error) => {
         //danger zone buddy
@@ -521,6 +549,24 @@ const globalUtils = {
         
         return clone;
     },
+    personalizePresenceObject: (req, presence, guild) => {
+        if (req.client_build_date.getFullYear() < 2018)
+            return presence;
+        
+        //late 2018 requires roles in presences to not crash. horseshit design
+        let newPresence = {};
+        
+        Object.assign(newPresence, presence);
+        
+        if (guild) {
+            let member = guild.members.find(x => x.id === this.user.id);
+            newPresence.roles = member ? [] : member.roles;
+        } else { 
+            newPresence.roles = [];
+        }
+        
+        return newPresence;
+    },
     usersToIDs: (array) => {
         let IDs = [];
         
@@ -542,6 +588,11 @@ const globalUtils = {
             flags: user.flags,
             premium: user.premium
         };
+    },
+    miniBotObject: (bot) => {
+        delete bot.token;
+
+        return bot;
     }
 };
 

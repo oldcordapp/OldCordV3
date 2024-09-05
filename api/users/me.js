@@ -4,6 +4,7 @@ const { rateLimitMiddleware, guildMiddleware } = require('../../helpers/middlewa
 const { logText } = require('../../helpers/logger');
 const router = express.Router();
 const relationships = require('./relationships');
+const Snowflake = require('../../helpers/snowflake');
 
 router.use("/relationships", relationships);
 
@@ -47,6 +48,47 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         });
     }
 
+    if (account.bot) {
+      if (req.body.username) {
+        account.username = req.body.username;
+      }
+
+      if (account.username.length < 2 || account.username.length > 30) {
+          return res.status(400).json({
+            code: 400,
+            username: "Must be between 2 and 30 characters"
+          });
+      }
+
+      let goodUsername = globalUtils.checkUsername(account.username);
+
+      if (goodUsername.code !== 200) {
+          return res.status(goodUsername.code).json(goodUsername);
+      }
+
+      if (req.body.avatar === "") {
+        account.avatar = null;
+      }
+
+      if (req.body.avatar) {
+        account.avatar = req.body.avatar;
+      }
+
+      account = await global.database.updateBotUser(account);
+
+      if (!account) {
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        });
+      }
+
+      return res.status(200).json(account);
+    }
+
+    // New accounts via invite (unclaimed account) have null email and null password.
+    // By genius Discord engineering if they claim an account it does not use new_password it uses password.
+
     let update = {
       avatar: null,
       email: null,
@@ -61,29 +103,37 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         update.avatar = req.body.avatar;
     }
 
-    if (req.body.email) {
-      update.email = req.body.email;
+    if (account.email) {
+      if (req.body.email) {
+        update.email = req.body.email;
+      }
+  
+      if (update.email && update.email != account.email) {
+        update.new_email = update.email;
+        update.email = account.email;
+      }
+    } else {
+      if (req.body.email) {
+        update.new_email = req.body.email;
+      }
     }
 
-    if (update.email && update.email != account.email) {
-      update.new_email = update.email;
-      update.email = account.email;
-    }
-
-    if (req.body.new_password) {
-      update.new_password = req.body.new_password;
-    }
-
-    if (req.body.password) {
-       update.password = req.body.password;
+    if (account.password) {
+      if (req.body.new_password) {
+        update.new_password = req.body.new_password;
+      }
+  
+      if (req.body.password) {
+         update.password = req.body.password;
+      }
+    } else {
+      if (req.body.password) {
+        update.new_password = req.body.password;
+      }
     }
 
     if (req.body.username) {
       update.username = req.body.username;
-    }
-
-    if (req.body.password) {
-      update.password = req.body.password;
     }
 
     if (req.body.discriminator) {
@@ -93,7 +143,7 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
     if (update.email == account.email && update.new_password == null && update.password == null && update.username == account.username && update.discriminator == account.discriminator) {
        //avatar change
        
-       let tryUpdate = await global.database.updateAccount(update.avatar, account.email, account.username, account.discriminator, null, null);
+       let tryUpdate = await global.database.updateAccount(account.id, update.avatar, account.username, account.discriminator, null, null);
 
        if (tryUpdate !== 3 && tryUpdate !== 2) {
           return res.status(500).json({
@@ -120,14 +170,14 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
        return res.status(200).json(retAccount);
     }
 
-    if (update.password == null) {
+    if (account.password && update.password == null) {
       return res.status(400).json({
         code: 400,
         password: "This field is required"
       });
     }
 
-    if (update.email == null) {
+    if (account.email && update.email == null) {
       return res.status(400).json({
         code: 400,
         email: "This field is required"
@@ -150,7 +200,14 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
       });
     }
 
-    if (update.email.length < 2 || update.email.length > 32) {
+    if (update.email && (update.email.length < 2 || update.email.length > 32)) {
+      return res.status(400).json({
+        code: 400,
+        email: "Must be between 2 and 32 characters"
+      });
+    }
+
+    if (update.new_email && (update.new_email.length < 2 || update.new_email.length > 32)) {
       return res.status(400).json({
         code: 400,
         email: "Must be between 2 and 32 characters"
@@ -170,16 +227,18 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         return res.status(goodUsername.code).json(goodUsername);
     }
 
-    const correctPassword = await global.database.doesThisMatchPassword(update.password, account.password);
+    if (update.password) {
+      const correctPassword = await global.database.doesThisMatchPassword(update.password, account.password);
 
-    if (!correctPassword) {
-      return res.status(400).json({
-        code: 400,
-        password: "Incorrect password"
-      })
+      if (!correctPassword) {
+        return res.status(400).json({
+          code: 400,
+          password: "Incorrect password"
+        })
+      }
     }
 
-    const attemptToUpdate = await global.database.updateAccount(update.avatar, update.email, update.username, update.discriminator, update.password, update.new_password, update.new_email);
+    const attemptToUpdate = await global.database.updateAccount(account.id, update.avatar, update.username, update.discriminator, update.password, update.new_password, update.new_email);
 
     if (attemptToUpdate !== 3) {
       if (attemptToUpdate === -1) {
@@ -211,7 +270,7 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
       }
     }
 
-    account = await global.database.getAccountByEmail(update.email != account.email ? update.email : account.email);
+    account = await global.database.getAccountByUserId(account.id);
 
     if (!account) {
       return res.status(500).json({
@@ -309,7 +368,7 @@ router.get("/connections", async (req, res) => {
     try {
         let account = req.account;
 
-        if (!account) {
+        if (!account || account.bot) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -334,7 +393,7 @@ router.delete("/connections/:platform/:connectionid", async (req, res) => {
     try {
         let account = req.account;
 
-        if (!account) {
+        if (!account || account.bot) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -391,7 +450,7 @@ router.patch("/connections/:platform/:connectionid", async (req, res) => {
     try {
         let account = req.account;
 
-        if (!account) {
+        if (!account || account.bot) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -637,6 +696,10 @@ router.get("/mentions", async (req, res) => {
     let include_everyone_mentions = req.query.everyone == "true" ?? true;
     let before = req.query.before ?? null;
 
+    if (!guild_id) {
+      return res.status(200).json([]); //wtf why does this crash?
+    }
+
     let recentMentions = await global.database.getRecentMentions(account.id, before, limit, include_roles, include_everyone_mentions, guild_id);
 
     return res.status(200).json(recentMentions);
@@ -649,5 +712,52 @@ router.get("/mentions", async (req, res) => {
     })
   }
 })
+
+router.get("/activities", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/applications/:applicationid/entitlements", (req, res) => {
+  return res.status(200).json([]);
+})
+
+router.get("/activities/statistics/applications", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/library", (req, res) => {
+    return res.status(200).json([{
+       id: "1279311572212178955",
+       name: "Jason Citron Simulator 2024"
+    }]);
+});
+
+router.get("/feed", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/feed/settings", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/entitlements/gifts", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/billing/payment-sources", (req, res) => {
+    return res.status(200).json([]);
+});
+
+router.get("/affinities/users", (req, res) => {
+    return res.status(200).json({
+        user_affinities: [],
+    });
+});
+
+router.get("/affinities/guilds", (req, res) => {
+    return res.status(200).json({
+        guild_affinities: [],
+    });
+});
 
 module.exports = router;

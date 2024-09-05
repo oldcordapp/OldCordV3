@@ -148,6 +148,7 @@ const database = {
                 id TEXT,
                 type INTEGER DEFAULT 0,
                 guild_id TEXT,
+                parent_id TEXT DEFAULT NULL,
                 topic TEXT DEFAULT NULL,
                 last_message_id TEXT DEFAULT '0',
                 permission_overwrites TEXT,
@@ -168,6 +169,7 @@ const database = {
                 name TEXT,
                 icon TEXT DEFAULT NULL,
                 splash TEXT DEFAULT NULL,
+                banner TEXT DEFAULT NULL,
                 region TEXT DEFAULT NULL,
                 owner_id TEXT,
                 afk_channel_id TEXT,
@@ -181,6 +183,28 @@ const database = {
                 default_message_notifications INTEGER DEFAULT 0,
                 verification_level INTEGER DEFAULT 0
            );`, []);
+
+           await database.runQuery(`
+           CREATE TABLE IF NOT EXISTS applications (
+               id TEXT PRIMARY KEY,
+               owner_id TEXT,
+               name TEXT DEFAULT 'My Application',
+               icon TEXT DEFAULT NULL,
+               secret TEXT DEFAULT NULL,
+               description TEXT DEFAULT NULL
+          );`, []);
+
+          await database.runQuery(`
+          CREATE TABLE IF NOT EXISTS bots (
+              id TEXT PRIMARY KEY,
+              application_id TEXT,
+              username TEXT,
+              discriminator TEXT,
+              avatar TEXT DEFAULT NULL,
+              public INTEGER DEFAULT 1,
+              require_code_grant INTEGER DEFAULT 0,
+              token TEXT DEFAULT NULL
+         );`, []);
 
             await database.runQuery(`
             CREATE TABLE IF NOT EXISTS roles (
@@ -283,6 +307,39 @@ const database = {
                 username TEXT DEFAULT NULL
             );`, []);
 
+            await database.runQuery(
+                `INSERT INTO channels (id, type, guild_id, parent_id, topic, last_message_id, permission_overwrites, name, position)
+                SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+                WHERE NOT EXISTS (SELECT 1 FROM channels WHERE id = $1)`,
+                ['1279218211430105089', 0, '1279218211430105089', '[OVERRIDENTOPIC]', null, '0', null, 'please-read-me', 0]
+            );
+
+            await database.runQuery(
+                `INSERT INTO messages (guild_id, message_id, channel_id, author_id, content, edited_timestamp, mention_everyone, nonce, timestamp, tts, embeds)
+                SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                WHERE NOT EXISTS (SELECT 1 FROM messages WHERE message_id = $2)`,
+                [
+                    '1279218211430105089',
+                    '1279218211430105089',
+                    '1279218211430105089',
+                    '1279218211430105089',
+                    `Hey! It looks like you're using a client build that isn't supported by this guild. Your current build is from [YEAR]. Please check the channel topic or guild name for more details.`,
+                    null,
+                    0,
+                    '1279218211430105089',
+                    new Date().toISOString(),
+                    0,
+                    '[]'
+                ]
+            );
+
+            await database.runQuery(
+                `INSERT INTO users (id, username, discriminator, email, password, token, created_at, avatar, bot)
+                SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+                WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = $1)`,
+                ['1279218211430105089', 'Oldcord', '0000', 'system@oldcordapp.com', 'aLq6abXnklLRql3MEEpEHge4F9j3cE', null, new Date().toISOString(), null, 1]
+            );
+
             return true;
         } catch (error) {
             logText(error, "error");
@@ -301,6 +358,87 @@ const database = {
             logText(error, "error");
 
             return false;
+        }
+    },
+    op12getGuildMembersAndPresences: async (guild) => {
+        try {
+            if (guild.members.length !== 0) {
+                return {
+                    members: guild.members,
+                    presences: guild.presences
+                }
+            }
+    
+            const memberRows = await database.runQuery(`
+                SELECT * FROM members WHERE guild_id = $1
+            `, [guild.id]);
+    
+            if (memberRows === null || memberRows.length === 0) {
+                return null;
+            }
+    
+            let members = [];
+            let presences = [];
+            let offlineCount = 0;
+    
+            for (var row of memberRows) {
+                let member_roles = JSON.parse(row.roles) ?? [];
+    
+                member_roles = member_roles.filter(role_id => 
+                    roles.find(guild_role => guild_role.id === role_id) !== undefined
+                );
+    
+                const user = await database.getAccountByUserId(row.user_id);
+    
+                if (user == null) {
+                    continue;
+                }
+
+                const member = {
+                    id: user.id,
+                    nick: row.nick == 'NULL' ? null : row.nick,
+                    deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
+                    mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
+                    roles: member_roles,
+                    joined_at: new Date().toISOString(),
+                    user: globalUtils.miniUserObject(user)
+                };
+    
+                let sessions = global.userSessions.get(member.id);
+                let presenceStatus = 'offline';
+                let presence = {
+                    game_id: null,
+                    status: presenceStatus,
+                    activities: [],
+                    user: globalUtils.miniUserObject(member.user)
+                };
+    
+                if (sessions && sessions.length > 0) {
+                    let session = sessions[sessions.length - 1];
+
+                    if (session.presence) {
+                        presenceStatus = session.presence.status;
+                        presence = session.presence;
+                    }
+                }
+    
+                if (presenceStatus === 'online' || presenceStatus === 'idle' || presenceStatus === 'dnd') {
+                    members.push(member);
+                    presences.push(presence);
+                } else if (offlineCount <= 1000) {
+                    offlineCount++;
+                    members.push(member);
+                    presences.push(presence);
+                }
+            }
+    
+            return {
+                members: members,
+                presences: presences
+            };
+        } catch (error) {
+            logText(error, "error");
+            return [];
         }
     },
     getPrivateChannels: async (user_id) => {
@@ -481,35 +619,46 @@ const database = {
     },
     getAccountByToken: async (token) => {
         try {
-            const rows = await database.runQuery(`
-                SELECT * FROM users WHERE token = $1
+            let rows = await database.runQuery(`
+                    SELECT * FROM users WHERE token = $1
             `, [token]);
-            
-            if (!rows || rows.length == 0)
-                return null;
+                
+                if (!rows || rows.length == 0) {
+                    rows = await database.runQuery(`
+                        SELECT * FROM bots WHERE token = $1
+                    `, [token.split('Bot ')[1]]);
 
-            if (rows === null || rows.length === 0) {
-                return null;
-            }
+                    if (!rows || rows.length == 0)
+                        return null;
 
-            let contents = JSON.parse(rows[0].relationships);
-            let relationships = [];
-            
-            if (contents && contents.length > 0) {
-                for (var relationship of contents) {
-                    let user = await global.database.getRelationshipUserById(relationship.id);
-
-                    if (user && user.id != rows[0].id) {
-                        relationships.push({
-                            id: relationship.id,
-                            type: relationship.type,
-                            user: user
-                        })
+                    return {
+                        avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
+                        bot: true,
+                        discriminator: rows[0].discriminator,
+                        id: rows[0].id,
+                        token: rows[0].token,
+                        username: rows[0].username
                     }
                 }
-            }
 
-            return globalUtils.prepareAccountObject(rows, relationships);
+                let contents = JSON.parse(rows[0].relationships);
+                let relationships = [];
+                
+                if (contents && contents.length > 0) {
+                    for (var relationship of contents) {
+                        let user = await global.database.getRelationshipUserById(relationship.id);
+
+                        if (user && user.id != rows[0].id) {
+                            relationships.push({
+                                id: relationship.id,
+                                type: relationship.type,
+                                user: user
+                            })
+                        }
+                    }
+                }
+
+                return globalUtils.prepareAccountObject(rows, relationships);
         } catch (error) {
             logText(error, "error");
 
@@ -645,28 +794,49 @@ const database = {
                 }
             }
 
-            const rows = await database.runQuery(`
+            let rows = await database.runQuery(`
                 SELECT * FROM users WHERE id = $1
             `, [id]);
 
-            let contents = JSON.parse(rows[0].relationships);
-            let relationships = [];
-            
-            if (contents && contents.length > 0) {
-                for (var relationship of contents) {
-                    let user = await global.database.getRelationshipUserById(relationship.id);
+            if (rows === null || rows.length === 0) {
+                rows = await database.runQuery(`
+                    SELECT * FROM bots WHERE id = $1
+                `, [id]);
 
-                    if (!user || user.id === id) continue;
-
-                    relationships.push({
-                        id: relationship.id,
-                        type: relationship.type,
-                        user: user
-                    })
+                if (rows === null || rows.length === 0) {
+                    return null;
                 }
             }
 
-            return globalUtils.prepareAccountObject(rows, relationships);
+            if (rows[0].require_code_grant != undefined) {
+                return {
+                    avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
+                    bot: true,
+                    discriminator: rows[0].discriminator,
+                    id: rows[0].id,
+                    token: rows[0].token,
+                    username: rows[0].username
+                }
+            } else {
+                let contents = JSON.parse(rows[0].relationships);
+                let relationships = [];
+                
+                if (contents && contents.length > 0) {
+                    for (var relationship of contents) {
+                        let user = await global.database.getRelationshipUserById(relationship.id);
+    
+                        if (!user || user.id === id) continue;
+    
+                        relationships.push({
+                            id: relationship.id,
+                            type: relationship.type,
+                            user: user
+                        })
+                    }
+                }
+    
+                return globalUtils.prepareAccountObject(rows, relationships);
+            }
         } catch (error) {
             logText(error, "error");
 
@@ -1116,7 +1286,7 @@ const database = {
             return false;
         }
     },
-    createChannel: async (guild_id, name, type, position, recipients = [], owner_id = null) => {
+    createChannel: async (guild_id, name, type, position, recipients = [], owner_id = null, parent_id = null) => {
         try {
             const channel_id = Snowflake.generate();
 
@@ -1176,12 +1346,13 @@ const database = {
                 }
             }
 
-            await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [channel_id, type, guild_id, 'NULL', '0', 'NULL', name, 0])
+            await database.runQuery(`INSERT INTO channels (id, type, parent_id, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [channel_id, type, parent_id == null ? 'NULL' : parent_id, guild_id, 'NULL', '0', 'NULL', name, 0])
 
             return {
                 id: channel_id,
                 name: name,
                 guild_id: guild_id,
+                parent_id: parent_id, 
                 type: type,
                 topic: null,
                 nsfw: false,
@@ -1210,23 +1381,63 @@ const database = {
     },
     updateChannel: async (channel_id, channel) => {
         try {
-            let overwrites  = 'NULL';
+            if (channel.type === 0 || channel.type === 2 || channel.type === 4) {
+                //text channel, voice channel, category
+                let overwrites = 'NULL';
 
-            if (channel.permission_overwrites) {
-                let out = globalUtils.SerializeOverwritesToString(channel.permission_overwrites);
-
-                if (out != null) {
-                    overwrites = out;
+                if (channel.permission_overwrites) {
+                    let out = globalUtils.SerializeOverwritesToString(channel.permission_overwrites);
+    
+                    if (out != null) {
+                        overwrites = out;
+                    }
                 }
+    
+                await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, nsfw = $4, parent_id = $5, permission_overwrites = $6, position = $7 WHERE id = $8`, [channel.last_message_id, channel.name, channel.topic, channel.nsfw ? 1 : 0, channel.parent_id == null ? 'NULL' : channel.parent_id, overwrites, channel.position, channel_id]);
+    
+                return channel;   
+            } else if (channel.type === 3) {
+                //group channel
+
+                let process_icon = channel.icon;
+
+                if (process_icon != null && process_icon.includes("data:image/")) {
+                    var extension = process_icon.split('/')[1].split(';')[0];
+                    var imgData = process_icon.replace(`data:image/${extension};base64,`, "");
+                    var name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var name_hash = md5(name);
+    
+                    let icon = name_hash;
+        
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+    
+                    if (!fs.existsSync(`./www_dynamic/group_icons/${channel_id}`)) {
+                        fs.mkdirSync(`./www_dynamic/group_icons/${channel_id}`, { recursive: true });
+                    }
+     
+                    fs.writeFileSync(`./www_dynamic/group_icons/${channel_id}/${name_hash}.${extension}`, imgData, "base64");
+
+                    channel.icon = icon;
+
+                    await database.runQuery(`UPDATE group_channels SET icon = $1 WHERE id = $2`, [icon, channel_id]);
+                } else if (process_icon === null) {
+                    channel.icon = null;
+
+                    await database.runQuery(`UPDATE group_channels SET icon = $1 WHERE id = $2`, ['NULL', channel_id]);
+                }
+
+                await database.runQuery(`UPDATE group_channels SET name = $1 WHERE id = $2`, [channel.name ?? '', channel_id]);
+
+                return channel;
             }
-
-            await database.runQuery(`UPDATE channels SET last_message_id = $1, name = $2, topic = $3, nsfw = $4, permission_overwrites = $5, position = $6 WHERE id = $7`, [channel.last_message_id, channel.name, channel.topic, channel.nsfw ? 1 : 0, overwrites, channel.position, channel_id]);
-
-            return true;    
+             
+            return null; //unknown channel type?
         } catch(error) {
             logText(error, "error");
 
-            return false;
+            return null;
         }
     },
     updateChannelRecipients: async (channel_id, recipients) => {
@@ -1343,7 +1554,6 @@ const database = {
                 nonce: rows[0].nonce,
                 edited_timestamp: rows[0].edited_timestamp == 'NULL' ? null : rows[0].edited_timestamp,
                 timestamp: rows[0].timestamp,
-                mention_roles: [],
                 reactions: reactionRet,
                 tts: rows[0].tts == 1,
                 pinned: rows[0].pinned == 1,
@@ -1371,6 +1581,276 @@ const database = {
                 if (message != null) {
                     ret.push(message);
                 }
+            }
+
+            return ret;
+        } catch (error) {
+            logText(error, "error");
+
+            return [];
+        }
+    },
+    getBotByApplicationId: async (application_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM bots WHERE application_id = $1`, [application_id]);
+           
+            if (rows == null || rows.length == 0) {
+                return null;
+            }
+
+            return {
+                avatar: rows[0].avatar === 'NULL' ? null : rows[0].avatar,
+                bot: true,
+                discriminator:  rows[0].discriminator,
+                id: rows[0].id,
+                public: rows[0].public == 1,
+                require_code_grant: rows[0].require_code_grant == 1,
+                token: rows[0].token,
+                username: rows[0].username
+            };
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    abracadabraApplication: async (application) => {
+        try {
+           let salt = await genSalt(10);
+           let pwHash = await hash(globalUtils.generateString(30), salt);
+           let discriminator = Math.round(Math.random() * 9999);
+
+           while (discriminator < 1000) {
+               discriminator = Math.round(Math.random() * 9999);
+           }
+
+           let token = globalUtils.generateToken(application.id, pwHash);
+           
+           await database.runQuery(`INSERT INTO bots (id, application_id, username, discriminator, avatar, token) VALUES ($1, $2, $3, $4, $5, $6)`, [application.id, application.id, application.name, discriminator.toString(), 'NULL', token]);
+
+           return {
+             avatar: null,
+             bot: true,
+             discriminator: discriminator.toString(),
+             id: application.id,
+             public: true,
+             require_code_grant: false,
+             token: token,
+             username: application.name
+           }
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    updateBotUser: async (bot) => {
+        try {
+            let send_icon = 'NULL';
+
+            if (bot.avatar != null) {
+                if (bot.avatar.includes("data:image")) {
+                    var extension = bot.avatar.split('/')[1].split(';')[0];
+                    var imgData =  bot.avatar.replace(`data:image/${extension};base64,`, "");
+                    var file_name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var hash = md5(file_name);
+            
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+            
+                    send_icon = hash.toString();
+            
+                    if (!fs.existsSync(`www_dynamic/avatars`)) {
+                        fs.mkdirSync(`www_dynamic/avatars`, { recursive: true });
+                    }
+    
+                    if (!fs.existsSync(`www_dynamic/avatars/${bot.id}`)) {
+                        fs.mkdirSync(`www_dynamic/avatars/${bot.id}`, { recursive: true });
+            
+                        fs.writeFileSync(`www_dynamic/avatars/${bot.id}/${hash}.${extension}`, imgData, "base64");
+                    } else {
+                        fs.writeFileSync(`www_dynamic/avatars/${bot.id}/${hash}.${extension}`, imgData, "base64");
+                    }
+                } else {
+                    send_icon = bot.avatar;
+                }
+            }
+
+            await database.runQuery(`UPDATE bots SET avatar = $1, username = $2 WHERE id = $3`, [send_icon, bot.username, bot.id]);
+
+            bot.avatar = send_icon === 'NULL' ? null : send_icon;
+
+            return bot;
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    updateBot: async (bot) => {
+        try {
+            let send_icon = 'NULL';
+
+            if (bot.avatar != null) {
+                if (bot.avatar.includes("data:image")) {
+                    var extension = bot.avatar.split('/')[1].split(';')[0];
+                    var imgData =  bot.avatar.replace(`data:image/${extension};base64,`, "");
+                    var file_name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var hash = md5(file_name);
+            
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+            
+                    send_icon = hash.toString();
+            
+                    if (!fs.existsSync(`www_dynamic/avatars`)) {
+                        fs.mkdirSync(`www_dynamic/avatars`, { recursive: true });
+                    }
+    
+                    if (!fs.existsSync(`www_dynamic/avatars/${bot.id}`)) {
+                        fs.mkdirSync(`www_dynamic/avatars/${bot.id}`, { recursive: true });
+            
+                        fs.writeFileSync(`www_dynamic/avatars/${bot.id}/${hash}.${extension}`, imgData, "base64");
+                    } else {
+                        fs.writeFileSync(`www_dynamic/avatars/${bot.id}/${hash}.${extension}`, imgData, "base64");
+                    }
+                } else {
+                    send_icon = bot.avatar;
+                }
+            }
+
+            await database.runQuery(`UPDATE bots SET avatar = $1, username = $2, public = $3, require_code_grant = $4 WHERE id = $5`, [send_icon, bot.username, bot.public === true ? 1 : 0, bot.require_code_grant === true ? 1 : 0, bot.id]);
+
+            bot.avatar = send_icon;
+
+            return bot;
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    updateUserApplication: async (user, application) => {
+        try {
+            let send_icon = 'NULL';
+
+            if (application.icon != null) {
+                if (application.icon.includes("data:image")) {
+                    var extension = application.icon.split('/')[1].split(';')[0];
+                    var imgData =  application.icon.replace(`data:image/${extension};base64,`, "");
+                    var file_name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var hash = md5(file_name);
+            
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+            
+                    send_icon = hash.toString();
+            
+                    if (!fs.existsSync(`www_dynamic/applications_icons`)) {
+                        fs.mkdirSync(`www_dynamic/applications_icons`, { recursive: true });
+                    }
+    
+                    if (!fs.existsSync(`www_dynamic/applications_icons/${application.id}`)) {
+                        fs.mkdirSync(`www_dynamic/applications_icons/${application.id}`, { recursive: true });
+            
+                        fs.writeFileSync(`www_dynamic/applications_icons/${application.id}/${hash}.${extension}`, imgData, "base64");
+                    } else {
+                        fs.writeFileSync(`www_dynamic/applications_icons/${application.id}/${hash}.${extension}`, imgData, "base64");
+                    }
+                } else {
+                    send_icon = application.icon;
+                }
+            }
+
+            await database.runQuery(`UPDATE applications SET icon = $1, name = $2, description = $3 WHERE id = $4`, [send_icon, application.name, application.description, application.id]);
+
+            application.icon = send_icon === 'NULL' ? null : send_icon;
+
+            return application;
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    createUserApplication: async (user, name) => {
+        try {
+            let id = Snowflake.generate();
+            let secret = globalUtils.generateString(20);
+
+            await database.runQuery(`INSERT INTO applications (id, owner_id, name, icon, secret, description) VALUES ($1, $2, $3, $4, $5, $6)`, [id, user.id, name, 'NULL', secret, '']);
+
+            return {
+                id: id,
+                name: name,
+                icon: null,
+                description: "",
+                redirect_uris: [],
+                rpc_application_state: 0,
+                rpc_origins: [],
+                secret: secret,
+                owner: globalUtils.miniUserObject(user)
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    getApplicationById: async (application_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM applications WHERE id = $1`, [application_id]);
+           
+            if (rows == null || rows.length == 0) {
+                return null;
+            }
+
+            let owner = await database.getAccountByUserId(rows[0].owner_id);
+
+            if (!owner) return null;
+
+            return {
+                id: rows[0].id,
+                name: rows[0].name == 'NULL' ? 'My Application' : rows[0].name,
+                icon: rows[0].icon == 'NULL' ? null : rows[0].icon,
+                description: rows[0].description == 'NULL' ? '' : rows[0].description,
+                redirect_uris: [],
+                rpc_application_state: 0,
+                rpc_origins: [],
+                secret: rows[0].secret,
+                owner: globalUtils.miniUserObject(owner)
+            };
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    getUsersApplications: async (user) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM applications WHERE owner_id = $1`, [user.id]);
+           
+            if (rows == null || rows.length == 0) {
+                return [];
+            }
+
+            const ret = [];
+
+            for (const row of rows) {
+                ret.push({
+                    id: row.id,
+                    name: row.name == 'NULL' ? 'My Application' : row.name,
+                    icon: row.icon == 'NULL' ? null : row.icon,
+                    description: row.description == 'NULL' ? '' : row.description,
+                    redirect_uris: [],
+                    rpc_application_state: 0,
+                    rpc_origins: [],
+                    secret: row.secret,
+                    owner: globalUtils.miniUserObject(user)
+                })
             }
 
             return ret;
@@ -1428,6 +1908,9 @@ const database = {
                 const message = await database.getMessageById(row.message_id);
 
                 if (message != null) {
+                    delete message.guild_id; //apparently the client doesnt need this?
+                    delete message.overrides;
+                    
                     ret.push(message);
                 }
             }
@@ -1516,6 +1999,10 @@ const database = {
     },
     getChannelById: async (id) => {
         try {
+            if (id.includes("12792182114301050")) {
+                id = "1279218211430105089";
+            } //special case
+
             const rows = await database.runQuery(`
                 SELECT * FROM channels WHERE id = $1
             `, [id]);
@@ -1606,6 +2093,7 @@ const database = {
                 id: row.id,
                 name: row.name,
                 guild_id: row.guild_id == 'NULL' ? null : row.guild_id,
+                parent_id: row.parent_id == 'NULL' ? null : row.parent_id,
                 type: parseInt(row.type),
                 topic: row.topic == 'NULL' ? null : row.topic,
                 last_message_id: row.last_message_id ?? "0",
@@ -1696,18 +2184,25 @@ const database = {
                         type: overwrite.split('_')[3] ? overwrite.split('_')[3] : 'role'
                     });
                 }
-    
-                channels.push({
+
+                let channel_obj = {
                     id: row.id,
                     name: row.name,
                     guild_id: row.guild_id == 'NULL' ? null : row.guild_id,
+                    parent_id: row.parent_id == 'NULL' ? null : row.parent_id,
                     type: parseInt(row.type),
                     topic: row.topic == 'NULL' ? null : row.topic,
                     nsfw: row.nsfw == 1 ?? false,
                     last_message_id: row.last_message_id,
                     permission_overwrites: overwrites,
                     position: row.position
-                })
+                }
+
+                if (parseInt(row.type) === 4) {
+                    delete channel_obj.parent_id;
+                }
+    
+                channels.push(channel_obj);
             }
 
             //#endregion
@@ -1769,6 +2264,7 @@ const database = {
                     deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                     mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
                     roles: member_roles,
+                    joined_at: new Date().toISOString(),
                     user: globalUtils.miniUserObject(user)
                 })
             }
@@ -1799,6 +2295,7 @@ const database = {
                     presences.push({                             
                         game_id: null,
                         status: 'offline',
+                        activities: [],
                         user: globalUtils.miniUserObject(member.user)
                     });
                 } else {
@@ -1808,6 +2305,7 @@ const database = {
                         presences.push({                             
                             game_id: null,
                             status: 'offline',
+                            activities: [],
                             user: globalUtils.miniUserObject(member.user)
                         });
                     } else presences.push(session.presence);
@@ -1850,13 +2348,16 @@ const database = {
                 name: rows[0].name,
                 icon: rows[0].icon == 'NULL' ? null : rows[0].icon,
                 splash: rows[0].splash == 'NULL' ? null : rows[0].splash,
+                banner: rows[0].banner == 'NULL' ? null : rows[0].banner,
                 region: rows[0].region,
                 owner_id: rows[0].owner_id,
                 afk_channel_id: rows[0].afk_channel_id == 'NULL' ? null : rows[0].afk_channel_id,
                 afk_timeout: rows[0].afk_timeout,
                 channels: channels,
                 exclusions: rows[0].exclusions ? JSON.parse(rows[0].exclusions) : [],
+                member_count: members.length,
                 members: members,
+                large: false,
                 roles: roles,
                 emojis: emojis,
                 webhooks: webhooks,
@@ -1866,6 +2367,7 @@ const database = {
                 creation_date: rows[0].creation_date,
                 features: rows[0].features ? JSON.parse(rows[0].features) : [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
+                joined_at: new Date().toISOString(),
                 verification_level: rows[0].verification_level ?? 0
             }
         } catch (error) {
@@ -1985,7 +2487,8 @@ const database = {
                             name: isThereGuild.name,
                             icon: isThereGuild.icon,
                             splash: isThereGuild.splash,
-                            owner_id: isThereGuild.owner_id
+                            owner_id: isThereGuild.owner_id,
+                            features: isThereGuild.features
                         },
                         channel: {
                             id: isThereGuild.channels[0].id,
@@ -2028,7 +2531,8 @@ const database = {
                     name: guild.name,
                     icon: guild.icon,
                     splash: guild.splash,
-                    owner_id: guild.owner_id
+                    owner_id: guild.owner_id,
+                    features: guild.features
                 },
                 channel: {
                     id: channel.id,
@@ -2406,9 +2910,9 @@ const database = {
             return null;
         }
     },
-    updateRole: async (role_id, name, color, hoist, mentionable, permissions, position) => {
+    updateRole: async (role) => {
         try {
-            await database.runQuery(`UPDATE roles SET name = $1, permissions = $2, position = $3, color = $4, hoist = $5, mentionable = $6 WHERE role_id = $7`, [name, permissions, position, color, hoist ? 1 : 0, mentionable ? 1 : 0, role_id]);
+            await database.runQuery(`UPDATE roles SET name = $1, permissions = $2, position = $3, color = $4, hoist = $5, mentionable = $6 WHERE role_id = $7`, [role.name, role.permissions, role.position, role.color, role.hoist ? 1 : 0, role.mentionable ? 1 : 0, role.id]);
 
             return true;
         } catch(error) {
@@ -2618,7 +3122,7 @@ const database = {
             return null;
         }
     },
-    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone, webhookOverride = null, webhook_embeds = []) => {
+    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone, webhookOverride = null, webhook_embeds = null) => {
         try {
             const id = Snowflake.generate();
             const date = new Date().toISOString();
@@ -2656,7 +3160,7 @@ const database = {
                 content = "";
             }
 
-            let embeds = await embedder.generateMsgEmbeds(content);
+            let embeds = await embedder.generateMsgEmbeds(content, attachment);
 
             if (webhook_embeds) {
                 embeds = webhook_embeds;   
@@ -2686,17 +3190,11 @@ const database = {
                     attachment.height,
                     attachment.width,
                     attachment.size,
-                    `${config.secure ? 'https' : 'http'}://${config.base_url}${globalUtils.nonStandardPort ? `:${config.port}` : ''}/attachments/${channel_id}/${attachment.id}/${attachment.name}`
+                    attachment.url,
                 ]);
             }
 
-            const message = await database.getMessageById(id);
-
-            if (message == null) {
-                return null;
-            }
-
-            return message;
+            return await database.getMessageById(id);
         } catch(error) {
             logText(error, "error");
 
@@ -2762,17 +3260,24 @@ const database = {
                     });
                 }
     
-                channels.push({
+                let channel_obj = {
                     id: row.id,
                     name: row.name,
                     guild_id: row.guild_id == 'NULL' ? null : row.guild_id,
+                    parent_id: row.parent_id == 'NULL' ? null : row.parent_id,
                     type: parseInt(row.type),
                     topic: row.topic == 'NULL' ? null : row.topic,
                     nsfw: row.nsfw == 1 ?? false,
                     last_message_id: row.last_message_id,
                     permission_overwrites: overwrites,
                     position: row.position
-                })
+                }
+
+                if (parseInt(row.type) === 4) {
+                    delete channel_obj.parent_id;
+                }
+    
+                channels.push(channel_obj);
             }
 
             //#endregion
@@ -2832,6 +3337,7 @@ const database = {
                     deaf: ((row.deaf == 'TRUE' || row.deaf == 1) ? true : false),
                     mute: ((row.mute == 'TRUE' || row.mute == 1) ? true : false),
                     roles: member_roles,
+                    joined_at: new Date().toISOString(),
                     user: globalUtils.miniUserObject(user)
                 })
             }
@@ -2862,15 +3368,17 @@ const database = {
                     presences.push({                             
                         game_id: null,
                         status: 'offline',
+                        activities: [],
                         user: globalUtils.miniUserObject(member.user)
                     });
                 } else {
                     let session = sessions[sessions.length - 1]
     
                     if (!session.presence) {
-                        presences.push({                             
+                        presences.push({
                             game_id: null,
                             status: 'offline',
+                            activities: [],
                             user: globalUtils.miniUserObject(member.user)
                         });
                     } else presences.push(session.presence);
@@ -2913,13 +3421,16 @@ const database = {
                 name: rows[0].name,
                 icon: rows[0].icon == 'NULL' ? null : rows[0].icon,
                 splash: rows[0].splash == 'NULL' ? null : rows[0].splash,
+                banner: rows[0].banner == 'NULL' ? null : rows[0].banner,
                 region: rows[0].region,
                 owner_id: rows[0].owner_id,
                 afk_channel_id: rows[0].afk_channel_id == 'NULL' ? null : rows[0].afk_channel_id,
                 afk_timeout: rows[0].afk_timeout,
                 channels: channels,
                 exclusions: rows[0].exclusions ? JSON.parse(rows[0].exclusions) : [],
+                member_count: members.length,
                 members: members,
+                large: false,
                 roles: roles,
                 emojis: emojis,
                 webhooks: webhooks,
@@ -2929,6 +3440,7 @@ const database = {
                 creation_date: rows[0].creation_date,
                 features: rows[0].features ? JSON.parse(rows[0].features) : [],
                 default_message_notifications: rows[0].default_message_notifications ?? 0,
+                joined_at: new Date().toISOString(),
                 verification_level: rows[0].verification_level ?? 0
             }
         } catch (error) {
@@ -2960,10 +3472,11 @@ const database = {
             return -1; //error
         }
     },
-    updateGuild: async (guild_id, afk_channel_id, afk_timeout, icon, splash, name, default_message_notifications, verification_level) => {
+    updateGuild: async (guild_id, afk_channel_id, afk_timeout, icon, splash, banner, name, default_message_notifications, verification_level) => {
         try {
             let send_icon  = 'NULL';
             let send_splash = 'NULL';
+            let send_banner = 'NULL';
 
             if (icon != null) {
                 if (icon.includes("data:image")) {
@@ -3023,7 +3536,36 @@ const database = {
                 }
             }
 
-            await database.runQuery(`UPDATE guilds SET name = $1, icon = $2, splash = $3, afk_channel_id = $4, afk_timeout = $5, default_message_notifications = $6, verification_level = $7 WHERE id = $8`, [name, send_icon, send_splash, (afk_channel_id == null ? 'NULL' : afk_channel_id), afk_timeout, default_message_notifications, verification_level, guild_id]);
+            if (banner != null) {
+                if (banner.includes("data:image")) {
+                    var extension = banner.split('/')[1].split(';')[0];
+                    var imgData = banner.replace(`data:image/${extension};base64,`, "");
+                    var file_name = Math.random().toString(36).substring(2, 15) + Math.random().toString(23).substring(2, 5);
+                    var hash = md5(file_name);
+            
+                    if (extension == "jpeg") {
+                        extension = "jpg";
+                    }
+            
+                    send_banner = hash.toString();
+            
+                    if (!fs.existsSync(`www_dynamic/banners`)) {
+                        fs.mkdirSync(`www_dynamic/banners`, { recursive: true });
+                    }
+    
+                    if (!fs.existsSync(`www_dynamic/banners/${guild_id}`)) {
+                        fs.mkdirSync(`www_dynamic/banners/${guild_id}`, { recursive: true });
+            
+                        fs.writeFileSync(`www_dynamic/banners/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                    } else {
+                        fs.writeFileSync(`www_dynamic/banners/${guild_id}/${hash}.${extension}`, imgData, "base64");
+                    }
+                } else {
+                    send_banner = banner;
+                }
+            }
+
+            await database.runQuery(`UPDATE guilds SET name = $1, icon = $2, splash = $3, banner = $4, afk_channel_id = $5, afk_timeout = $6, default_message_notifications = $7, verification_level = $8 WHERE id = $9`, [name, send_icon, send_splash, send_banner, (afk_channel_id == null ? 'NULL' : afk_channel_id), afk_timeout, default_message_notifications, verification_level, guild_id]);
 
             return true;
         } catch(error) {
@@ -3032,7 +3574,7 @@ const database = {
             return false;
         }
     },
-    createGuild: async (owner_id, icon , name, region, exclusions) => {
+    createGuild: async (owner_id, icon , name, region, exclusions, client_date) => {
         try {
             const id = Snowflake.generate();
             const date = new Date().toISOString();
@@ -3068,6 +3610,104 @@ const database = {
             }
 
             await database.runQuery(`INSERT INTO guilds (id, name, icon, region, owner_id, afk_channel_id, afk_timeout, creation_date, exclusions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [id, name, (icon == null ? 'NULL' : icon), region, owner_id, 'NULL', 300, date, JSON.stringify(exclusions)])
+
+            if ((client_date.getFullYear() === 2017 && client_date.getMonth() >= 9) || client_date.getFullYear() >= 2018) {
+                //do categories
+                let text_channels_id = Snowflake.generate();
+                let voice_channels_id = Snowflake.generate();
+                let general_text_id = Snowflake.generate();
+                let general_vc_id = Snowflake.generate();
+
+                await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [text_channels_id, 4, id, 'NULL', '0', 'NULL', 'Text Channels', 0]);
+                await database.runQuery(`INSERT INTO channels (id, type, guild_id, parent_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [general_text_id, 0, id, text_channels_id, 'NULL', '0', 'NULL', 'general', 0]);
+                
+                await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [voice_channels_id, 4, id, 'NULL', '0', 'NULL', 'Voice Channels', 1]);
+                await database.runQuery(`INSERT INTO channels (id, type, guild_id, parent_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [general_vc_id, 2, id, voice_channels_id, 'NULL', '0', 'NULL', 'General', 0]);
+
+                await database.runQuery(`INSERT INTO roles (guild_id, role_id, name, permissions, position) VALUES ($1, $2, $3, $4, $5)`, [id, id, '@everyone', 104193089, 0]); 
+                await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [id, owner_id, 'NULL', '[]', date, 0, 0]);
+                await database.runQuery(`INSERT INTO widgets (guild_id, channel_id, enabled) VALUES ($1, $2, $3)`, [id, 'NULL', 0]);
+
+                return {
+                    afk_channel_id: null,
+                    afk_timeout: 300,
+                    channels: [{
+                        type: 4,
+                        topic: null,
+                        nsfw: false,
+                        position: 0,
+                        permission_overwrites: [],
+                        name: 'Text Channels',
+                        last_message_id: '0',
+                        id: text_channels_id,
+                        guild_id: id
+                    }, {
+                        type: 0,
+                        topic: null,
+                        nsfw: false,
+                        position: 0,
+                        permission_overwrites: [],
+                        name: 'general',
+                        last_message_id: '0',
+                        id: general_text_id,
+                        guild_id: id,
+                        parent_id: text_channels_id
+                    }, {
+                        type: 4,
+                        topic: null,
+                        nsfw: false,
+                        position: 1,
+                        permission_overwrites: [],
+                        name: 'Voice Channels',
+                        last_message_id: '0',
+                        id: text_channels_id,
+                        guild_id: id
+                    }, {
+                        type: 2,
+                        topic: null,
+                        nsfw: false,
+                        position: 0,
+                        permission_overwrites: [],
+                        name: 'General',
+                        last_message_id: '0',
+                        id: general_vc_id,
+                        guild_id: id,
+                        parent_id: voice_channels_id
+                    }],
+                    member_count: 1,
+                    members: [{
+                        deaf: false,
+                        mute: false,
+                        nick: null,
+                        id: owner_id,
+                        joined_at: date,
+                        roles: [],
+                        user: globalUtils.miniUserObject(owner)
+                    }],
+                    presences: [{
+                        game_id: null,
+                        status: "online",
+                        activities: [],
+                        user: globalUtils.miniUserObject(owner),
+                    }],
+                    icon: icon,
+                    splash: null,
+                    banner: null,
+                    id: id,
+                    name: name,
+                    owner_id: owner_id,
+                    joined_at: date,
+                    region: region,
+                    voice_states: [],
+                    roles: [{
+                        id: id,
+                        name: "@everyone", 
+                        permissions: 104193089,
+                        position: 0
+                    }]
+                }
+            }
+
             await database.runQuery(`INSERT INTO channels (id, type, guild_id, topic, last_message_id, permission_overwrites, name, position) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, 0, id, 'NULL', '0', 'NULL', 'general', 0]);
             await database.runQuery(`INSERT INTO roles (guild_id, role_id, name, permissions, position) VALUES ($1, $2, $3, $4, $5)`, [id, id, '@everyone', 104193089, 0]); 
             await database.runQuery(`INSERT INTO members (guild_id, user_id, nick, roles, joined_at, deaf, mute) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [id, owner_id, 'NULL', '[]', date, 0, 0]);
@@ -3115,6 +3755,7 @@ const database = {
                     position: 0
                 }]
             }
+            
         } catch (error) {
             logText(error, "error");
 
@@ -3122,6 +3763,7 @@ const database = {
         }
     },
     createAccount: async (username, email, password) => {
+        // New accounts via invite (unclaimed account) have null email and null password.
         try {
             let user = await database.getAccountByEmail(email);
 
@@ -3142,7 +3784,7 @@ const database = {
             }
 
             let salt = await genSalt(10);
-            let pwHash = await hash(password, salt);
+            let pwHash = await hash(password ?? globalUtils.generateString(20), salt);
             let id = Snowflake.generate();
             let date = new Date().toISOString();
             let discriminator = Math.round(Math.random() * 9999);
@@ -3153,7 +3795,7 @@ const database = {
 
             let token = globalUtils.generateToken(id, pwHash);
 
-            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, username, discriminator.toString(), email, pwHash, token, date, 'NULL'])
+            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, username, discriminator.toString(), email, password ? pwHash : null, token, date, 'NULL'])
 
             return {
                 token: token
@@ -3208,9 +3850,9 @@ const database = {
             return false;
         }
     },
-    updateAccount: async (avatar, email, username, discriminator, password, new_pw, new_em) => {
+    updateAccount: async (userid, avatar, username, discriminator, password, new_pw, new_em) => {
         try {
-            const account = await database.getAccountByEmail(email);
+            const account = await database.getAccountByUserId(userid);
     
             if (!account) {
                 return -1;
@@ -3303,10 +3945,12 @@ const database = {
                 }
 
                 if (new_pw != null && new_password != account.password) {
-                    const checkPassword = await database.doesThisMatchPassword(password, account.password);
+                    if (account.password) {
+                        const checkPassword = await database.doesThisMatchPassword(password, account.password);
     
-                    if (!checkPassword) {
-                        return 2; //invalid password
+                        if (!checkPassword) {
+                            return 2; //invalid password
+                        }
                     }
         
                     const salt = await genSalt(10);

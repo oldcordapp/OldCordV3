@@ -14,14 +14,14 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
         if (!req.body.email && release_date == "june_12_2015") {
             req.body.email = `june_12_2015_app${globalUtils.generateString(10)}@oldcordrouter.com`
-        } else if (!req.body.email) {
+        } else if (!req.body.email && !req.header("referer").includes("/invite/")) {
             return res.status(400).json({
                 code: 400,
                 email: "This field is required",
             });
         }
 
-        if (!req.body.email.includes("@")) {
+        if (req.body.email && !req.body.email.includes("@")) {
             return res.status(400).json({
                 code: 400,
                 email: "This field is required",
@@ -30,7 +30,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
         if (!req.body.password && release_date == "june_12_2015") {
             req.body.password = globalUtils.generateString(20);
-        } else if (!req.body.password) {
+        } else if (!req.body.password && !req.header("referer").includes("/invite/")) {
             return res.status(400).json({
                 code: 400,
                 password: "This field is required",
@@ -48,6 +48,11 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
         if (goodUsername.code !== 200) {
             return res.status(goodUsername.code).json(goodUsername);
+        }
+
+        if (req.header("referer").includes("/invite/")) {
+            req.body.email = null
+            req.body.password = null
         }
        
         const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password);
@@ -90,6 +95,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                     await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", {
                         game_id: null,
                         status: "online",
+                        activities: [],
                         user: globalUtils.miniUserObject(account),
                         guild_id: invite.guild.id
                     });
@@ -127,6 +133,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                 await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", {
                     game_id: null,
                     status: "online",
+                    activities: [],
                     user: globalUtils.miniUserObject(account),
                     guild_id: guildId
                 });

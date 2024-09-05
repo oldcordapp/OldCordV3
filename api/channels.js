@@ -102,7 +102,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -122,7 +122,7 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
             });
         }
 
-        const channel = req.channel;
+        let channel = req.channel;
 
         if (channel == null) {
             return res.status(404).json({
@@ -131,48 +131,67 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
             });
         }
 
-        if (!channel.guild_id) {
+        if (!channel.guild_id && channel.type !== 3) {
             return res.status(404).json({
                 code: 404,
                 message: "Unknown Channel"
-            }); //Can only modify guild channels lol
+            }); //Can only modify guild channels lol -- okay update, they can modify group channels too
         }
 
-        if (!req.body.name) {
-            return res.status(400).json({
-                code: 404,
-                name: "This field is required.",
-            });
-        } 
-
-        if (req.body.name.length < 1) {
-            return res.status(400).json({
-                code: 400,
-                name: "Must be between 1 and 30 characters",
-            });
+        if (req.body.icon) {
+            channel.icon = req.body.icon;
         }
 
-        if (req.body.name.length > 30) {
+        if (req.body.icon === null) {
+            channel.icon = null;
+        }
+
+        if (req.body.name && req.body.name.length < 1) {
             return res.status(400).json({
                 code: 400,
                 name: "Must be between 1 and 30 characters",
             });
         }
 
-        channel.name = req.body.name;
-        channel.position = req.body.position;
-        channel.topic = req.body.topic ?? null;
-        channel.nsfw = req.body.nsfw ?? false;
+        if (req.body.name && req.body.name.length > 30) {
+            return res.status(400).json({
+                code: 400,
+                name: "Must be between 1 and 30 characters",
+            });
+        }
+
+        channel.name = req.body.name ?? channel.name;
+
+        if (channel.type !== 3 && channel.type !== 1) {
+            channel.position = req.body.position ?? channel.position;
+            channel.topic = req.body.topic ?? channel.topic;
+            channel.nsfw = req.body.nsfw ?? channel.nsfw;
+        } //do this for only guild channels
 
         const outcome = await global.database.updateChannel(channel.id, channel);
 
-        if (channel == null || !outcome) {
-            await globalUtils.unavailableGuild(req.guild, "Something went wrong while updating a channel");
-
+        if (!outcome) {
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
             });
+        }
+
+        if (channel.type === 3) {
+            channel = outcome;
+
+            if (!channel) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });
+            }
+
+            await global.dispatcher.dispatchEventInPrivateChannel(channel, "CHANNEL_UPDATE", async function() {
+                return globalUtils.personalizeChannelObject(this.socket, channel);
+            });
+
+            return res.status(200).json(channel);
         }
 
         if (!req.channel_types_are_ints) {
@@ -185,8 +204,6 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
-
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -211,7 +228,7 @@ router.get("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewar
       } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -279,7 +296,7 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -325,7 +342,7 @@ router.get("/:channelid/webhooks", channelMiddleware, channelPermissionsMiddlewa
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -384,7 +401,7 @@ router.post("/:channelid/webhooks",  channelMiddleware, channelPermissionsMiddle
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -498,7 +515,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
     } catch(error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -564,7 +581,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
     } catch(error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,
@@ -669,6 +686,15 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
             });
         }
 
+        if (channel.type !== 3 && channel.type !== 1) {
+            if (req.guild && req.guild.channels.length === 1) {
+                return res.status(400).json({
+                    code: 400,
+                    message: "You cannot delete all channels in this server"
+                });
+            }
+        }
+
         if (channel.type == 1 || channel.type == 3) {
             //Leaving a private channel
             let userPrivateChannels = await global.database.getPrivateChannels(sender.id);
@@ -706,8 +732,6 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
             
             if (channel.type == 3) {
                 //Remove user from recipients list
-                channel.recipients = channel.recipients.filter(user => user.id != sender.id);
-                
                 if (!await global.database.updateChannelRecipients(channel.id, channel.recipients))
                     throw "Failed to update recipients list in channel";
 
@@ -746,7 +770,7 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
         logText(error, "error");
         
         if (req.guild)
-            await globalUtils.unavailableGuild(req.guild, error);
+            
         
         return res.status(500).json({
             code: 500,

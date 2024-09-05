@@ -1,11 +1,10 @@
-const util = require('util');
 const express = require('express');
 const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
 const { channelPermissionsMiddleware, rateLimitMiddleware } = require('../helpers/middlewares');
 const fs = require('fs');
 const multer = require('multer');
-const sizeOf = util.promisify(require('image-size'));
+const Jimp = require('jimp');
 const Snowflake = require('../helpers/snowflake');
 const reactions = require('./reactions');
 const path = require('path');
@@ -61,6 +60,10 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
         let messages = await global.database.getChannelMessages(channel.id, limit, req.query.before, req.query.after, includeReactions);
 
         for(var msg of messages) {
+            if (msg.id === '1279218211430105089') {
+                msg.content = msg.content.replace("[YEAR]", req.client_build_date.getFullYear());
+            }
+
             if (msg.reactions) {
                 for(var reaction of msg.reactions) {
                     reaction.me = reaction.user_ids.includes(creator.id);
@@ -73,8 +76,6 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
         return res.status(200).json(messages);
     } catch (error) {
         logText(error, "error");
-
-        await globalUtils.unavailableGuild(req.guild, error);
 
         return res.status(500).json({
             code: 500,
@@ -116,43 +117,6 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         
         //Coerce tts field to boolean
         req.body.tts = req.body.tts === true || req.body.tts === "true";
-
-        let file_details = null;
-
-        if (req.file) {
-            file_details = {
-                id: Snowflake.generate(),
-                size: req.file.size,
-            };
-
-            file_details.name = globalUtils.replaceAll(req.file.originalname, ' ', '_').replace(/[^A-Za-z0-9_\-.()\[\]]/g, '');
-
-            if (!file_details.name || file_details.name == "") {
-                return res.status(403).json({
-                    code: 403,
-                    message: "Invalid filename"
-                });
-            }
-
-            const channelDir = path.join('.', 'www_dynamic', 'attachments', req.channel.id);
-            const attachmentDir = path.join(channelDir, file_details.id);
-            const file_path = path.join(attachmentDir, file_details.name);
-
-            if (!fs.existsSync(attachmentDir)) {
-                fs.mkdirSync(attachmentDir, { recursive: true });
-            }
-
-            fs.writeFileSync(file_path, req.file.buffer);
-            
-            //I hate this, but image-size softlocks when taking a buffer
-            try {
-                const dimensions = await sizeOf(file_path);
-                if (dimensions) {
-                    file_details.width = dimensions.width;
-                    file_details.height = dimensions.height;
-                }
-            } catch {}
-        }
 
         if (!req.channel.recipients) {
             if (!req.guild) {
@@ -295,6 +259,44 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
                 //Not allowed
                 req.body.tts = false;
             }
+        }
+        
+        let file_details = null;
+
+        if (req.file) {
+            file_details = {
+                id: Snowflake.generate(),
+                size: req.file.size,
+            };
+
+            file_details.name = globalUtils.replaceAll(req.file.originalname, ' ', '_').replace(/[^A-Za-z0-9_\-.()\[\]]/g, '');
+
+            if (!file_details.name || file_details.name == "") {
+                return res.status(403).json({
+                    code: 403,
+                    message: "Invalid filename"
+                });
+            }
+
+            const channelDir = path.join('.', 'www_dynamic', 'attachments', req.channel.id);
+            const attachmentDir = path.join(channelDir, file_details.id);
+            const file_path = path.join(attachmentDir, file_details.name);
+            
+            file_details.url = `${globalUtils.config.secure ? 'https' : 'http'}://${globalUtils.config.base_url}${globalUtils.nonStandardPort ? `:${globalUtils.config.port}` : ''}/attachments/${req.channel.id}/${file_details.id}/${file_details.name}`;
+
+            if (!fs.existsSync(attachmentDir)) {
+                fs.mkdirSync(attachmentDir, { recursive: true });
+            }
+
+            fs.writeFileSync(file_path, req.file.buffer);
+            
+            try {
+                const image = await Jimp.read(req.file.buffer);
+                if (image) {
+                    file_details.width = image.getWidth();
+                    file_details.height = image.getHeight();
+                }
+            } catch {}
         }
 
         //Write message

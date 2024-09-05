@@ -3,6 +3,7 @@ const globalUtils = require('./helpers/globalutils');
 const WebSocket = require('ws').WebSocket;
 const session = require('./helpers/session');
 const zlib = require('zlib');
+const Snowflake = require('./helpers/snowflake');
 
 async function syncPresence(socket, packet) {
     let allSessions = global.userSessions.get(socket.user.id);
@@ -18,16 +19,20 @@ async function syncPresence(socket, packet) {
         if (packet.d.idle_since != null) {
             setStatusTo = "idle";
         }
-    } else if (socket.client_build.includes("2016")) {
+    } else {
         gameField = packet.d.game || null;
 
         if (packet.d.status) {
             setStatusTo = packet.d.status.toLowerCase();
         }
         
-        if (packet.d.afk && packet.d.afk === true) {
+        if (packet.d.afk) {
             setStatusTo = "idle";
         }
+
+        if (!packet.d.afk && packet.d.since && packet.d.since === 0) {
+            setStatusTo = "online"; //no longer afk?
+        } 
     }
 
     // Sync
@@ -165,11 +170,18 @@ const gateway = {
                             return socket.close(4004, "Authentication failed");
                         }
 
+                        if (user.bot) {
+                            user.settings = {
+                                status: "online"
+                            }
+                        }
+
                         socket.user = user;
 
                         let sesh = new session(globalUtils.generateString(16), socket, user, packet.d.token, false, {
                             game_id: null,
                             status: "offline",
+                            activities: [],
                             user: globalUtils.miniUserObject(socket.user)
                         });
 
@@ -189,6 +201,155 @@ const gateway = {
                         if (!socket.session) return socket.close(4003, 'Not authenticated');
 
                         await syncPresence(socket, packet);
+                    } else if (packet.op == 12) {
+                        if (!socket.session) return;
+
+                        let guild_ids = packet.d;
+
+                        if (guild_ids.length === 0) return;
+
+                        let usersGuilds = socket.session.guilds;
+
+                        if (usersGuilds.length === 0) return;
+
+                        for(var guild of guild_ids) {
+                            let guildObj = usersGuilds.find(x => x.id === guild);
+
+                            if (!guildObj) continue;
+
+                            let op12 = await global.database.op12getGuildMembersAndPresences(guildObj);
+
+                            if (op12 == null) continue;
+
+                            socket.session.dispatch("GUILD_SYNC", {
+                                id: guildObj.id,
+                                presences: op12.presences,
+                                members: op12.members
+                            });
+                        }
+                        //op12getGuildMembersAndPresences
+                    } else if (packet.op == 14) {
+                        //UGHHHHHHHHHHHHHHHHHHHHHHHHHHH
+                        if (!socket.session) return;
+
+                        let guild_id = packet.d.guild_id;
+
+                        if (!guild_id); // need to be more strict on this
+
+                        let usersGuilds = socket.session.guilds;
+
+                        let guild = usersGuilds.find(x => x.id === guild_id);
+
+                        if (!guild);
+
+                        let typing = packet.d.typing; //Subscribe to typing events?
+
+                        if (!typing) {
+                            packet.d.typing = false;
+                        }
+
+                        let activities = packet.d.activities; //subscribe to game updates, etc
+
+                        if (!activities) {
+                            packet.d.activities = [];
+                        }
+
+                        let members = packet.d.members; //members array to subscribe to ??
+
+                        let channels = packet.d.channels;
+
+                        if (!channels) return;
+
+                        let channelId = Object.keys(packet.d.channels)[0];
+
+                        if (!channelId) return;
+
+                        let range = packet.d.channels[channelId][0];
+
+                        if (!range) return;
+
+                        let [startIndex, endIndex] = range;
+
+                        let channel = guild.channels.find(x => x.id === channelId);
+
+                        if (!channel) return;
+
+                        //to-do subscribe to events for specific members
+
+                        //check for perms to view channel in the payload and do some bullshit math for the list_id
+
+                        let selected_members = guild.members.slice(startIndex, endIndex + 1);
+
+                        let related_presences = [];
+
+                        for(var presence of guild.presences) {
+                            let member = selected_members.find(x => x.id === presence.user.id);
+
+                            if (member) {
+                                related_presences.push({
+                                    presence: presence,
+                                    member: member
+                                });
+                            }
+                        }
+
+                        const online = related_presences
+                        .filter(p => p.presence.status !== 'offline' && p.presence.status !== 'invisible')
+                        .map(p => ({
+                            member: {
+                                ...p.member,
+                                presence: {
+                                    status: p.presence.status,
+                                    user: {
+                                        id: p.member.user.id,
+                                    },
+                                    game: null,
+                                    activities: [],
+                                    client_status: null
+                                }
+                            }
+                        }));
+
+                    const offline = related_presences
+                        .filter(p => p.presence.status === 'offline' || p.presence.status === 'invisible')
+                        .map(p => ({
+                            member: {
+                                ...p.member,
+                                presence: {
+                                    status: p.presence.status,
+                                    user: {
+                                        id: p.member.user.id,
+                                    },
+                                    game: null,
+                                    activities: [],
+                                    client_status: null
+                                }
+                            }
+                        }));
+
+                        const items = [
+                            { group: { id: 'online', count: online.length } },
+                            ...online,
+                            { group: { id: 'offline', count: offline.length } },
+                            ...offline
+                        ];
+
+                        socket.session.dispatch("GUILD_MEMBER_LIST_UPDATE", {
+                            guild_id: guild.id,
+                            id: 'everyone',
+                            ops: [{
+                                op: "SYNC",
+                                range: range,
+                                items: items
+                            }],
+                            groups: [{
+                                count: online.length,
+                                id: 'online'
+                            }, {
+                                count: offline.length,
+                                id: 'offline'
+                            }],
+                        });
                     } else if (packet.op == 6) {
                         let token = packet.d.token;
                         let session_id = packet.d.session_id;
@@ -213,6 +374,7 @@ const gateway = {
                             let sesh = new session(globalUtils.generateString(16), socket, socket.user, packet.d.token, false, {
                                 game_id: null,
                                 status: socket.user.settings.status,
+                                activities: [],
                                 user: globalUtils.miniUserObject(socket.user)
                             });
 

@@ -83,8 +83,13 @@ app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
     try {
         let { width, height } = req.query;
         const url = req.url;
-
-        if (!url || !width || !height || url.includes(".gif")) {
+        
+        if (!url || !width || !height) {
+            return res.status(200).sendFile(baseFilePath);
+        }
+        
+        let urlWithoutParams = url.split('?', 2)[0];
+        if (urlWithoutParams.endsWith(".gif") || urlWithoutParams.endsWith(".mp4")|| urlWithoutParams.endsWith(".webm")) {
             return res.status(200).sendFile(baseFilePath);
         }
 
@@ -151,9 +156,125 @@ app.get('/icons/:serverid/:file', async (req, res) => {
     }
 });
 
+app.get("/app-assets/:applicationid/store/:file", async(req, res) => {
+    try {
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'app_assets');
+
+        if (!fs.existsSync(directoryPath)) {
+            return res.status(404).send("File not found");
+        }
+
+        let files = fs.readdirSync(directoryPath);
+        let matchedFile = null;
+
+        if (req.params.file.includes(".mp4")) {
+            matchedFile = files[1];
+        } else matchedFile = files[0];
+
+        if (!matchedFile) {
+            return res.status(404).send("File not found");
+        }
+
+        const filePath = path.join(directoryPath, matchedFile);
+
+        return res.status(200).sendFile(filePath);
+    } catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
+app.get('/channel-icons/:channelid/:file', async (req, res) => {
+    try {
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'group_icons', req.params.channelid);
+
+        if (!fs.existsSync(directoryPath)) {
+            return res.status(404).send("File not found");
+        }
+
+        const files = fs.readdirSync(directoryPath);
+        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
+
+        if (!matchedFile) {
+            return res.status(404).send("File not found");
+        }
+
+        const filePath = path.join(directoryPath, matchedFile);
+
+        return res.status(200).sendFile(filePath);
+    } catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
+app.get('/app-icons/:applicationid/:file', async (req, res) => {
+    try {
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'applications_icons', req.params.applicationid);
+
+        if (!fs.existsSync(directoryPath)) {
+            return res.status(404).send("File not found");
+        }
+
+        const files = fs.readdirSync(directoryPath);
+        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
+
+        if (!matchedFile) {
+            return res.status(404).send("File not found");
+        }
+
+        const filePath = path.join(directoryPath, matchedFile);
+
+        return res.status(200).sendFile(filePath);
+    } catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
 app.get('/splashes/:serverid/:file', async (req, res) => {
     try {
         const directoryPath = path.join(__dirname, 'www_dynamic', 'splashes', req.params.serverid);
+
+        if (!fs.existsSync(directoryPath)) {
+            return res.status(404).send("File not found");
+        }
+
+        const files = fs.readdirSync(directoryPath);
+        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
+
+        if (!matchedFile) {
+            return res.status(404).send("File not found");
+        }
+
+        const filePath = path.join(directoryPath, matchedFile);
+
+        return res.status(200).sendFile(filePath);
+    } catch (error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
+app.get('/banners/:serverid/:file', async (req, res) => {
+    try {
+        const directoryPath = path.join(__dirname, 'www_dynamic', 'banners', req.params.serverid);
 
         if (!fs.existsSync(directoryPath)) {
             return res.status(404).send("File not found");
@@ -307,10 +428,12 @@ app.get("/channels/:guildid/:channelid", (_, res) => {
 app.get("/bootloaderConfig", (req, res) => {
     const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
     const base_url = config.base_url + portAppend;
+
     res.json({
         instance_name: config.instance_name,
         instance_description: config.instance_description,
         custom_invite_url: config.custom_invite_url == "" ? base_url + "/invite" : config.custom_invite_url,
+        gateway: globalUtils.generateGatewayURL(req),
     });
 });
 

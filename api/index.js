@@ -13,6 +13,10 @@ const channels = require('./channels');
 const connections = require('./connections');
 const admin = require('./admin');
 const webhooks = require('./webhooks');
+const store = require('./store');
+const oauth2 = require('./oauth2/index');
+const entitlements = require('./entitlements');
+const activities = require('./activities');
 
 global.config = globalUtils.config;
 //just in case
@@ -44,11 +48,29 @@ app.get("/experiments", (req, res) => {
     return res.status(200).json({assignments:[]});
 });
 
+app.get("/promotions", (req, res) => {
+    return res.status(200).json([]);
+});
+
+app.get("/applications", (req, res) => {
+    return res.status(200).json([]);
+});
+
+app.get("/activities", (req, res) => {
+    return res.status(200).json([]);
+});
+
+app.get("/applications/detectable", (req, res) => {
+    return res.status(200).json([]);
+});
+
+app.get("/games", (req, res) => {
+    return res.status(200).json([]);
+});
+
 app.get("/gateway", (req, res) => {
-    let host = req.headers['host'];
-    if (host) host = host.split(':', 2)[0];
     return res.status(200).json({
-        url: `${config.secure ? 'wss' : 'ws'}://${config.gateway_url == "" ? (host ?? config.base_url) : config.gateway_url}:${config.ws_port}`
+        url: globalUtils.generateGatewayURL(req)
     });
 });
 
@@ -60,10 +82,18 @@ app.use("/users", users);
 app.use("/voice", voice);
 app.use("/guilds", guilds);
 app.use("/channels", channels);
+app.use("/entitlements", entitlements);
+app.use("/activities", activities);
 app.use("/invite", invites);
 app.use("/webhooks", webhooks);
+app.use("/oauth2", oauth2);
+app.use("/store", store);
 
 app.use("/track", (_, res) => {
+    return res.status(204).send();
+});
+
+app.use("/science", (_, res) => {
     return res.status(204).send();
 });
 

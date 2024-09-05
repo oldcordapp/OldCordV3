@@ -93,7 +93,7 @@ router.delete("/:code", rateLimitMiddleware(global.config.ratelimit_config.delet
     } catch (error) {
         logText(error, "error");
 
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
             code: 500,
@@ -106,7 +106,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(g
     try {
         const sender = req.account;
 
-        if (!sender) {
+        if (!sender || sender.bot) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -153,6 +153,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(g
         await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", {
             game_id: null,
             status: "online",
+            activities: [],
             user: globalUtils.miniUserObject(sender),
             guild_id: invite.guild.id
         })
@@ -161,7 +162,7 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(g
     } catch (error) {
         logText(error, "error");
 
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
             code: 500,

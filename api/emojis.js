@@ -32,7 +32,7 @@ router.get("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), as
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -115,7 +115,7 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -205,7 +205,7 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
 
         return res.status(500).json({
           code: 500,
@@ -274,7 +274,7 @@ router.delete("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMO
     } catch (error) {
         logText(error, "error");
     
-        await globalUtils.unavailableGuild(req.guild, error);
+        
         
         return res.status(500).json({
           code: 500,
