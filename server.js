@@ -29,6 +29,10 @@ global.database = database;
 global.permissions = permissions;
 global.config = globalUtils.config;
 
+process.on('uncaughtException', (error) => {
+    logText(error, "error");
+});
+
 //Load certificates (if any)
 let certificates = null;
 if (config.cert_path && config.cert_path !== "" && config.key_path && config.key_path !== "") {

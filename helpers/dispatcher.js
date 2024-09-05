@@ -81,7 +81,7 @@ const dispatcher = {
 
             let uSessions = global.userSessions.get(member.id);
 
-            if (!uSessions || uSessions.size === 0) continue;
+            if (!uSessions || uSessions.length === 0) continue;
 
             for(let z = 0; z < uSessions.length; z++) {
                 let socket = uSessions[z].socket;
@@ -108,7 +108,7 @@ const dispatcher = {
 
             let uSessions = global.userSessions.get(recipient);
 
-            if (!uSessions || uSessions.size === 0) continue;
+            if (!uSessions || uSessions.length === 0) continue;
 
             for(let z = 0; z < uSessions.length; z++) {
                 uSessions[z].dispatch(type, payload);
@@ -137,7 +137,7 @@ const dispatcher = {
 
             let uSessions = global.userSessions.get(member.id);
 
-            if (!uSessions || uSessions.size === 0) continue;
+            if (!uSessions || uSessions.length === 0) continue;
 
             for(let z = 0; z < uSessions.length; z++) {
                 uSessions[z].dispatch(type, payload);

@@ -201,7 +201,7 @@ class session {
 
         global.sessions.delete(this.id);
 
-        if (uSessions.length == 0) {
+        if (!uSessions || uSessions.length == 0) {
             await this.updatePresence("offline", null);
         } else await this.updatePresence(uSessions[uSessions.length - 1].presence.status, uSessions[uSessions.length - 1].presence.game_id);
     }
