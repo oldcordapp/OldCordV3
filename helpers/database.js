@@ -108,6 +108,13 @@ const database = {
            );`, []); // 4 = Everyone, 3 = Friends of Friends & Server Members, 2 = Friends of Friends, 1 = Server Members, 0 = No one
 
            await database.runQuery(`
+            CREATE TABLE IF NOT EXISTS user_notes (
+                author_id TEXT,
+                user_id TEXT,
+                note TEXT DEFAULT NULL
+            );`, []);
+
+           await database.runQuery(`
             CREATE TABLE IF NOT EXISTS dm_channels (
                 id TEXT,
                 user1 TEXT,
@@ -775,13 +782,13 @@ const database = {
 
                 if (overrides !== null) {
                     return {
-                        username: overrides.username ?? webhook.name,
+                        username: overrides.username === 'NULL' ? webhook.name : overrides.username,
                         discriminator: "0000",
-                        avatar: null,
+                        avatar: overrides.avatar_url ?? null,
                         id: webhookId,
                         bot: true,
                         webhook: true
-                    } //avatar_url todo
+                    }
                 } else {
                     return {
                         username: webhook.name,
@@ -3122,6 +3129,61 @@ const database = {
             return null;
         }
     },
+    getNoteForUserId: async (requester_id, user_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM user_notes WHERE author_id = $1 AND user_id = $2`, [requester_id, user_id]);
+  
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+
+            return rows[0].note === 'NULL' ? null : rows[0].note;
+        } catch(error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    getNotesByAuthorId: async (requester_id) => {
+        try {
+            const rows = await database.runQuery(`SELECT * FROM user_notes WHERE author_id = $1`, [requester_id]);
+  
+            if (rows === null || rows.length === 0) {
+                return [];
+            }
+
+            let notes = {};
+
+            for(var row of rows) {
+                notes[row.user_id] = row.note;
+            }
+
+            return notes;
+        } catch(error) {
+            logText(error, "error");
+
+            return [];
+        }
+    },
+    updateNoteForUserId: async (requester_id, user_id, new_note) => {
+        try {
+            let notes = await database.getNoteForUserId(requester_id, user_id);
+
+            if (!notes) {
+                await database.runQuery(`INSERT INTO user_notes (author_id, user_id, note) VALUES ($1, $2, $3)`, [requester_id, user_id, new_note === null ? 'NULL' : new_note]);
+    
+                return true;
+            }
+    
+            await database.runQuery(`UPDATE user_notes SET note = $1 WHERE author_id = $2 AND user_id = $3`, [new_note === null ? 'NULL' : new_note, requester_id, user_id]);
+    
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
     createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone, webhookOverride = null, webhook_embeds = null) => {
         try {
             const id = Snowflake.generate();
@@ -3147,8 +3209,8 @@ const database = {
                 }
 
                 if (webhookOverride !== null) {
-                    author.username = webhookOverride.username;
-                    author.avatar = null; //to-do
+                    author.username = webhookOverride.username ?? webhook.name;
+                    author.avatar = webhookOverride.avatar_url ?? null;
                 }
             } else author = await database.getAccountByUserId(author_id);
 
@@ -3162,7 +3224,7 @@ const database = {
 
             let embeds = await embedder.generateMsgEmbeds(content, attachment);
 
-            if (webhook_embeds) {
+            if (webhook_embeds && Array.isArray(webhook_embeds)) {
                 embeds = webhook_embeds;   
             }
 

@@ -420,6 +420,7 @@ class session {
             
             let connectedAccounts = await global.database.getConnectedAccounts(this.user.id);
             let guildSettings = await global.database.getUsersGuildSettings(this.user.id);
+            let notes = await global.database.getNotesByAuthorId(this.user.id);
             
             this.relationships = this.user.relationships;
 
@@ -443,7 +444,7 @@ class session {
                 user_settings: this.user.settings,
                 session_id: this.id,
                 friend_suggestion_count: 0,
-                notes: [],
+                notes: notes,
                 analytics_token: globalUtils.generateString(20),
                 experiments: (month == 3 && year == 2018) ? ["2018-4_april-fools"] : [], //for 2018 clients
                 connected_accounts: connectedAccounts ?? [],

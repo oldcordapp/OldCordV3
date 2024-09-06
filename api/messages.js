@@ -104,6 +104,40 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
             });
         }
 
+        let embeds = [];  //So... discord removed the ability for users to create embeds in their messages way back in like 2020, killing the whole motive of self bots, but here at Oldcord, we don't care - just don't abuse our API.
+
+        if (req.body.embeds) {
+            for(var embed of req.body.embeds) {
+                let embedObj = {
+                    type: "rich",
+                    color: embed.color ?? 7506394
+                };
+
+                if (embed.title) {
+                    embedObj.title = embed.title;
+                }
+
+                if (embed.description) {
+                    embedObj.description = embed.description;
+                }
+
+                if (embed.author) {
+                    embedObj.author = {
+                        icon_url: embed.author.icon_url ? `/proxy?url=${embed.author.icon_url}` : null,
+                        name: embed.author.name ?? null,
+                        proxy_icon_url: embed.author.icon_url ? `/proxy?url=${embed.author.icon_url}` : null,
+                        url: embed.author.url ?? null
+                    }
+                }
+
+                if (embed.fields) {
+                    embedObj.fields = embed.fields;
+                }
+
+                embeds.push(embedObj);
+            }
+        }
+
         const mentions_data = globalUtils.parseMentions(req.body.content);
 
         if (mentions_data.mention_everyone ||
@@ -300,7 +334,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         }
 
         //Write message
-        const message = await global.database.createMessage(req.guild ? req.guild.id : null, req.channel.id, author.id, req.body.content, req.body.nonce, file_details, req.body.tts, mentions_data.mention_everyone);
+        const message = await global.database.createMessage(req.guild ? req.guild.id : null, req.channel.id, author.id, req.body.content, req.body.nonce, file_details, req.body.tts, mentions_data.mention_everyone, null, embeds);
 
         if (!message)
             throw "Message creation failed";

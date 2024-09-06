@@ -13,7 +13,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
         let release_date = req.client_build;
 
         if (!req.body.email && release_date == "june_12_2015") {
-            req.body.email = `june_12_2015_app${globalUtils.generateString(10)}@oldcordrouter.com`
+            req.body.email = `june_12_2015_app${globalUtils.generateString(10)}@oldcordapp.com`
         } else if (!req.body.email && !req.header("referer").includes("/invite/")) {
             return res.status(400).json({
                 code: 400,
@@ -200,12 +200,11 @@ router.post("/login", rateLimitMiddleware(global.config.ratelimit_config.registr
     }
 });
 
-router.post("/logout", (_, res) => {
-    //to-do dispatch presence update offline to everyone here
+router.post("/logout", rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
     return res.status(204).send();
 });
 
-router.post("/forgot", async (req, res) => {
+router.post("/forgot", rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
     try {
         let email = req.body.email;
 

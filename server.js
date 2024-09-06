@@ -16,6 +16,7 @@ const dispatcher = require('./helpers/dispatcher');
 const permissions = require('./helpers/permissions');
 const config = globalUtils.config;
 const app = express();
+const fetch = require('node-fetch');
 
 app.set('trust proxy', 1);
 
@@ -80,6 +81,28 @@ app.use(express.json({
 app.use(cookieParser());
 
 app.use(cors());
+
+app.get('/proxy', async (req, res) => {
+    let url = req.query.url;
+    
+    if (!url) {
+        url = "https://i-love.nekos.zip/ztn1pSsdos.png"
+    }
+
+    try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            return res.status().send('Failed to proxy URL');
+        }
+
+        res.setHeader('Content-Type', response.headers.get('content-type'));
+
+        response.body.pipe(res);
+    } catch (error) {
+        res.status(500).send('Error fetching the image');
+    }
+});
 
 app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
     const baseFilePath = path.join(__dirname, 'www_dynamic', 'attachments', req.params.guildid, req.params.channelid, req.params.filename);
