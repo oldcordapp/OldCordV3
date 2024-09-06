@@ -300,8 +300,6 @@ router.post("/:webhookid/:webhooktoken", async (req, res) => {
             createMessage.author.avatar = override.avatar_url; //to-do
         }
 
-        console.log(createMessage.author);
-
         await global.dispatcher.dispatchEventInChannel(guild, channel.id, "MESSAGE_CREATE", createMessage);
 
         return res.status(204).send();
