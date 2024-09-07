@@ -444,7 +444,7 @@ router.post("/", async (req, res) => {
         }
 
         if (req.body.discriminator) {
-            discriminator = req.body.discriminator.toString();
+            discriminator = req.body.discriminator.toString().padStart(4, '0');
         }
 
         if (!email && !username && !discriminator) {
