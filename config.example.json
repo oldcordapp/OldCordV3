@@ -3,6 +3,7 @@
     "secure": false,
     "base_url": "127.0.0.1",
     "gateway_url": "",
+    "signaling_server_url" : "127.0.0.1:5000",
     "port": 1337,
     "ws_port": 1337,
     "cache404s": false,

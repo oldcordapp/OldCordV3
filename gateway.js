@@ -201,6 +201,30 @@ const gateway = {
                         if (!socket.session) return socket.close(4003, 'Not authenticated');
 
                         await syncPresence(socket, packet);
+                    } else if (packet.op == 4) {
+                        if (!socket.session) return socket.close(4003, 'Not authenticated');
+
+                        let guild_id = packet.d.guild_id;
+                        let channel_id = packet.d.channel_id;
+                        let self_mute = packet.d.self_mute;
+                        let self_deaf = packet.d.self_deaf;
+
+                        socket.session.dispatch("VOICE_STATE_UPDATE", {
+                            channel_id: channel_id,
+                            user_id: socket.user.id,
+                            session_id: globalUtils.generateString(30),
+                            deaf: false,
+                            mute: false,
+                            self_deaf: self_deaf,
+                            self_mute: self_mute,
+                            suppress: false
+                        });
+
+                        socket.session.dispatch("VOICE_SERVER_UPDATE", {
+                            token: globalUtils.generateString(30),
+                            guild_id: guild_id,
+                            endpoint: "ws://" + global.config.signaling_server_url
+                        });
                     } else if (packet.op == 12) {
                         if (!socket.session) return;
 
