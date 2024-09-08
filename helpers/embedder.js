@@ -33,7 +33,13 @@ const embedder = {
             let description = $('meta[name="description"]').attr('content') ?? '';
             let color = $('meta[name="theme-color"]').attr('content') ? hexToDecimal($('meta[name="theme-color"]').attr('content')) : 7506394;
             let ogTitle = $('meta[property="og:title"]').attr('content');
+            let twitterImage = $('meta[property="twitter:image"]').attr('content');
+
             let ogImage = $('meta[property="og:image"]').attr('content');
+            
+            if (!ogImage && twitterImage) {
+                ogImage = twitterImage;
+            }
             
             if (description || color || ogTitle || ogImage) {
                 should_embed = true;
@@ -55,7 +61,7 @@ const embedder = {
                     width: 80,
                     height: 80
                 }
-            }
+            } //to-do: auto get image width & height
 
             return should_embed ? embedObj : null;
         } catch (error) {
