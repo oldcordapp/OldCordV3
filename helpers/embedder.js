@@ -159,6 +159,10 @@ const embedder = {
             if (url.includes("youtube.com/watch?v=") || url.includes("youtu.be/")) {
                 embed = await embedder.embedYouTube(url);
             }
+
+            if ((global.config.custom_invite_url != "" && url.includes(global.config.custom_invite_url)) || url.includes("oldcord.us") || url.includes("/invite/")) {
+                continue;
+            }
             
             if (!embed.title) {
                 let result = await embedder.getEmbedInfo(url);
