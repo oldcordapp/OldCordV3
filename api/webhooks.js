@@ -349,6 +349,10 @@ router.post("/:webhookid/:webhooktoken/github", async (req, res) => {
             avatar_url: "github"
         };
 
+        if (!fs.existsSync(`./www_dynamic/avatars/${webhook.id}`)) {
+            fs.mkdirSync(`./www_dynamic/avatars/${webhook.id}`, { recursive: true });
+        }
+        
         if (!fs.existsSync(`./www_dynamic/avatars/${webhook.id}/github.png`)) {
             fs.copyFileSync(`./www_static/assets/misc/github.png`, `./www_dynamic/avatars/${webhook.id}/github.png`);
         }
