@@ -346,8 +346,12 @@ router.post("/:webhookid/:webhooktoken/github", async (req, res) => {
 
         let override = {
             username: "GitHub",
-            avatar_url: "https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png"
+            avatar_url: "github"
         };
+
+        if (!fs.existsSync(`./www_dynamic/avatars/${webhook.id}/github.png`)) {
+            fs.copyFileSync(`./www_static/assets/misc/github.png`, `./www_dynamic/avatars/${webhook.id}/github.png`);
+        }
 
         let override_id = Snowflake.generate();
 
