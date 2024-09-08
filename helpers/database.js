@@ -7,6 +7,7 @@ const fs = require('fs');
 const md5 = require('md5');
 const path = require('path');
 const embedder = require('./embedder');
+const fsPromises = require('fs').promises;
 
 let db_config = globalUtils.config.db_config;
 let config = globalUtils.config;
@@ -2992,13 +2993,24 @@ const database = {
             return false;
         }
     },
-    //to-do: make the following below async and batch
     deleteChannel: async (channel_id) => {
         try {
-            await database.runQuery(`DELETE FROM invites WHERE channel_id = $1`, [channel_id]);
-            await database.runQuery(`DELETE FROM messages WHERE channel_id = $1`, [channel_id]);
-            await database.runQuery(`DELETE FROM permissions WHERE channel_id = $1`, [channel_id]);
-            await database.runQuery(`DELETE FROM channels WHERE id = $1`, [channel_id]);
+            let [_, messages] = await Promise.all([
+                database.runQuery(`DELETE FROM invites WHERE channel_id = $1`, [channel_id]),
+                database.runQuery(`SELECT * FROM messages WHERE channel_id = $1`, [channel_id])
+            ]);
+
+            if (messages && messages.length > 0) {
+                await Promise.all(messages.map(message => database.deleteMessage(message.message_id)));
+            }
+
+            try { await fsPromises.rm(`./www_dynamic/attachments/${channel_id}`, { recursive: true, force: true }); } catch (error) { }
+
+            await Promise.all([
+                database.runQuery(`DELETE FROM permissions WHERE channel_id = $1`, [channel_id]),
+                database.runQuery(`DELETE FROM channels WHERE id = $1`, [channel_id]),
+                database.runQuery(`DELETE FROM acknowledgements WHERE channel_id = $1`, [channel_id])
+            ]);
 
             return true;
         } catch(error) {
@@ -3019,18 +3031,20 @@ const database = {
             
             const attachments = await database.runQuery(`SELECT * FROM attachments WHERE message_id = $1`, [message_id]);
 
-            if (attachments != null && attachments.length > 0) {
-                for(var attachment of attachments) {
-                    fs.readdirSync(`./www_dynamic/attachments/${message.channel_id}/${attachment.attachment_id}`).forEach((file) => {
-                        const curPath = path.join(`./www_dynamic/attachments/${message.channel_id}/${attachment.attachment_id}`, file);
-                        
-                        fs.unlinkSync(curPath);
-                    });
+            if (attachments && attachments.length > 0) {
+                await Promise.all(attachments.map(async (attachment) => {
+                    const attachmentPath = `./www_dynamic/attachments/${message.channel_id}/${attachment.attachment_id}`;
+                    
+                    try {
+                        const files = await fsPromises.readdir(attachmentPath);
 
-                    fs.rmdirSync(`./www_dynamic/attachments/${message.channel_id}/${attachment.attachment_id}`);
+                        await Promise.all(files.map(file => fsPromises.unlink(path.join(attachmentPath, file))));
 
-                    await database.runQuery(`DELETE FROM attachments WHERE attachment_id = $1`, [attachment.attachment_id]);
-                }
+                        await fsPromises.rmdir(attachmentPath);
+
+                        await database.runQuery(`DELETE FROM attachments WHERE attachment_id = $1`, [attachment.attachment_id]);
+                    } catch (error) { }
+                }));
             }
 
             return true;
@@ -3040,18 +3054,24 @@ const database = {
             return false;
         }
     },
-    //to-do: make the following below async and batch
     deleteGuild: async (guild_id) => {
         try {
             await database.runQuery(`DELETE FROM guilds WHERE id = $1`, [guild_id]);
 
-            await database.runQuery(`DELETE FROM channels WHERE guild_id = $1`, [guild_id]);
+            let channels = await database.runQuery(`SELECT * FROM channels WHERE guild_id = $1`, [guild_id]);
 
-            await database.runQuery(`DELETE FROM roles WHERE guild_id = $1`, [guild_id]);
+            if (channels && channels.length > 0) {
+                await Promise.all(channels.map(channel => database.deleteChannel(channel.id)));
+            }
 
-            await database.runQuery(`DELETE FROM members WHERE guild_id = $1`, [guild_id]);
-
-            await database.runQuery(`DELETE FROM widgets WHERE guild_id = $1`, [guild_id]);
+            await Promise.all([
+                database.runQuery(`DELETE FROM messages WHERE guild_id = $1`, [guild_id]),
+                database.runQuery(`DELETE FROM roles WHERE guild_id = $1`, [guild_id]),
+                database.runQuery(`DELETE FROM members WHERE guild_id = $1`, [guild_id]),
+                database.runQuery(`DELETE FROM widgets WHERE guild_id = $1`, [guild_id]),
+                database.runQuery(`DELETE FROM bans WHERE guild_id = $1`, [guild_id]),
+                database.runQuery(`DELETE FROM webhooks WHERE guild_id = $1`, [guild_id])
+            ]);
 
             return true;
         } catch(error) {
@@ -3752,6 +3772,7 @@ const database = {
                         activities: [],
                         user: globalUtils.miniUserObject(owner),
                     }],
+                    features: [],
                     icon: icon,
                     splash: null,
                     banner: null,

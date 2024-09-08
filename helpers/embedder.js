@@ -112,7 +112,7 @@ const embedder = {
                 description: videoDetails.description,
                 title: videoDetails.title,
                 thumbnail: {
-                    proxy_url: thumbnailUrl,
+                    proxy_url: `/proxy?url=${thumbnailUrl}`,
                     url: thumbnailUrl,
                     width: thumbnailWidth,
                     height: thumbnailHeight
