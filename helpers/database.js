@@ -3224,7 +3224,7 @@ const database = {
 
             let embeds = await embedder.generateMsgEmbeds(content, attachment);
 
-            if (webhook_embeds && Array.isArray(webhook_embeds)) {
+            if (webhook_embeds && (Array.isArray(webhook_embeds) && webhook_embeds.length > 0)) {
                 embeds = webhook_embeds;   
             }
 
