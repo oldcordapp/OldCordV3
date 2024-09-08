@@ -344,6 +344,13 @@ router.post("/:webhookid/:webhooktoken/github", async (req, res) => {
             }); 
         }
 
+        let override = {
+            username: "GitHub",
+            avatar_url: "https://github.githubassets.com/assets/GitHub-Mark-ea2971cee799.png"
+        };
+
+        let override_id = Snowflake.generate();
+
         let embeds = [];
 
         if (req.body.commits && req.body.commits.length > 0) {
@@ -379,7 +386,7 @@ router.post("/:webhookid/:webhooktoken/github", async (req, res) => {
             }]
         }
 
-        const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, "WEBHOOK_" + webhook.id, req.body.content, req.body.nonce, null, req.body.tts, false, req.body.username ? { username: req.body.username } : null, embeds);
+        const createMessage = await global.database.createMessage(!channel.guild_id ? null : channel.guild_id, channel.id, "WEBHOOK_" + webhook.id, req.body.content, req.body.nonce, null, req.body.tts, false, override, embeds);
 
         if (!createMessage) {
             return res.status(500).json({
@@ -387,6 +394,18 @@ router.post("/:webhookid/:webhooktoken/github", async (req, res) => {
                 message: "Internal Server Error"
             });
         }
+
+        let tryCreateOverride = await global.database.createWebhookOverride(webhook.id, override_id, override.username, override.avatar_url);
+
+        if (!tryCreateOverride) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            });
+        }
+
+        createMessage.author.username = override.username;
+        createMessage.author.avatar = override.avatar_url;
 
         await global.dispatcher.dispatchEventInChannel(guild, channel.id, "MESSAGE_CREATE", createMessage);
 
