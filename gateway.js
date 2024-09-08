@@ -166,7 +166,7 @@ const gateway = {
 
                         let user = await global.database.getAccountByToken(packet.d.token);
 
-                        if (user == null) {
+                        if (user == null || user.disabled_until) {
                             return socket.close(4004, "Authentication failed");
                         }
 

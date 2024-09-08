@@ -202,7 +202,7 @@ function staffAccessMiddleware(privilege_needed) {
             }
 
             req.is_staff = staffDetails != null;
-            req.staff_details = staffDetails ?? null;
+            req.staff_details = staffDetails;
 
             if (staffDetails.privilege < privilege_needed) {
                 return res.status(401).json({
@@ -239,6 +239,13 @@ async function authMiddleware(req, res, next) {
         let account = await global.database.getAccountByToken(token);
     
         if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        if (account.disabled_until != null) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"

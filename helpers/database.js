@@ -355,6 +355,58 @@ const database = {
             return false;
         }
     },
+    internalDisableAccount: async (staff, user_id, disabled_until, public_reason, audit_log_reason) => {
+        try {
+            if (user_id === staff.user_id || user_id === '1279218211430105089') {
+                return false;
+            } // Safety net
+    
+            // If disabled_until is not provided, default to 'FOREVER'
+            if (!disabled_until) {
+                disabled_until = 'FOREVER';
+            }
+    
+            await database.runQuery(`
+                UPDATE users SET disabled_until = $1, disabled_reason = $2 WHERE id = $3
+            `, [disabled_until, public_reason, user_id]);
+    
+            let audit_log = staff.audit_log;
+    
+            let audit_entry = {
+                moderation_id: Snowflake.generate(),
+                timestamp: new Date().toISOString(),
+                action: "disable_user",
+                moderated: {
+                    id: user_id,
+                    until_forever: disabled_until === 'FOREVER',
+                    until_when: disabled_until // Storing the text 'FOREVER' or actual date in the audit log
+                },
+                reasoning: audit_log_reason
+            };
+    
+            audit_log.push(audit_entry);
+    
+            await database.updateInternalAuditLog(staff.user_id, audit_log);
+    
+            return audit_entry;
+        } catch (error) {
+            logText(error, "error");
+            return null;
+        } 
+    },
+    updateInternalAuditLog: async (staff_id, new_log) => {
+        try {
+            await database.runQuery(`
+                UPDATE staff SET audit_log = $1 WHERE user_id = $2
+            `, [JSON.stringify(new_log), staff_id]);
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        } 
+    },
     setPrivateChannels: async (user_id, private_channels) => {
         try {
             await database.runQuery(`

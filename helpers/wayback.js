@@ -15,6 +15,7 @@ const wayback = {
     },
     getTimestamps: async (url) => {
         console.log("Fetching");
+
         try {
             const response = await fetch("https://web.archive.org/web/timemap/link/" + url, {
                 headers: {
@@ -32,7 +33,9 @@ const wayback = {
             let last_ts = "0";
 
             let responseTxt = await response.text();
+            
             console.log(responseTxt);
+
             let lines = responseTxt.split('\n');
 
             for (let line of lines) {
@@ -50,6 +53,7 @@ const wayback = {
         }
         catch (err) {
             console.log(err);
+            
             return null;
         }
     }
