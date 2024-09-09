@@ -81,6 +81,10 @@ function patchJS(script, kind) {
     script = script.replace(/isEmojiDisabled:function\([^)]*\){/, "$&return false;");
     script = script.replaceAll(/=t.invalidEmojis/g, "=[]");
 
+    //Recaptcha support
+    if (config.captcha_options.enabled)
+        script = script.replaceAll("6Lef5iQTAAAAAKeIvIY-DeexoO3gj7ryl9rLMEnn", config.captcha_options.site_key);
+
     //Disable telemetry
     script = script.replace(/track:function\([^)]*\){/, "$&return;");
     script = script.replace(/(function \w+\(e\)){[^p]*post\({.*url:\w\.Endpoints\.TRACK[^}]*}\)}/, "$1{}");

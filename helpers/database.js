@@ -101,6 +101,8 @@ const database = {
                 bot INTEGER DEFAULT 0,
                 relationships TEXT DEFAULT '[]',
                 flags INTEGER DEFAULT 0,
+                registration_ip TEXT DEFAULT NULL,
+                last_login_ip TEXT DEFAULT NULL,
                 private_channels TEXT DEFAULT '[]',
                 settings TEXT DEFAULT '{"show_current_game":false,"inline_attachment_media":true,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"allow_email_friend_request":false,"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"online"}',
                 guild_settings TEXT DEFAULT '[]',
@@ -3897,7 +3899,7 @@ const database = {
             return null;
         }
     },
-    createAccount: async (username, email, password) => {
+    createAccount: async (username, email, password, ip) => {
         // New accounts via invite (unclaimed account) have null email and null password.
         try {
             let user = await database.getAccountByEmail(email);
@@ -3930,7 +3932,7 @@ const database = {
 
             let token = globalUtils.generateToken(id, pwHash);
 
-            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [id, username, discriminator.toString(), email, password ? pwHash : null, token, date, 'NULL'])
+            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar,registration_ip) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [id, username, discriminator.toString(), email, password ? pwHash : null, token, date, 'NULL', ip]);
 
             return {
                 token: token
@@ -4128,7 +4130,7 @@ const database = {
             return -1;
         }
     },
-    checkAccount: async (email, password) => {
+    checkAccount: async (email, password, ip) => {
         try {
             let user = await database.getAccountByEmail(email);
 
@@ -4155,6 +4157,8 @@ const database = {
                     reason: "Email and/or password is invalid."
                 }
             }
+
+            await database.runQuery(`UPDATE users SET last_login_ip = $1 WHERE id = $2`, [ip, user.id]);
 
             return {
                 token: user.token

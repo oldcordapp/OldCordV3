@@ -461,6 +461,12 @@ app.get("/bootloaderConfig", (req, res) => {
         instance_description: config.instance_description,
         custom_invite_url: config.custom_invite_url == "" ? base_url + "/invite" : config.custom_invite_url,
         gateway: globalUtils.generateGatewayURL(req),
+        captcha_options: (config['recaptchav2-secret'] !== "" && config['recaptchav2-site'] !== "") ? {
+            enabled: true,
+            site_key: config['recaptchav2-site']
+        } : {
+            enabled: false
+        }
     });
 });
 

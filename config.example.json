@@ -13,6 +13,8 @@
     "instance_flags": [],
     "cert_path": "",
     "key_path": "",
+    "recaptchav2-secret" : "6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe",
+    "recaptchav2-site" : "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
     "db_config" : {
         "host": "localhost",
         "port": 5433,

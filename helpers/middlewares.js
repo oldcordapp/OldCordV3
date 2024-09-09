@@ -252,6 +252,8 @@ async function authMiddleware(req, res, next) {
             });
         }
 
+        req.sender_ip = req.headers['X-Forwarded-For'] ? req.headers['X-Forwarded-For'] : null;
+
         req.account = account;
 
         next();

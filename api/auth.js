@@ -5,11 +5,14 @@ const instanceMiddleware = require('../helpers/middlewares').instanceMiddleware;
 const rateLimitMiddleware = require("../helpers/middlewares").rateLimitMiddleware;
 const { logText } = require('../helpers/logger');
 const Snowflake = require('../helpers/snowflake');
+const recaptcha = require('../helpers/recaptcha');
 
 global.config = globalUtils.config;
 
 router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
     try {
+        req.sender_ip = req.headers['X-Forwarded-For'] ? req.headers['X-Forwarded-For'] : null;
+
         let release_date = req.client_build;
 
         if (!req.body.email && release_date == "june_12_2015") {
@@ -50,12 +53,28 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             return res.status(goodUsername.code).json(goodUsername);
         }
 
+        if (global.config['recaptchav2-site'] !== "") {
+            if (req.body.captcha_key === undefined || req.body.captcha_key === null) {
+                return res.status(400).json({
+                    captcha_key: "Captcha is required."
+                });
+            }
+
+            let verifyAnswer = await recaptcha.verify(req.body.captcha_key);
+
+            if (!verifyAnswer) {
+                return res.status(400).json({
+                    captcha_key: "Invalid captcha response."
+                });
+            }
+        }
+
         if (req.header("referer").includes("/invite/")) {
             req.body.email = null
             req.body.password = null
         }
        
-        const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password);
+        const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password, req.sender_ip);
 
         if ('reason' in registrationAttempt) {
             return res.status(400).json({
@@ -156,6 +175,8 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
 router.post("/login", rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
     try {
+        req.sender_ip = req.headers['X-Forwarded-For'] ? req.headers['X-Forwarded-For'] : null;
+
         if (!req.body.email) {
             return res.status(400).json({
                 code: 400,
@@ -170,7 +191,7 @@ router.post("/login", rateLimitMiddleware(global.config.ratelimit_config.registr
             });
         }
     
-        const loginAttempt = await global.database.checkAccount(req.body.email, req.body.password);
+        const loginAttempt = await global.database.checkAccount(req.body.email, req.body.password, req.sender_ip);
     
         if ('disabled_until' in loginAttempt) {
             return res.status(400).json({
