@@ -11,8 +11,6 @@ global.config = globalUtils.config;
 
 router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
     try {
-        req.sender_ip = req.headers['X-Forwarded-For'] ? req.headers['X-Forwarded-For'] : null;
-
         let release_date = req.client_build;
 
         if (!req.body.email && release_date == "june_12_2015") {
@@ -54,7 +52,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
         }
 
         //Before July 2016 Discord had no support for Recaptcha.
-        
+
         if (global.config['recaptchav2-site'] !== "" && (req.client_build_date.getFullYear() > 2016 && req.client_build_date.getMonth() >= 8 || req.client_build_date.getFullYear() >= 2017)) {
             if (req.body.captcha_key === undefined || req.body.captcha_key === null) {
                 return res.status(400).json({
@@ -76,7 +74,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             req.body.password = null
         }
        
-        const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password, req.sender_ip);
+        const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password, req.ip ?? 'NULL');
 
         if ('reason' in registrationAttempt) {
             return res.status(400).json({
@@ -177,8 +175,6 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
 router.post("/login", rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
     try {
-        req.sender_ip = req.headers['X-Forwarded-For'] ? req.headers['X-Forwarded-For'] : null;
-
         if (!req.body.email) {
             return res.status(400).json({
                 code: 400,
@@ -193,7 +189,7 @@ router.post("/login", rateLimitMiddleware(global.config.ratelimit_config.registr
             });
         }
     
-        const loginAttempt = await global.database.checkAccount(req.body.email, req.body.password, req.sender_ip);
+        const loginAttempt = await global.database.checkAccount(req.body.email, req.body.password, req.ip ?? 'NULL');
     
         if ('disabled_until' in loginAttempt) {
             return res.status(400).json({
