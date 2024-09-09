@@ -24,6 +24,9 @@ Since V3 is hosted on my own server at home, I use cloudflared to bypass CG-NAT 
 
 custom_invite_url is used for invites in the app, so, putting "oldcord.us" will make it so every invite made has the prefix oldcord.us - much like discord.gg, etc.
 
+There are Google Recaptcha v2 demo site & secret keys in the config example which you may find useful to look at when looking to enable recaptcha on your instance. If you'd like to not have recaptcha enabled, just set the sitekey and secret key to "" (blank). <br>
+Also <b>it is highly recommended you change those values if you do plan on using Recaptcha on production. Since it's a demo site key, all answers are valid.</b>⚠️
+
 integration_config is for the in-app connections under user settings, currently only twitch is supported, and you need to make a twitch application which gives you a client_secret to use this.
 
 Example integration configuration:
