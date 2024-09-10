@@ -5,8 +5,8 @@ Current code for OldCord (Rewritten) as typescript sucks for this kinda project.
 
 # Credits
 ziad - token generation, permissions, sessions references, and some middleware references <br>
-Deskehs - electron client stuff & modern discord client shenanigans (Wumpdle, rePacker, reUpdater & Electron compat patch) <br>
-dogsong - client patcher & the patches <br>
+Deskehs - branding, electron client patching & modifications, general assistance with backend <br>
+dogsong - web client bootloader contributions, major aid in cleaning up the backend and squashing bugs <br>
 discord.js - snowflake <br>
 unkn0w - disposable email domain list <br>
 noia - everything else <br>
