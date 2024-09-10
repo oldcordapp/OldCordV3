@@ -102,6 +102,7 @@ const database = {
                 relationships TEXT DEFAULT '[]',
                 flags INTEGER DEFAULT 0,
                 registration_ip TEXT DEFAULT NULL,
+                email_token TEXT DEFAULT NULL,
                 last_login_ip TEXT DEFAULT NULL,
                 private_channels TEXT DEFAULT '[]',
                 settings TEXT DEFAULT '{"show_current_game":false,"inline_attachment_media":true,"inline_embed_media":true,"render_embeds":true,"render_reactions":true,"sync":true,"theme":"dark","enable_tts_command":true,"message_display_compact":false,"locale":"en-US","convert_emoticons":true,"restricted_guilds":[],"allow_email_friend_request":false,"friend_source_flags":{"all":true},"developer_mode":true,"guild_positions":[],"detect_platform_accounts":false,"status":"online"}',
@@ -786,7 +787,7 @@ const database = {
                         email: row.email,
                         password: row.password,
                         token: row.token,
-                        verified: true,
+                        verified: row.verified == 1 ? true : false,
                         flags: row.flags ?? 0,
                         bot: row.bot == 1 ? true : false,
                         created_at: row.created_at,
@@ -804,20 +805,61 @@ const database = {
                         email: row.email,
                         password: row.password,
                         token: row.token,
-                        verified: true,
+                        verified: row.verified == 1 ? true : false,
                         flags: row.flags ?? 0,
                         bot: row.bot == 1 ? true : false,
                         created_at: row.created_at,
                         settings: JSON.parse(row.settings)
                     })
             }
-            
 
             return ret;
         } catch (error) {  
             logText(error, "error");
 
             return [];
+        }
+    },
+    checkEmailToken: async (token) => {
+        try {
+            if (!token || token === "NULL") return null;
+
+            let rows = await database.runQuery(`SELECT * FROM users WHERE email_token = $1`, [token]);
+
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+
+            return {
+                id: rows[0].id,
+                verified: rows[0].verified,
+                email_token: token,
+            }
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    useEmailToken: async (id, token) => {
+        try {
+            let check = await database.checkEmailToken(token);
+
+            if (!check) {
+                return false;
+            }
+
+            if (check.id !== id) {
+                return false;
+            }
+
+            await database.runQuery(`UPDATE users SET email_token = $1, verified = $2 WHERE id = $3`, ['NULL', 1, id]);
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
         }
     },
     getAccountByUserId: async (id) => {
@@ -3899,7 +3941,7 @@ const database = {
             return null;
         }
     },
-    createAccount: async (username, email, password, ip) => {
+    createAccount: async (username, email, password, ip, email_token = null) => {
         // New accounts via invite (unclaimed account) have null email and null password.
         try {
             let user = await database.getAccountByEmail(email);
@@ -3932,7 +3974,7 @@ const database = {
 
             let token = globalUtils.generateToken(id, pwHash);
 
-            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar,registration_ip) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [id, username, discriminator.toString(), email, password ? pwHash : null, token, date, 'NULL', ip]);
+            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar,registration_ip,verified,email_token) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [id, username, discriminator.toString(), email, password ? pwHash : null, token, date, 'NULL', ip, config.aws_ses_config.enabled ? 0 : 1, email_token ?? 'NULL']);
 
             return {
                 token: token

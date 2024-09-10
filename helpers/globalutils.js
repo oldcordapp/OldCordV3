@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const encode = require('base64url');
 const fs = require('fs');
 const { logText } = require('./logger');
+const { default: fetch } = require('node-fetch');
 
 const configPath = "./config.json";
 
@@ -305,6 +306,21 @@ const globalUtils = {
             username: ""
         }
     },
+    badEmail: async (email) => {
+        try {
+            let domain = email.split('@')[1];
+
+            let response = await fetch("https://raw.githubusercontent.com/unkn0w/disposable-email-domain-list/main/domains.txt");
+
+            if (response.ok && !(await response.text()).includes(domain.toLowerCase())) {
+                return false;
+            }
+
+            return true;
+        } catch {
+            return true;
+        }
+    },
     prepareAccountObject: (rows, relationships) => {
         if (rows === null || rows.length === 0) {
             return null;
@@ -318,7 +334,7 @@ const globalUtils = {
             email: rows[0].email,
             password: rows[0].password,
             token: rows[0].token,
-            verified: true,
+            verified: rows[0].verified == 1 ? true : false,
             premium: true,
             flags: rows[0].flags ?? 0,
             bot: rows[0].bot == 1 ? true : false,

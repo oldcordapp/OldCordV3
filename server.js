@@ -16,6 +16,7 @@ const dispatcher = require('./helpers/dispatcher');
 const permissions = require('./helpers/permissions');
 const config = globalUtils.config;
 const app = express();
+const emailer = require('./helpers/emailer');
 const fetch = require('node-fetch');
 
 app.set('trust proxy', 1);
@@ -24,6 +25,11 @@ database.setupDatabase();
 
 global.dispatcher = dispatcher;
 global.gateway = gateway;
+
+if (globalUtils.config.aws_ses_config.enabled) {
+    global.emailer = new emailer(globalUtils.config.aws_ses_config, globalUtils.config.max_per_timeframe_ms, globalUtils.config.timeframe_ms, globalUtils.config.ratelimit_modifier);
+}
+
 global.sessions = new Map();
 global.userSessions = new Map();
 global.database = database;
@@ -461,12 +467,7 @@ app.get("/bootloaderConfig", (req, res) => {
         instance_description: config.instance_description,
         custom_invite_url: config.custom_invite_url == "" ? base_url + "/invite" : config.custom_invite_url,
         gateway: globalUtils.generateGatewayURL(req),
-        captcha_options: (config['recaptchav2-secret'] !== "" && config['recaptchav2-site'] !== "") ? {
-            enabled: true,
-            site_key: config['recaptchav2-site']
-        } : {
-            enabled: false
-        }
+        captcha_options: config.captcha_config
     });
 });
 

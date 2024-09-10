@@ -6,6 +6,7 @@ const rateLimitMiddleware = require("../helpers/middlewares").rateLimitMiddlewar
 const { logText } = require('../helpers/logger');
 const Snowflake = require('../helpers/snowflake');
 const recaptcha = require('../helpers/recaptcha');
+const fs = require('fs');
 
 global.config = globalUtils.config;
 
@@ -51,10 +52,19 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             return res.status(goodUsername.code).json(goodUsername);
         }
 
+        let badEmail = await globalUtils.badEmail(req.body.email);
+
+        if (badEmail) {
+            return res.status(400).json({
+                code: 400,
+                email: "That email address is not allowed. Try another.",
+            });
+        }
+
         //Before July 2016 Discord had no support for Recaptcha.
         //We get around this by redirecting clients on 2015/2016 who wish to make an account to a working 2018 client then back to their original clients after they make their account/whatever.
         
-        if (global.config['recaptchav2-site'] !== "") {
+        if (global.config.captcha_config.enabled) {
             if (req.body.captcha_key === undefined || req.body.captcha_key === null) {
                 return res.status(400).json({
                     captcha_key: "Captcha is required."
@@ -75,7 +85,34 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             req.body.password = null
         }
        
-        const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password, req.ip ?? 'NULL');
+        //let emailToken = globalUtils.generateString(60);
+
+        let emailToken = null;
+
+        /*
+        if (global.config.aws_ses_config.enabled) {
+            let htmlContent = fs.readFileSync('./www_static/assets/emails/verify-email.html', 'utf8');
+    
+            htmlContent = globalUtils.replaceAll(htmlContent, "[username]", req.body.username); //to-do: fix this up to get discriminator, and configure all the other shit tomorrow
+            htmlContent = globalUtils.replaceAll(htmlContent, "[discriminator]", "0000");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[instance]", "Staging");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[protocol]", "https");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[cdn_url]", "cdn.oldcordapp.com");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[domain]", "staging.oldcordapp.com");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[ffnum]", "2");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[email_token]", emailToken);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[fftext]", "The bushes and clouds in the original Super Mario Bros are the same sprite recolored.");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[address]", "401 California Dr, Burlingame, CA 94010");
+    
+            let tryMail = await global.emailer.trySendEmail(req.body.email, "Verify Email", htmlContent);
+
+            if (!tryMail) emailToken = null; //could be ratelimited, they can send the email_token later in settings anyways
+
+            //to-do send alpha-preview/beta-welcome email aswell
+        } else emailToken = null;
+        */ //this is still, very, very much work in progress.
+
+        const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password, req.ip ?? 'NULL', emailToken);
 
         if ('reason' in registrationAttempt) {
             return res.status(400).json({
@@ -269,6 +306,73 @@ router.post("/fingerprint", (_, res) => {
     return res.status(200).json({
         fingerprint: fingerprint
     })
+});
+
+router.post("/verify", rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
+    try {
+        let auth_token = req.headers['authorization'];
+
+        if (!auth_token) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            })
+        }
+
+        let account = await global.database.getAccountByToken(auth_token);
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            })
+        }
+
+        let token = req.body.token;
+
+        if (!token) {
+            return res.status(400).json({
+                code: 400,
+                token: "This field is required."
+            });
+        }
+
+        if (global.config.captcha_config.enabled) {
+            if (req.body.captcha_key === undefined || req.body.captcha_key === null) {
+                return res.status(400).json({
+                    captcha_key: "Captcha is required."
+                });
+            }
+
+            let verifyAnswer = await recaptcha.verify(req.body.captcha_key);
+
+            if (!verifyAnswer) {
+                return res.status(400).json({
+                    captcha_key: "Invalid captcha response."
+                });
+            }
+        }
+
+        let tryUseEmailToken = await global.database.useEmailToken(account.id, token);
+
+        if (!tryUseEmailToken) {
+            return res.status(400).json({
+                token: "Invalid email verification token."
+            });
+        }
+
+        return res.status(200).json({
+            token: req.headers['authorization']
+        });
+    }
+    catch(error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        }); 
+    }
 });
 
 module.exports = router;
