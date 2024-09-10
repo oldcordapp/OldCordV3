@@ -8,6 +8,7 @@ ziad - token generation, permissions, sessions references, and some middleware r
 Deskehs - electron client stuff & modern discord client shenanigans (Wumpdle, rePacker, reUpdater & Electron compat patch) <br>
 dogsong - client patcher & the patches <br>
 discord.js - snowflake <br>
+unkn0w - disposable email domain list <br>
 noia - everything else <br>
 
 # Important, read me!
