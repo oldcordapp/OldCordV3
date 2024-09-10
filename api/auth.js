@@ -52,8 +52,9 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
         }
 
         //Before July 2016 Discord had no support for Recaptcha.
-
-        if (global.config['recaptchav2-site'] !== "" && (req.client_build_date.getFullYear() > 2016 && req.client_build_date.getMonth() >= 8 || req.client_build_date.getFullYear() >= 2017)) {
+        //We get around this by redirecting clients on 2015/2016 who wish to make an account to a working 2018 client then back to their original clients after they make their account/whatever.
+        
+        if (global.config['recaptchav2-site'] !== "") {
             if (req.body.captcha_key === undefined || req.body.captcha_key === null) {
                 return res.status(400).json({
                     captcha_key: "Captcha is required."
