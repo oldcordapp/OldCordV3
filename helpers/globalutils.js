@@ -307,6 +307,7 @@ const globalUtils = {
         }
     },
     badEmail: async (email) => {
+        /*
         try {
             let domain = email.split('@')[1];
 
@@ -320,6 +321,8 @@ const globalUtils = {
         } catch {
             return true;
         }
+        */
+       return false; //to-do
     },
     prepareAccountObject: (rows, relationships) => {
         if (rows === null || rows.length === 0) {
