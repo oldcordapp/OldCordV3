@@ -28,11 +28,9 @@ async function syncPresence(socket, packet) {
         
         if (packet.d.afk) {
             setStatusTo = "idle";
+        } else if (packet.d.afk === false && packet.d.since === 0 && packet.d.status === "idle") {
+            setStatusTo = "online";
         }
-
-        if (!packet.d.afk && packet.d.since && packet.d.since === 0) {
-            setStatusTo = "online"; //no longer afk?
-        } 
     }
 
     // Sync
@@ -191,7 +189,24 @@ const gateway = {
 
                         await socket.session.prepareReady();
 
-                        await socket.session.updatePresence(socket.user.settings.status ?? "online", null);
+                        let pastPresence = packet.d.presence;
+
+                        if (!pastPresence) {
+                            pastPresence = {
+                                status: socket.user.settings.status ?? "online",
+                                since: 0,
+                                afk: false,
+                                game: null
+                            }
+                        }
+
+                        let setStatusTo = pastPresence.status;
+
+                        if (setStatusTo && setStatusTo.status === 'idle' && setStatusTo.since === 0 && !setStatusTo.afk) {
+                            setStatusTo = 'online';
+                        }
+
+                        await socket.session.updatePresence(setStatusTo, null);
                     } else if (packet.op == 1) {
                         if (!socket.hb) return;
 
