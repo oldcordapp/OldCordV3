@@ -13,76 +13,72 @@ let db_config = globalUtils.config.db_config;
 let config = globalUtils.config;
 
 const pool = new Pool(db_config);
+
 let cache = {};
 
 const database = {
     client: null,
     runQuery: async (queryString, values) => {
-        if (database.client == null) {
-            database.client = await pool.connect();
-            database.client.on('error', (err) => {
-                console.log(err);
-            });
-            database.client.connection.on('error', (err) => {
-                console.log(err);
-            });
-        }
+        //ngl chat gpt helped me fix the caching on this - and suggested i used multiple clients from a pool instead, hopefully this does something useful lol
+
+        const query = {
+            text: queryString,
+            values: values
+        };
+
+        const cacheKey = JSON.stringify(query);
         
+        const client = await pool.connect();
+        
+        let isWriteQuery = false;
+
         try {
-            const query = {
-                text: queryString,
-                values: values
-            };
+            isWriteQuery = /INSERT\s+INTO|UPDATE|DELETE\s+FROM/i.test(queryString);
 
-            const cacheKey = JSON.stringify(query);
-
-            if (queryString.includes("SELECT * ")) {
+            if (isWriteQuery)
+                await client.query('BEGIN');
+    
+            if (/SELECT\s+\*\s+FROM/i.test(queryString)) {
                 if (cache[cacheKey]) {
                     return cache[cacheKey];
                 }
+            }
 
-                const result = await database.client.query(query);
-
-                const rows = result.rows;
-
-                if (rows.length === 0) {
-                    return null;
-                }
-
-                cache[cacheKey] = rows;
-        
-                return rows;
-            } else if (queryString.includes("DELETE FROM") || queryString.includes("UPDATE") || queryString.includes("INSERT INTO")) {
-                let tableName  = "";
-
-                if (queryString.startsWith("DELETE FROM")) {
-                    tableName = queryString.split(' ')[2];
-                } else if (queryString.startsWith("UPDATE")) {
-                    tableName = queryString.split('SET')[0].split('UPDATE ')[1].split(' ')[0];
-                } else if (queryString.startsWith("INSERT INTO")) {
-                    tableName = queryString.split('INSERT INTO ')[1].split(' ')[0];
-                }
-
-                for (const key in cache) {
-                    if (key.includes(tableName)) {
-                        delete cache[key];
+            if (isWriteQuery) {
+                const tableNameMatch = queryString.match(/(?:FROM|INTO|UPDATE)\s+(\S+)/i);
+                const tableName = tableNameMatch ? tableNameMatch[1] : null;
+    
+                if (tableName) {
+                    for (const key in cache) {
+                        if (key.includes(tableName)) {
+                            delete cache[key];
+                        }
                     }
                 }
             }
 
-            const result = await database.client.query(query);
-
+            const result = await client.query(query);
             const rows = result.rows;
 
-            if (rows.length === 0) {
-                return null;
+            if (/SELECT\s+\*\s+FROM/i.test(queryString) && rows.length > 0) {
+                cache[cacheKey] = rows;
+            }
+
+            if (isWriteQuery) {
+                await client.query('COMMIT');
+            }
+
+            return rows.length === 0 ? null : rows;
+        } catch (error) {
+            if (isWriteQuery) {
+                await client.query('ROLLBACK');
             }
     
-            return rows;
-        } catch (error) {
-            logText(error, "error");
+            logText(`Error with query: ${queryString}, values: ${JSON.stringify(values)} - ${error}`, "error");
 
             return null;
+        } finally {
+            client.release();
         }
     },
     setupDatabase: async () => {
