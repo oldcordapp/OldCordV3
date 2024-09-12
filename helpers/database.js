@@ -17,7 +17,6 @@ const pool = new Pool(db_config);
 let cache = {};
 
 const database = {
-    client: null,
     runQuery: async (queryString, values) => {
         //ngl chat gpt helped me fix the caching on this - and suggested i used multiple clients from a pool instead, hopefully this does something useful lol
 
