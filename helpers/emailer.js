@@ -1,6 +1,7 @@
-const AWS = require('aws-sdk');
-const nodemailer = require('nodemailer');
+const { default: fetch } = require('node-fetch')
 const { logText } = require('./logger');
+const globalUtils = require('./globalutils');
+const fs = require('fs');
 
 //So SES is the best we got, everything else is quick to block ya - so just use amazon.
 
@@ -12,12 +13,6 @@ class emailer {
         this.timeframe_ms = timeframe_ms;
 
         this.config = config;
-        
-        AWS.config.update(this.config);
-
-        this.transporter = nodemailer.createTransport({
-            SES: new AWS.SES()
-        });
 
         this.ratelimited = false;
         this.ratelimitedWhen = null;
@@ -51,22 +46,80 @@ class emailer {
         try {
             if (this.ratelimited) return false;
 
-            if (!this.config.enabled || !this.config || !this.transporter) return false;
+            if (!this.config.enabled || !this.config) return false;
     
             let mailOptions = {
-                from: this.config.fromAddress, 
-                to: to,
+                sender: {
+                    email: this.config.fromAddress
+                },
+                to: [{
+                    email: to
+                }],
                 subject: subject,
-                html: content
+                htmlContent: content
             };
 
-            const result = await new Promise((resolve) => {
-                this.transporter.sendMail(mailOptions, (error, info) => {
-                    resolve(!error);
-                });
+            const result = await fetch("https://api.brevo.com/v3/smtp/email", {
+                headers: {
+                    'Content-Type' : 'application/json',
+                    'api-key' : this.config['brevo-api-key']
+                },
+                method: "POST", 
+                body: JSON.stringify(mailOptions)
             });
+
+            if (!result.ok)
+                return false;
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    }
+    async sendRegistrationEmail(to, emailToken, account) {
+        try {
+            let htmlContent = fs.readFileSync('./www_static/assets/emails/verify-email.html', 'utf8');
+
+            htmlContent = globalUtils.replaceAll(htmlContent, "[username]", account.username);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[discriminator]", account.discriminator);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[instance]", global.config.instance_name);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[protocol]", global.config.secure ? "https" : "http");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[cdn_url]", global.config.cdn_url === "" ? "cdn.oldcordapp.com" : global.config.cdn_url);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[domain]", global.full_url);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[ffnum]", "2");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[email_token]", emailToken);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[fftext]", "The bushes and clouds in the original Super Mario Bros are the same sprite recolored.");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[address]", "401 California Dr, Burlingame, CA 94010");
     
-            return result;
+            let res = await global.emailer.trySendEmail(to, "Verify Email", htmlContent);
+
+            return res;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    }
+    async sendForgotPassword(to, emailToken, account) {
+        try {
+            let htmlContent = fs.readFileSync('./www_static/assets/emails/password-reset-request-for-discord.html', 'utf8'); //to-do: have variety based on client year
+
+            htmlContent = globalUtils.replaceAll(htmlContent, "[username]", account.username);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[discriminator]", account.discriminator);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[instance]", global.config.instance_name);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[protocol]", global.config.secure ? "https" : "http");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[cdn_url]", global.config.cdn_url === "" ? "cdn.oldcordapp.com" : global.config.cdn_url);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[domain]", global.full_url);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[ffnum]", "2");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[email_token]", emailToken);
+            htmlContent = globalUtils.replaceAll(htmlContent, "[fftext]", "The bushes and clouds in the original Super Mario Bros are the same sprite recolored.");
+            htmlContent = globalUtils.replaceAll(htmlContent, "[address]", "401 California Dr, Burlingame, CA 94010");
+    
+            let res = await global.emailer.trySendEmail(to, `Password Reset Request for ${global.config.instance_name}`, htmlContent);
+
+            return res;
         } catch (error) {
             logText(error, "error");
 

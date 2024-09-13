@@ -85,32 +85,11 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             req.body.password = null
         }
        
-        //let emailToken = globalUtils.generateString(60);
+        let emailToken = globalUtils.generateString(60);
 
-        let emailToken = null;
-
-        /*
-        if (global.config.aws_ses_config.enabled) {
-            let htmlContent = fs.readFileSync('./www_static/assets/emails/verify-email.html', 'utf8');
-    
-            htmlContent = globalUtils.replaceAll(htmlContent, "[username]", req.body.username); //to-do: fix this up to get discriminator, and configure all the other shit tomorrow
-            htmlContent = globalUtils.replaceAll(htmlContent, "[discriminator]", "0000");
-            htmlContent = globalUtils.replaceAll(htmlContent, "[instance]", "Staging");
-            htmlContent = globalUtils.replaceAll(htmlContent, "[protocol]", "https");
-            htmlContent = globalUtils.replaceAll(htmlContent, "[cdn_url]", "cdn.oldcordapp.com");
-            htmlContent = globalUtils.replaceAll(htmlContent, "[domain]", "staging.oldcordapp.com");
-            htmlContent = globalUtils.replaceAll(htmlContent, "[ffnum]", "2");
-            htmlContent = globalUtils.replaceAll(htmlContent, "[email_token]", emailToken);
-            htmlContent = globalUtils.replaceAll(htmlContent, "[fftext]", "The bushes and clouds in the original Super Mario Bros are the same sprite recolored.");
-            htmlContent = globalUtils.replaceAll(htmlContent, "[address]", "401 California Dr, Burlingame, CA 94010");
-    
-            let tryMail = await global.emailer.trySendEmail(req.body.email, "Verify Email", htmlContent);
-
-            if (!tryMail) emailToken = null; //could be ratelimited, they can send the email_token later in settings anyways
-
-            //to-do send alpha-preview/beta-welcome email aswell
-        } else emailToken = null;
-        */ //this is still, very, very much work in progress.
+        if (!global.config.email_config.enabled) {
+            emailToken = null;
+        }
 
         const registrationAttempt = await global.database.createAccount(req.body.username, req.body.email, req.body.password, req.ip ?? 'NULL', emailToken);
 
@@ -121,21 +100,25 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             });
         }
 
+        let account = await global.database.getAccountByToken(registrationAttempt.token);
+
+        if (account == null) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+
+        if (emailToken != null) {
+            await global.emailer.sendRegistrationEmail(req.body.email, emailToken, account);
+        }
+
         if (req.body.invite) {
             let code = req.body.invite;
             
             let invite = await global.database.getInvite(code);
 
             if (invite) {
-                let account = await global.database.getAccountByToken(registrationAttempt.token);
-
-                if (account == null) {
-                    return res.status(401).json({
-                        code: 401,
-                        message: "Unauthorized"
-                    });
-                }
-
                 let guild = await global.database.getGuildById(invite.guild.id);
                 
                 if (guild) {
@@ -168,14 +151,6 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             let guild = await global.database.getGuildById(guildId);
 
             if (guild != null) {
-                let account = await global.database.getAccountByToken(registrationAttempt.token);
-
-                if (account == null) {
-                    return res.status(401).json({
-                        code: 401,
-                        message: "Unauthorized"
-                    });
-                }
 
                 await global.database.joinGuild(account.id, guild);
 
@@ -287,6 +262,9 @@ router.post("/forgot", rateLimitMiddleware(global.config.ratelimit_config.regist
                 email: "This account has been disabled.",
             });
         }
+
+        //let emailToken = globalUtils.generateString(60);
+        //to-do: but basically, handle the case if the user is unverified - then verify them aswell as reset pw
         
         return res.status(204).send();
     }
@@ -364,6 +342,74 @@ router.post("/verify", rateLimitMiddleware(global.config.ratelimit_config.regist
         return res.status(200).json({
             token: req.headers['authorization']
         });
+    }
+    catch(error) {
+        logText(error, "error");
+
+        return res.status(500).json({
+          code: 500,
+          message: "Internal Server Error"
+        }); 
+    }
+});
+
+router.post("/verify/resend", rateLimitMiddleware(global.config.ratelimit_config.registration.maxPerTimeFrame, global.config.ratelimit_config.registration.timeFrame), async (req, res) => {
+    try {
+        let auth_token = req.headers['authorization'];
+
+        if (!auth_token) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            })
+        }
+
+        let account = await global.database.getAccountByToken(auth_token);
+
+        if (!account) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            })
+        }
+
+        if (account.verified) {
+            return res.status(204).send();
+        }
+
+        if (!global.config.email_config.enabled) {
+            return res.status(204).send();
+        }
+
+        let emailToken = await global.database.getEmailToken(account.id);
+        let newEmailToken = false;
+
+        if (!emailToken) {
+            emailToken = globalUtils.generateString(60);
+            newEmailToken = true;
+        }
+
+        let trySendRegEmail = await global.emailer.sendRegistrationEmail(account.email, emailToken, account);
+
+        if (!trySendRegEmail) {
+            return res.status(500).json({
+                code: 500,
+                message: "Internal Server Error"
+            }); 
+        }
+
+        if (newEmailToken) {
+            let tryUpdate = await global.database.updateEmailToken(account.id, emailToken);
+
+            if (!tryUpdate) {
+                return res.status(500).json({
+                    code: 500,
+                    message: "Internal Server Error"
+                });  
+            }
+        }
+
+        return res.status(204).send();
     }
     catch(error) {
         logText(error, "error");

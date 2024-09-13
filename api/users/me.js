@@ -46,6 +46,7 @@ router.get("/", async (req, res) => {
 router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.maxPerTimeFrame, global.config.ratelimit_config.updateMe.timeFrame), async (req, res) => {
   try {
     let account = req.account;
+    let originalAcc = account;
 
     if (!account) {
         return res.status(401).json({
@@ -286,6 +287,12 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
     }
 
     account = globalUtils.sanitizeObject(account, ['settings', 'created_at', 'password', 'relationships', 'claimed']);
+
+    if (originalAcc.email != account.email) {
+       account.verified = false;
+
+       await global.database.unverifyEmail(account.id);
+    } //unverify them as they need to uh verify with their new email thingimajig
 
     return res.status(200).json(account);
   } catch (error) {

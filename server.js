@@ -26,8 +26,8 @@ database.setupDatabase();
 global.dispatcher = dispatcher;
 global.gateway = gateway;
 
-if (globalUtils.config.aws_ses_config.enabled) {
-    global.emailer = new emailer(globalUtils.config.aws_ses_config, globalUtils.config.max_per_timeframe_ms, globalUtils.config.timeframe_ms, globalUtils.config.ratelimit_modifier);
+if (globalUtils.config.email_config.enabled) {
+    global.emailer = new emailer(globalUtils.config.email_config, globalUtils.config.max_per_timeframe_ms, globalUtils.config.timeframe_ms, globalUtils.config.ratelimit_modifier);
 }
 
 global.sessions = new Map();
@@ -35,6 +35,11 @@ global.userSessions = new Map();
 global.database = database;
 global.permissions = permissions;
 global.config = globalUtils.config;
+
+const portAppend = globalUtils.nonStandardPort ? ":" + config.port : "";
+const base_url = config.base_url + portAppend;
+
+global.full_url = base_url;
 
 process.on('uncaughtException', (error) => {
     logText(error, "error");

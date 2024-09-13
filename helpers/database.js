@@ -836,6 +836,32 @@ const database = {
             return null;
         }
     },
+    getEmailToken: async (id) => {
+        try {
+            let rows = await database.runQuery(`SELECT * FROM users WHERE id = $1`, [id]);
+
+            if (rows === null || rows.length === 0) {
+                return null;
+            }
+
+            return rows[0].email_token === 'NULL' ? null : rows[0].email_token
+        } catch (error) {
+            logText(error, "error");
+
+            return null;
+        }
+    },
+    updateEmailToken: async (id, new_token) => {
+        try {
+            await database.runQuery(`UPDATE users SET email_token = $1 WHERE id = $2`, [new_token, id]);
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
+        }
+    },
     useEmailToken: async (id, token) => {
         try {
             let check = await database.checkEmailToken(token);
@@ -3969,7 +3995,7 @@ const database = {
 
             let token = globalUtils.generateToken(id, pwHash);
 
-            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar,registration_ip,verified,email_token) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [id, username, discriminator.toString(), email, password ? pwHash : null, token, date, 'NULL', ip, config.aws_ses_config.enabled ? 0 : 1, email_token ?? 'NULL']);
+            await database.runQuery(`INSERT INTO users (id,username,discriminator,email,password,token,created_at,avatar,registration_ip,verified,email_token) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [id, username, discriminator.toString(), email, password ? pwHash : null, token, date, 'NULL', ip, config.email_config.enabled ? 0 : 1, email_token ?? 'NULL']);
 
             return {
                 token: token
@@ -4165,6 +4191,17 @@ const database = {
         } catch (error) {
             logText(error, "error");
             return -1;
+        }
+    },
+    unverifyEmail: async (id) => {
+        try {
+            await database.runQuery(`UPDATE users SET verified = $1 WHERE id = $2`, [0, id]);
+
+            return true;
+        } catch (error) {
+            logText(error, "error");
+
+            return false;
         }
     },
     checkAccount: async (email, password, ip) => {
