@@ -26,6 +26,10 @@ const embedder = {
                 return null;
             }
 
+            if (url.endsWith(".png") || url.endsWith(".jpg") || url.endsWith(".jpeg")) {
+                return null; //external image embeds do not work that well.
+            }
+
             let should_embed = false;
             let text = await content.text();
             let $ = cheerio.load(text);

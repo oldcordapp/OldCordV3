@@ -49,7 +49,7 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(gl
             });
         }
 
-        if (req.body.region != "everything" && req.client_build_date.getFullYear() != parseInt(req.body.region)) {
+        if (req.body.region != "everything" && globalUtils.canUseServer(req.client_build_date.getFullYear(), req.body.region)) {
             return res.status(400).json({
                 name: "Year must be your current client build year or pick everything."
             });

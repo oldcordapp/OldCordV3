@@ -121,16 +121,13 @@ const globalUtils = {
     getRegions: () => {
         return [{
             id: "2016",
-            name: "2016 Only"
+            name: "2015-2016"
         }, {
             id: "2017",
-            name: "2017 Only"
+            name: "2015-2017"
         }, {
             id: "2018",
-            name: "2018 Only"
-        }, {
-            id: "2019",
-            name: "2019 Only"
+            name: "2015-2018"
         }, {
             id: "everything",
             name: "Everything"
@@ -138,6 +135,22 @@ const globalUtils = {
     },
     serverRegionToYear: (region) => {
         return globalUtils.getRegions().find(x => x.id.toLowerCase() == region) ? globalUtils.getRegions().find(x => x.id.toLowerCase() == region).name : "everything"
+    },
+    canUseServer: (year, region) => {
+        let serverRegion = globalUtils.serverRegionToYear(region);
+
+        if (serverRegion.toLowerCase() === "everything") {
+            return true;
+        }
+
+        let firstYear = serverRegion.split('-')[0];
+        let lastYear = serverRegion.split('-')[1];
+
+        if (year > parseInt(lastYear) || year < parseInt(firstYear)) {
+            return false;
+        }
+
+        return true;
     },
     generateToken: (user_id, password_hash) => {
         //sorry ziad but im stealing this from hummus source, love you
