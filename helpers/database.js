@@ -2122,6 +2122,30 @@ const database = {
             return [];
         }
     },
+    getGuildMessages: async (guild_id, containsContent, includeNsfw) => {
+        try {
+            const rows = await database.runQuery(`SELECT m.* FROM messages m JOIN channels ch ON m.channel_id = ch.id WHERE m.guild_id = $1 AND LOWER(m.content) LIKE LOWER($2) ${includeNsfw ? "" : "AND ch.nsfw = 0"}`, [guild_id, `%${containsContent}%`]);
+    
+            if (!rows || rows.length === 0) {
+                return [];
+            }
+    
+            const ret = [];
+
+            for (const row of rows) {
+                const message = await database.getMessageById(row.message_id);
+    
+                if (message) {
+                    ret.push(message);
+                }
+            }
+    
+            return ret;
+        } catch (error) {
+            logText(error, "error");
+            return [];
+        }
+    },
     getChannelById: async (id) => {
         try {
             if (id.includes("12792182114301050")) {

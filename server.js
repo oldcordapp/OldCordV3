@@ -168,20 +168,11 @@ app.get('/attachments/:guildid/:channelid/:filename', async (req, res) => {
 
 app.get('/icons/:serverid/:file', async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'www_dynamic', 'icons', req.params.serverid);
+        const filePath = path.join(__dirname, 'www_dynamic', 'icons', req.params.serverid, req.params.file);
 
-        if (!fs.existsSync(directoryPath)) {
+        if (!fs.existsSync(filePath)) {
             return res.status(404).send("File not found");
         }
-
-        const files = fs.readdirSync(directoryPath);
-        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
-
-        if (!matchedFile) {
-            return res.status(404).send("File not found");
-        }
-
-        const filePath = path.join(directoryPath, matchedFile);
 
         return res.status(200).sendFile(filePath);
     } catch (error) {
@@ -228,20 +219,11 @@ app.get("/app-assets/:applicationid/store/:file", async(req, res) => {
 
 app.get('/channel-icons/:channelid/:file', async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'www_dynamic', 'group_icons', req.params.channelid);
+        const filePath = path.join(__dirname, 'www_dynamic', 'group_icons', req.params.channelid, req.params.file);
 
-        if (!fs.existsSync(directoryPath)) {
+        if (!fs.existsSync(filePath)) {
             return res.status(404).send("File not found");
         }
-
-        const files = fs.readdirSync(directoryPath);
-        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
-
-        if (!matchedFile) {
-            return res.status(404).send("File not found");
-        }
-
-        const filePath = path.join(directoryPath, matchedFile);
 
         return res.status(200).sendFile(filePath);
     } catch (error) {
@@ -256,20 +238,11 @@ app.get('/channel-icons/:channelid/:file', async (req, res) => {
 
 app.get('/app-icons/:applicationid/:file', async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'www_dynamic', 'applications_icons', req.params.applicationid);
+        const filePath = path.join(__dirname, 'www_dynamic', 'applications_icons', req.params.applicationid, req.params.file);
 
-        if (!fs.existsSync(directoryPath)) {
+        if (!fs.existsSync(filePath)) {
             return res.status(404).send("File not found");
         }
-
-        const files = fs.readdirSync(directoryPath);
-        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
-
-        if (!matchedFile) {
-            return res.status(404).send("File not found");
-        }
-
-        const filePath = path.join(directoryPath, matchedFile);
 
         return res.status(200).sendFile(filePath);
     } catch (error) {
@@ -284,20 +257,11 @@ app.get('/app-icons/:applicationid/:file', async (req, res) => {
 
 app.get('/splashes/:serverid/:file', async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'www_dynamic', 'splashes', req.params.serverid);
+        const filePath = path.join(__dirname, 'www_dynamic', 'splashes', req.params.serverid, req.params.file);
 
-        if (!fs.existsSync(directoryPath)) {
+        if (!fs.existsSync(filePath)) {
             return res.status(404).send("File not found");
         }
-
-        const files = fs.readdirSync(directoryPath);
-        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
-
-        if (!matchedFile) {
-            return res.status(404).send("File not found");
-        }
-
-        const filePath = path.join(directoryPath, matchedFile);
 
         return res.status(200).sendFile(filePath);
     } catch (error) {
@@ -312,20 +276,11 @@ app.get('/splashes/:serverid/:file', async (req, res) => {
 
 app.get('/banners/:serverid/:file', async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'www_dynamic', 'banners', req.params.serverid);
+        const filePath = path.join(__dirname, 'www_dynamic', 'banners', req.params.serverid, req.params.file);
 
-        if (!fs.existsSync(directoryPath)) {
+        if (!fs.existsSync(filePath)) {
             return res.status(404).send("File not found");
         }
-
-        const files = fs.readdirSync(directoryPath);
-        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
-
-        if (!matchedFile) {
-            return res.status(404).send("File not found");
-        }
-
-        const filePath = path.join(directoryPath, matchedFile);
 
         return res.status(200).sendFile(filePath);
     } catch (error) {
@@ -340,20 +295,11 @@ app.get('/banners/:serverid/:file', async (req, res) => {
 
 app.get('/avatars/:userid/:file', async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'www_dynamic', 'avatars', req.params.userid);
+        const filePath = path.join(__dirname, 'www_dynamic', 'avatars', req.params.userid, req.params.file);
 
-        if (!fs.existsSync(directoryPath)) {
+        if (!fs.existsSync(filePath)) {
             return res.status(404).send("File not found");
         }
-
-        const files = fs.readdirSync(directoryPath);
-        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
-
-        if (!matchedFile) {
-            return res.status(404).send("File not found");
-        }
-
-        const filePath = path.join(directoryPath, matchedFile);
 
         return res.status(200).sendFile(filePath);
     }
@@ -369,20 +315,11 @@ app.get('/avatars/:userid/:file', async (req, res) => {
 
 app.get("/emojis/:file", async (req, res) => {
     try {
-        const directoryPath = path.join(__dirname, 'www_dynamic', 'emojis');
+        const filePath = path.join(__dirname, 'www_dynamic', 'emojis', req.params.file);
 
-        if (!fs.existsSync(directoryPath)) {
+        if (!fs.existsSync(filePath)) {
             return res.status(404).send("File not found");
         }
-
-        const files = fs.readdirSync(directoryPath);
-        const matchedFile = files.find(file => file.startsWith(req.params.file.split('.')[0]));
-
-        if (!matchedFile) {
-            return res.status(404).send("File not found");
-        }
-
-        const filePath = path.join(directoryPath, matchedFile);
 
         return res.status(200).sendFile(filePath);
     }

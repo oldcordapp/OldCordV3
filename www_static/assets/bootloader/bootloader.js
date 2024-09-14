@@ -205,12 +205,12 @@ async function timer(ms) {
     const noCaptchaSupport = release_date.endsWith("_2015") || release_date.endsWith("_2016");
     if ((noCaptchaSupport || brokenLogin) && localStorage && !localStorage.getItem("token")) {
         if (noCaptchaSupport)
-            loadLog("Warning: You aren't logged in, and the login page is BROKEN on this build. Switching to February 25 2018 temporarily.", true, true);
+            loadLog("Warning: You aren't logged in, and the login page is BROKEN on this build. Switching to January 25 2018 temporarily.", true, true);
         
         if (brokenLogin)
-            loadLog("Warning: You aren't logged in, and this build does not support the captcha required for registration. Switching to February 25 2018 temporarily.", true, true);
+            loadLog("Warning: You aren't logged in, and this build does not support the captcha required for registration. Switching to January 25 2018 temporarily.", true, true);
         
-        release_date = "february_25_2018";
+        release_date = "january_25_2018";
         
         //Wait until the user has logged in, then refresh
         let waitForLogin = setInterval(() => {
