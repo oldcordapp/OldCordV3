@@ -201,7 +201,7 @@ async function timer(ms) {
         return
     }
 
-    const brokenLogin = [ "november_16_2017", "december_21_2017", "january_27_2018", "march_24_2018", "april_1_2018", "april_23_2018" ].includes(release_date);
+    const brokenLogin = [ "november_16_2017", "december_21_2017", "january_27_2018", "march_7_2018", "april_1_2018", "april_23_2018" ].includes(release_date);
     const noCaptchaSupport = release_date.endsWith("_2015") || release_date.endsWith("_2016");
     if ((noCaptchaSupport || brokenLogin) && localStorage && !localStorage.getItem("token")) {
         if (noCaptchaSupport)
