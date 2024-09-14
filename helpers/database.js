@@ -1425,13 +1425,16 @@ const database = {
 
                 //Convert recipient snowflakes to users
                 let recipientUsers = [];
+
                 for (let i = 0; i < recipients.length; i++) {
                     if (!recipients)
                         continue;
                     
                     let user;
+
                     if ((typeof recipients[i]) == "string") {
                         user = await database.getAccountByUserId(recipients[i]);
+
                         if (!user)
                             continue;
                         
@@ -1439,6 +1442,7 @@ const database = {
                     } else {
                         user = recipients[i];
                     }
+
                     if (user)
                         recipientUsers.push(user);
                 }

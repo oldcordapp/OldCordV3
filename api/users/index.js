@@ -53,7 +53,10 @@ router.post("/:userid/channels", rateLimitMiddleware(global.config.ratelimit_con
         }
         
         let validRecipientIDs = [];
+        let map = {};
+
         validRecipientIDs.push(account.id);
+
         for(var recipient of recipients) {
             if (validRecipientIDs.includes(recipient))
                 continue;
@@ -63,16 +66,30 @@ router.post("/:userid/channels", rateLimitMiddleware(global.config.ratelimit_con
             if (!userObject)
                 continue;
 
-            if (globalUtils.areWeFriends(account, userObject)) {
-                validRecipientIDs.push(recipient);
-            }
+            map[recipient] = userObject;
+
+            validRecipientIDs.push(recipient);
         }
         
         let channel = null;
-        let type = validRecipientIDs.filter(id => id != account.id).length == 1 ? 1 : 3;
+        let type = validRecipientIDs.length > 2 ? 3 : 1;
 
         if (type == 1)
             channel = await global.database.findPrivateChannel(account.id, validRecipientIDs[validRecipientIDs[0] == account.id ? 1 : 0]);
+
+        if (type === 3) {
+            for(var validRecipientId of validRecipientIDs) {
+                let userObject = map[validRecipientId];
+
+                if (!globalUtils.areWeFriends(account, userObject)) {
+                    validRecipientIDs = validRecipientIDs.filter(x => x !== validRecipientId);
+
+                    continue;
+                }
+            }
+
+            type = validRecipientIDs.length > 2 ? 3 : 1;
+        }
 
         channel ??= await global.database.createChannel(null, null, type, 0, validRecipientIDs, account.id);
         

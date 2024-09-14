@@ -522,7 +522,7 @@ function channelPermissionsMiddleware(permission) {
 
                     let friends = globalUtils.areWeFriends(sender, other);
 
-                    const guilds = await global.database.getUsersGuilds(other);
+                    const guilds = await global.database.getUsersGuilds(other.id);
 
                     const sharedGuilds = guilds.filter(guild => 
                         guild.members != null && 
@@ -545,7 +545,7 @@ function channelPermissionsMiddleware(permission) {
                         }
                     }
 
-                    if (counted === sharedGuilds.length && !friends) {
+                    if (counted === sharedGuilds.length && !friends) {        
                         return res.status(403).json({
                             code: 403,
                             message: "Missing Permissions"
