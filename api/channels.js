@@ -715,7 +715,7 @@ router.delete("/:channelid/recipients/:recipientid", channelMiddleware, rateLimi
         }
         
         //Remove recipient
-        channel.recipients = channels.recipients.filter(recip => recip !== recipient);
+        channel.recipients = channel.recipients.filter(recip => recip.id !== recipient.id);
         
         if (!await global.database.updateChannelRecipients(channel.id, channel.recipients))
             throw "Failed to update recipients list in channel";
