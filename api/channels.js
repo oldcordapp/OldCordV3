@@ -580,9 +580,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
         return res.status(204).send();
     } catch(error) {
         logText(error, "error");
-    
-        
-        
+ 
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"
@@ -611,13 +609,20 @@ router.put("/:channelid/recipients/:recipientid", channelMiddleware, rateLimitMi
             });
         }
         
-        if (channel.type != 3) {
+        if (channel.type !== 3) {
             return res.status(403).json({
                 code: 403,
                 message: "Cannot add members to this type of channel."
             });
         }
-        
+
+        if (!channel.recipients.find(x => x.id === sender.id)) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
+            });
+        }
+         
         if (channel.recipients.length > 9) {
             return res.status(403).json({
                 code: 403,
@@ -655,6 +660,71 @@ router.put("/:channelid/recipients/:recipientid", channelMiddleware, rateLimitMi
         //Notify new recipient
         await globalUtils.pingPrivateChannelUser(channel, recipient.id);
         
+        return res.status(204).send();
+    } catch(error) {
+        logText(error, "error");
+        
+        return res.status(500).json({
+            code: 500,
+            message: "Internal Server Error"
+        });
+    }
+});
+
+router.delete("/:channelid/recipients/:recipientid", channelMiddleware, rateLimitMiddleware(global.config.ratelimit_config.updateMember.maxPerTimeFrame, global.config.ratelimit_config.updateMember.timeFrame), async (req, res) => {
+    try {
+        const sender = req.account;
+        
+        if (!sender) {
+            return res.status(401).json({
+                code: 401,
+                message: "Unauthorized"
+            });
+        }
+        
+        let channel = req.channel;
+
+        if (channel == null) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown Channel"
+            });
+        }
+        
+        if (channel.type !== 3) {
+            return res.status(403).json({
+                code: 403,
+                message: "Cannot remove members from this type of channel."
+            });
+        }
+
+        if (channel.owner_id !== sender.id) {
+            return res.status(403).json({
+                code: 403,
+                message: "Missing Permissions"
+            });
+        }
+        
+        const recipient = req.recipient;
+        
+        if (recipient == null) {
+            return res.status(404).json({
+                code: 404,
+                message: "Unknown user"
+            });
+        }
+        
+        //Remove recipient
+        channel.recipients = channels.recipients.filter(recip => recip !== recipient);
+        
+        if (!await global.database.updateChannelRecipients(channel.id, channel.recipients))
+            throw "Failed to update recipients list in channel";
+        
+        //Notify everyone else
+        await global.dispatcher.dispatchEventInPrivateChannel(channel, "CHANNEL_UPDATE", async function() {
+            return globalUtils.personalizeChannelObject(this.socket, channel);
+        });
+
         return res.status(204).send();
     } catch(error) {
         logText(error, "error");
