@@ -455,8 +455,7 @@ app.get("/launch", (req, res) => {
     }
     
     res.cookie('release_date', req.query.release_date, {
-        maxAge: 100 * 365 * 24 * 60 * 60 * 1000,
-        httpOnly: true
+        maxAge: 100 * 365 * 24 * 60 * 60 * 1000
     });
 
     res.redirect("/");

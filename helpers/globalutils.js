@@ -15,6 +15,7 @@ const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
 const globalUtils = {
     config: config,
+    badEmails: null,
     nonStandardPort: config.secure ? config.port != 443 : config.port != 80,
     nonStandardWsPort: config.secure ? config.ws_port != 443 : config.ws_port != 80,
     generateGatewayURL: (req) => {
@@ -320,22 +321,30 @@ const globalUtils = {
         }
     },
     badEmail: async (email) => {
-        /*
-        try {
-            let domain = email.split('@')[1];
+        try {   
+            if (!globalUtils.badEmails) {
+                let response = await fetch("https://raw.githubusercontent.com/unkn0w/disposable-email-domain-list/main/domains.txt");
+    
+                if (!response.ok) {
+                    globalUtils.badEmails = new Set(["Bademaildomainlist.com"]);
+    
+                    return false;
+                }
+    
+                const data = await response.text();
+                const domains = new Set(data.split('\n').map(domain => domain.trim()));
 
-            let response = await fetch("https://raw.githubusercontent.com/unkn0w/disposable-email-domain-list/main/domains.txt");
-
-            if (response.ok && !(await response.text()).includes(domain.toLowerCase())) {
-                return false;
+                globalUtils.badEmails = domains;
             }
 
-            return true;
-        } catch {
+            let domain = email.split('@')[1];
+
+            return globalUtils.badEmails.has(domain);
+        } catch (error) {
+            logText(error, "error");
+
             return true;
         }
-        */
-       return false; //to-do
     },
     prepareAccountObject: (rows, relationships) => {
         if (rows === null || rows.length === 0) {

@@ -14,6 +14,7 @@ const router = express.Router({ mergeParams: true });
 
 router.param('messageid', async (req, res, next, messageid) => {
     req.message = await global.database.getMessageById(messageid);
+    
 
     next();
 });
@@ -140,11 +141,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
 
         const mentions_data = globalUtils.parseMentions(req.body.content);
 
-        if (mentions_data.mention_everyone ||
-            mentions_data.mention_here ||
-            !await global.permissions.hasChannelPermissionTo(req.channel, req.guild, author.id, "MENTION_EVERYONE")) {
-            
-            //Not allowed
+        if ((mentions_data.mention_everyone || mentions_data.mention_here) && !await global.permissions.hasChannelPermissionTo(req.channel, req.guild, author.id, "MENTION_EVERYONE")) {
             mentions_data.mention_everyone = false;
             mentions_data.mention_here = false;
         }
@@ -334,7 +331,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         }
 
         //Write message
-        const message = await global.database.createMessage(req.guild ? req.guild.id : null, req.channel.id, author.id, req.body.content, req.body.nonce, file_details, req.body.tts, mentions_data.mention_everyone, null, embeds);
+        const message = await global.database.createMessage(req.guild ? req.guild.id : null, req.channel.id, author.id, req.body.content, req.body.nonce, file_details, req.body.tts, mentions_data, null, embeds);
 
         if (!message)
             throw "Message creation failed";

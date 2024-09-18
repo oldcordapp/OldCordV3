@@ -1629,6 +1629,7 @@ const database = {
             }
 
             const mentions_data = globalUtils.parseMentions(rows[0].content);
+
             const mentions = [];
 
             for(var mention_id of mentions_data.mentions) {
@@ -1678,8 +1679,8 @@ const database = {
                 attachments: messageAttachments,
                 embeds: rows[0].embeds == 'NULL' ? [] : JSON.parse(rows[0].embeds),
                 mentions: mentions,
-                mention_everyone: mentions_data.mention_everyone,
-                mention_roles: mentions_data.mention_roles,
+                mention_everyone: rows[0].mention_everyone === 1,
+                mention_roles: mentions_data.mention_roles, //to-do: find way to check perms on this without slowing down db much
                 nonce: rows[0].nonce,
                 edited_timestamp: rows[0].edited_timestamp == 'NULL' ? null : rows[0].edited_timestamp,
                 timestamp: rows[0].timestamp,
@@ -3349,7 +3350,7 @@ const database = {
             return false;
         }
     },
-    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mention_everyone, webhookOverride = null, webhook_embeds = null) => {
+    createMessage: async (guild_id , channel_id, author_id, content, nonce, attachment, tts, mentions_data, webhookOverride = null, webhook_embeds = null) => {
         try {
             const id = Snowflake.generate();
             const date = new Date().toISOString();
@@ -3400,7 +3401,7 @@ const database = {
                 author_id,
                 content,
                 'NULL',
-                mention_everyone == true ? 1 : 0,
+                mentions_data.mention_everyone == true ? 1 : 0,
                 nonce,
                 date,
                 (tts ? 1 : 0),
@@ -3421,7 +3422,23 @@ const database = {
                 ]);
             }
 
-            return await database.getMessageById(id);
+            let msg = await database.getMessageById(id);
+
+            const mentions = [];
+
+            for(var mention_id of mentions_data.mentions) {
+                const mention = await database.getAccountByUserId(mention_id);
+
+                if (mention != null) {
+                    mentions.push(globalUtils.miniUserObject(mention));
+                }
+            }
+
+            msg.mentions = mentions;
+            msg.mention_everyone = mentions_data.mention_everyone;
+            msg.mention_roles = mentions_data.mention_roles;
+
+            return msg;
         } catch(error) {
             logText(error, "error");
 
