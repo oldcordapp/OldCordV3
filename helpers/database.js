@@ -1632,11 +1632,13 @@ const database = {
 
             const mentions = [];
 
-            for(var mention_id of mentions_data.mentions) {
-                const mention = await database.getAccountByUserId(mention_id);
-
-                if (mention != null) {
-                    mentions.push(globalUtils.miniUserObject(mention));
+            if (mentions_data.mentions && mentions_data.mentions.length > 0) {
+                for(var mention_id of mentions_data.mentions) {
+                    const mention = await database.getAccountByUserId(mention_id);
+    
+                    if (mention != null) {
+                        mentions.push(globalUtils.miniUserObject(mention));
+                    }
                 }
             }
 
@@ -3426,11 +3428,13 @@ const database = {
 
             const mentions = [];
 
-            for(var mention_id of mentions_data.mentions) {
-                const mention = await database.getAccountByUserId(mention_id);
-
-                if (mention != null) {
-                    mentions.push(globalUtils.miniUserObject(mention));
+            if (mentions_data.mentions && mentions_data.mentions.length > 0) {
+                for(var mention_id of mentions_data.mentions) {
+                    const mention = await database.getAccountByUserId(mention_id);
+    
+                    if (mention != null) {
+                        mentions.push(globalUtils.miniUserObject(mention));
+                    }
                 }
             }
 
