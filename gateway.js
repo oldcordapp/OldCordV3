@@ -332,8 +332,6 @@ const gateway = {
                             }
                         }
 
-                        let roles = guild.roles;
-
                         const online = related_presences
                         .filter(p => p.presence.status !== 'offline' && p.presence.status !== 'invisible')
                         .map(p => ({
@@ -351,44 +349,24 @@ const gateway = {
                             }
                         }));
 
-                        const offline = related_presences
-                            .filter(p => p.presence.status === 'offline' || p.presence.status === 'invisible')
-                            .map(p => ({
-                                member: {
-                                    ...p.member,
-                                    presence: {
-                                        status: p.presence.status,
-                                        user: {
-                                            id: p.member.user.id,
-                                        },
-                                        game: null,
-                                        activities: [],
-                                        client_status: null
-                                    }
+                    const offline = related_presences
+                        .filter(p => p.presence.status === 'offline' || p.presence.status === 'invisible')
+                        .map(p => ({
+                            member: {
+                                ...p.member,
+                                presence: {
+                                    status: p.presence.status,
+                                    user: {
+                                        id: p.member.user.id,
+                                    },
+                                    game: null,
+                                    activities: [],
+                                    client_status: null
                                 }
+                            }
                         }));
 
-                        let roleData = [];
-                        let rolePresenceData = [];
-
-                        for(var role of roles) {
-                            let presenc = online.filter(x => x.member.roles.includes(role.id));
-
-                            roleData.push({
-                                group: {
-                                    count: presenc.length,
-                                    id: role.id
-                                }
-                            });
-
-                            if (presenc.length > 0) {
-                                rolePresenceData.push(presenc);
-                            }
-                        }
-
                         const items = [
-                            ...roleData,
-                            ...rolePresenceData,
                             { group: { id: 'online', count: online.length } },
                             ...online,
                             { group: { id: 'offline', count: offline.length } },
@@ -409,7 +387,7 @@ const gateway = {
                             }, {
                                 count: offline.length,
                                 id: 'offline'
-                            }, ...roleData],
+                            }],
                         });
                     } else if (packet.op == 6) {
                         let token = packet.d.token;
