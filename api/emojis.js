@@ -61,6 +61,27 @@ router.post("/", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJIS"), a
             });  
         }
 
+        if (guild.emojis.length >= global.config.limits['emojis_per_guild'].max) {
+            return res.status(404).json({
+                code: 404,
+                message: `Maximum emojis per guild exceeded (${global.config.limits['emojis_per_guild'].max})`
+            });  
+        }
+
+        if (!req.body.name) {
+            return res.status(400).json({
+                code: 400,
+                name: "This field is required."
+            });  
+        }
+
+        if (req.body.name.length < global.config.limits['emoji_name'].min || req.body.name.length >= global.config.limits['emoji_name'].max) {
+            return res.status(400).json({
+                code: 400,
+                name: `Must be between ${global.config.limits['emoji_name'].min} and ${global.config.limits['emoji_name'].max} characters.`
+            });  
+        }
+
         const base64Data = req.body.image.split(';base64,').pop();
         const mimeType = req.body.image.split(';')[0].split(':')[1];
         const extension = mimeType.split('/')[1];
@@ -162,18 +183,11 @@ router.patch("/:emoji", guildMiddleware, guildPermissionsMiddleware("MANAGE_EMOJ
             });   
         }
 
-        if (req.body.name < 2) {
+        if (req.body.name.length < global.config.limits['emoji_name'].min || req.body.name.length >= global.config.limits['emoji_name'].max) {
             return res.status(400).json({
                 code: 400,
-                name: "Emoji name must be at least 2 characters long"
+                name: `Must be between ${global.config.limits['emoji_name'].min} and ${global.config.limits['emoji_name'].max} characters.`
             });  
-        }
-
-        if (req.body.name > 30) {
-            return res.status(400).json({
-                code: 400,
-                name: "Emoji name must be under 30 characters long"
-            });    
         }
 
         let tryUpdate = await global.database.updateCustomEmoji(guild, emoji_id, req.body.name);

@@ -31,6 +31,58 @@
         "brevo-api-key" : "",
         "enabled": false
     },
+    "limits" : {
+        "username" : {
+            "min" : 2,
+            "max" : 30
+        },
+        "password" : {
+            "min" : 8,
+            "max" : 100
+        },
+        "email" : {
+            "min" : 1,
+            "max" : 30
+        },
+        "nickname" : {
+            "min" : 2,
+            "max" : 30
+        },
+        "guild_name" : {
+            "min" : 2,
+            "max" : 30
+        },
+        "role_name" : {
+            "min" : 2,
+            "max" : 30
+        },
+        "emoji_name" : {
+            "min" : 2,
+            "max" : 30
+        },
+        "channel_name" : {
+            "min" : 2,
+            "max" : 30
+        },
+        "attachments" : {
+            "max_size" : 25000000
+        },
+        "guilds_per_account" : {
+            "max" : 70
+        },
+        "invites_per_guild" : {
+            "max" : 100
+        },
+        "roles_per_guild" : {
+            "max" : 100
+        },
+        "channels_per_guild" : {
+            "max" : 100
+        },
+        "emojis_per_guild" : {
+            "max" : 200
+        }
+    },
     "gcs_config" : { },
     "trusted_users" : [],
     "custom_invite_url" : "",

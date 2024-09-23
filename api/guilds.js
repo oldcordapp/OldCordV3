@@ -28,9 +28,9 @@ router.post("/", instanceMiddleware("NO_GUILD_CREATION"), rateLimitMiddleware(gl
             })
         }
 
-        if (req.body.name.length < 1 || req.body.name.length > 30) {
+        if (req.body.name.length < global.config.limits['guild_name'].min || req.body.name.length >= global.config.limits['guild_name'].max) {
             return res.status(400).json({
-                name: "Must be between 1 and 30 in length."
+                name: `Must be between ${global.config.limits['guild_name'].min} and ${global.config.limits['guild_name'].max} in length.`
             })
         }
 
@@ -254,9 +254,9 @@ router.patch("/:guildid", guildMiddleware, guildPermissionsMiddleware("MANAGE_GU
             }); 
         }
 
-        if (req.body.name && req.body.name.length < 2 || req.body.name && req.body.name.length > 30) {
+        if (req.body.name && (req.body.name.length < global.config.limits['guild_name'].min || req.body.name.length >= global.config.limits['guild_name'].max)) {
             return res.status(400).json({
-                name: "Must be between 2 and 30 in length."
+                name: `Must be between ${global.config.limits['guild_name'].min} and ${global.config.limits['guild_name'].max} in length.`
             })
         }
 
@@ -504,6 +504,29 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
             });
         }
 
+        if (req.guild.channels.length >= global.config.limits['channels_per_guild'].max) {
+            return res.status(400).json({
+                code: 400,
+                message: `Maximum number of channels per guild exceeded (${global.config.limits['channels_per_guild'].max})`
+            });
+        }
+
+        if (!req.body.name) {
+            return res.status(400).json({
+                code: 400,
+                message: `This field is required.`
+            });
+        }
+
+        if (req.body.name.length < global.config.limits['channel_name'].min || req.body.name.length >= global.config.limits['channel_name'].max) {
+            return res.status(400).json({
+                code: 400,
+                name: `Must be between ${global.config.limits['channel_name'].min} and ${global.config.limits['channel_name'].max} characters.`
+            });
+        }
+
+        req.body.name = req.body.name.replace(/ /g, "-");
+
         const member = req.guild.members.find(x => x.id === sender.id);
 
         if (!member) {
@@ -559,8 +582,6 @@ router.post("/:guildid/channels", guildMiddleware, guildPermissionsMiddleware("M
         return res.status(200).json(channel);
     } catch(error) {
         logText(error, "error");
-    
-        
 
         return res.status(500).json({
           code: 500,

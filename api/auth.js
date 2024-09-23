@@ -30,6 +30,15 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             });
         }
 
+        let emailAddr = req.body.email.split('@')[0];
+
+        if (emailAddr.length < global.config.limits['email'].min || emailAddr.length >= global.config.limits['email'].max) {
+            return res.status(400).json({
+                code: 400,
+                email: `Must be between ${global.config.limits['email'].min} and ${global.config.limits['email'].max} characters.`,
+            });
+        }
+
         if (!req.body.password && release_date == "june_12_2015") {
             req.body.password = globalUtils.generateString(20);
         } else if (!req.body.password && !req.header("referer").includes("/invite/")) {
@@ -39,10 +48,24 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             });  
         }
 
+        if (release_date != "june_12_2015" && (req.body.password.length < global.config.limits['password'].min || req.body.password.length >= global.config.limits['password'].max)) {
+            return res.status(400).json({
+                code: 400,
+                password: `Must be between ${global.config.limits['password'].min} and ${global.config.limits['password'].max} characters.`,
+            });    
+        }
+
         if (!req.body.username) {
             return res.status(400).json({
                 code: 400,
                 username: "This field is required",
+            });
+        }
+
+        if (req.body.username.length < global.config.limits['username'].min || req.body.username.length >= global.config.limits['username'].max) {
+            return res.status(400).json({
+              code: 400,
+              username: `Must be between ${global.config.limits['username'].min} and ${global.config.limits['username'].max} characters.`
             });
         }
 

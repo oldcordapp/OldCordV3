@@ -130,6 +130,15 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(g
                 message: "Unknown Invite"
             });
         }
+
+        let usersGuild = await global.database.getUsersGuilds(sender.id);
+
+        if (usersGuild.length >= global.config.limits['guilds_per_account'].max) {
+            return res.status(404).json({
+                code: 404,
+                message: `Maximum number of guilds exceeded for this instance (${global.config.limits['guilds_per_account'].max})`
+            });
+        }
         
         const joinAttempt = await global.database.useInvite(req.params.code, sender.id);
 
@@ -161,8 +170,6 @@ router.post("/:code", instanceMiddleware("NO_INVITE_USE"), rateLimitMiddleware(g
         return res.status(200).send(invite);
     } catch (error) {
         logText(error, "error");
-
-        
 
         return res.status(500).json({
             code: 500,

@@ -120,10 +120,10 @@ async function updateMember(member, guild, roles, nick) {
         if (nick === "" || nick === member.user.username) {
             nick = null;
         } else {
-            if (nick.length < 2 || nick.length > 30) {
+            if (nick.length < global.config.limits['nickname'].min || nick.length >= global.config.limits['nickname'].max) {
                 return {
                     code: 400,
-                    nick: "Nickname must be between 2 and 30 characters."
+                    nick: `Must be between ${global.config.limits['nickname'].min} and ${global.config.limits['nickname'].max} characters.`
                 };
             }
         }

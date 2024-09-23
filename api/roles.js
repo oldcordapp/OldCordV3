@@ -56,7 +56,14 @@ router.patch("/:roleid", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMi
         if (req.body.name != "@everyone" && req.params.roleid == req.params.guildid) {
             return res.status(403).json({
                 code: 403,
-                message: "Cannot modify name of everyone role."
+                name: "Cannot modify name of everyone role."
+            });
+        }
+
+        if (req.body.name.length < global.config.limits['role_name'].min || req.body.name.length >= global.config.limits['role_name'].max) {
+            return res.status(400).json({
+                code: 400,
+                name: `Must be between ${global.config.limits['role_name'].min} and ${global.config.limits['role_name'].max} characters.`
             });
         }
 
@@ -269,6 +276,13 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
                 message: "Unknown Guild"
             });
         }
+
+        if (guild.roles.length >= global.config.limits['roles_per_guild'].max) {
+            return res.status(400).json({
+                code: 400,
+                message: `Maximum number of roles per guild exceeded (${global.config.limits['roles_per_guild'].max})`
+            });
+        }
         
         const role = await global.database.createRole(req.params.guildid, "new role", req.guild.roles.length + 1);
 
@@ -290,8 +304,6 @@ router.post("/", guildPermissionsMiddleware("MANAGE_ROLES"), rateLimitMiddleware
     } catch (error) {
         logText(error, "error");
     
-        
-
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"

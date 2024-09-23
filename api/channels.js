@@ -146,19 +146,14 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
             channel.icon = null;
         }
 
-        if (req.body.name && req.body.name.length < 1) {
+        if (req.body.name && (req.body.name.length < global.config.limits['channel_name'].min || req.body.name.length >= global.config.limits['channel_name'].max)) {
             return res.status(400).json({
                 code: 400,
-                name: "Must be between 1 and 30 characters",
+                name: `Must be between ${global.config.limits['channel_name'].min} and ${global.config.limits['channel_name'].max} characters.`,
             });
         }
 
-        if (req.body.name && req.body.name.length > 30) {
-            return res.status(400).json({
-                code: 400,
-                name: "Must be between 1 and 30 characters",
-            });
-        }
+        req.body.name = req.body.name.replace(/ /g, "-");
 
         channel.name = req.body.name ?? channel.name;
 
@@ -255,6 +250,15 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
             })
         }
 
+        let invites = await global.database.getGuildInvites(req.guild.id);
+
+        if (invites.length >= global.config.limits['invites_per_guild'].max) {
+            return res.status(400).json({
+                code: 400,
+                message: `Maximum number of invites per guild exceeded (${global.config.limits['invites_per_guild'].max})`
+            });
+        }
+
         let max_age = 0;
         let max_uses = 0;
         let temporary = false;
@@ -296,8 +300,6 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
     } catch (error) {
         logText(error, "error");
     
-        
-
         return res.status(500).json({
           code: 500,
           message: "Internal Server Error"

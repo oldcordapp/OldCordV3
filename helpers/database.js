@@ -1497,7 +1497,7 @@ const database = {
     },
     updateGuildMemberNick: async (guild_id, member_id, new_nick) => {
         try {
-            let nick = new_nick == null || new_nick.length > 20 ? 'NULL' : new_nick;
+            let nick = new_nick == null || new_nick.length > config.limits['nickname'].max ? 'NULL' : new_nick;
 
             await database.runQuery(`UPDATE members SET nick = $1 WHERE guild_id = $2 AND user_id = $3`, [nick, guild_id, member_id]);
 

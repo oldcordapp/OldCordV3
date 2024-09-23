@@ -295,6 +295,13 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
         let file_details = null;
 
         if (req.file) {
+            if (req.file.size >= global.config.limits['attachments'].max_size) {
+                return res.status(400).json({
+                    code: 400,
+                    message: `Message attachments cannot be larger than ${global.config.limits['attachments'].max_size} bytes.`
+                }); 
+            }
+
             file_details = {
                 id: Snowflake.generate(),
                 size: req.file.size,

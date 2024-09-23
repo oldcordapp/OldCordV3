@@ -72,14 +72,14 @@ router.patch("/:webhookid", async (req, res) => {
         if (req.body.name && req.body.name.length < 2) {
             return res.status(400).json({
                 code: 400,
-                name: "Name must be between 2 and 25 characters."
+                name: "Must be between 2 and 25 characters."
             });  
         }
 
         if (req.body.name && req.body.name.length > 25) {
             return res.status(400).json({
                 code: 400,
-                name: "Name must be between 2 and 25 characters."
+                name: "Must be between 2 and 25 characters."
             });  
         }
 

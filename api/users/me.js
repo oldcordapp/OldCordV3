@@ -60,10 +60,10 @@ router.patch("/", rateLimitMiddleware(global.config.ratelimit_config.updateMe.ma
         account.username = req.body.username;
       }
 
-      if (account.username.length < 2 || account.username.length > 30) {
+      if (account.username.length < global.config.limits['username'].min || account.username.length >= global.config.limits['username'].max) {
           return res.status(400).json({
             code: 400,
-            username: "Must be between 2 and 30 characters"
+            username: `Must be between ${global.config.limits['username'].min} and ${global.config.limits['username'].max} characters.`
           });
       }
 

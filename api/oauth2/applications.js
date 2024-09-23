@@ -91,7 +91,7 @@ router.post("/", async (req, res) => {
         if (name.length < 2 || name.length > 30) {
             return res.status(400).json({
                 code: 400,
-                name: "Must be between 2 and 30 characters"
+                name: "Must be between 2 and 30 characters."
             })
         }
 
@@ -199,14 +199,14 @@ router.patch("/:applicationid", async (req, res) => {
         if (application.name.length < 2 || application.name.length > 30) {
             return res.status(400).json({
                 code: 400,
-                name: "Must be between 2 and 30 characters"
+                name: "Must be between 2 and 30 characters."
             })
         }
 
         if (application.description.length > 400) {
             return res.status(400).json({
                 code: 400,
-                description: "Must be under 400 characters"
+                description: "Must be under 400 characters."
             })
         }
 
