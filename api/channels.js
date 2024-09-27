@@ -20,6 +20,8 @@ router.param('channelid', async (req, res, next, channelid) => {
         return next();
     }
 
+    req.member = req.guild.members.find(y => y.id === req.account.id)
+
     const channel = req.guild.channels.find(y => y.id === channelid);
 
     if (channel == null) {
@@ -76,7 +78,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
             guild_id: channel.guild_id,
             user_id: typer.id,
             timestamp: new Date(),
-            member: global.database.getGuildMemberByID(channel.guild_id, typer.id),
+            member: req.member,
         };
         
         if (!req.guild) {

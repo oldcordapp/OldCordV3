@@ -410,6 +410,8 @@ const database = {
             await database.runQuery(`
                 UPDATE users SET private_channels = $1 WHERE id = $2
             `, [JSON.stringify(private_channels), user_id]);
+
+            return true;
         } catch(error) {
             logText(error, "error");
 
