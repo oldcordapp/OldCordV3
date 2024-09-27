@@ -71,18 +71,12 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
             });
         }
         
-        const payload = {
+        var payload = {
             channel_id: req.params.channelid,
             guild_id: channel.guild_id,
             user_id: typer.id,
             timestamp: new Date(),
-            member: {
-                id: typer.id,
-                roles: [],
-                deaf: false,
-                mute: false,
-                user: globalUtils.miniUserObject(typer)
-            }
+            member: global.database.getGuildMemberByID(channel.guild_id, typer.id),
         };
         
         if (!req.guild) {
@@ -95,6 +89,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
             
             await global.dispatcher.dispatchEventInPrivateChannel(channel, "TYPING_START", payload);
         } else {
+            payload.member = globalUtils.miniUserObject(typer) //this may also be a bad implementation, but i remember seeing this behavior on hummus, so correct me if this is inaccurate.
             await global.dispatcher.dispatchEventInChannel(req.guild, channel.id, "TYPING_START", payload);
         }
 
