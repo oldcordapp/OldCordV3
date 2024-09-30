@@ -353,6 +353,12 @@ class session {
                     }
     
                     for(var channel of guild.channels) {
+                        if ((year === 2017 && month < 9) || year < 2017) {
+                            if (channel.type === 4) {
+                               guild.channels = guild.channels.filter(x => x.id !== channel.id);
+                            }
+                        }
+                        
                         if (!this.socket.channel_types_are_ints) {
                             channel.type = channel.type == 2 ? "voice" : "text";
                         }
@@ -369,12 +375,6 @@ class session {
     
                         if (getLatestAcknowledgement) {
                             this.read_states.push(getLatestAcknowledgement);
-                        }
-    
-                        if ((year === 2017 && month < 9) || year < 2017) {
-                            if (channel.type === 4) {
-                               guild.channels = guild.channels.filter(x => x.id !== channel.id);
-                            }
                         }
                     }
                 }
