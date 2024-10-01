@@ -1,6 +1,7 @@
 let properties = {
     ignoreDebug: false,
     disabled: false,
+    fullErrors: true
 };
 
 const logText = (text, type) => {
@@ -8,13 +9,21 @@ const logText = (text, type) => {
         return;
     }
 
-    if (type == 'error') {
-        let stack = text.stack;
-        let functionname = stack.split('\n')[1].trim().split(' ')[1] || '<anonymous>';
-        let message = text.toString();
+    if (type !== 'error') {
+        console.log(`[OLDCORDV3] <${type.toUpperCase()}>: ${text}`);
+        return;
+    }
 
-        console.error(`[OLDCORDV3] ERROR @ ${functionname} -> ${message}`);
-    } else console.log(`[OLDCORDV3] <${type.toUpperCase()}>: ${text}`);
+    if (properties.fullErrors) {
+        console.error(text);
+        return;
+    }
+
+    let stack = text.stack;
+    let functionname = stack.split('\n')[1].trim().split(' ')[1] || '<anonymous>';
+    let message = text.toString();
+
+    console.error(`[OLDCORDV3] ERROR @ ${functionname} -> ${message}`);
 };
 
 module.exports = { 
