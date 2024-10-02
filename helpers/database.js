@@ -418,6 +418,45 @@ const database = {
             return false;
         }
     },
+    getGuildMemberByID: async (guild_id, user_id) => {
+    	try {
+    	    const memberRows = await database.runQuery(`
+    		SELECT * FROM members WHERE guild_id = $1 AND user_id = $2
+    		`, [user_id, guild_id]);
+
+	    if (memberRows === null || memberRows.length === 0) {
+                return null;
+            }
+
+	    const m = memberRows[0] //probably a bad implementation, but whatever
+	    const user = await database.getAccountByUserId(m.user_id);
+    
+            if (user == null) {
+                return null;
+            }
+
+	    let member_roles = JSON.parse(row.roles) ?? [];
+    
+            member_roles = member_roles.filter(role_id => 
+                roles.find(guild_role => guild_role.id === role_id) !== undefined
+            );
+
+	    const member = {
+                id: user.id,
+                nick: m.nick == 'NULL' ? null : m.nick,
+                deaf: ((m.deaf == 'TRUE' || m.deaf == 1) ? true : false),
+                mute: ((m.mute == 'TRUE' || m.mute == 1) ? true : false),
+                roles: member_roles,
+                joined_at: new Date().toISOString(),
+                user: globalUtils.miniUserObject(user)
+            };
+
+            return member
+    	} catch(error) {
+    	    logText(error, "error");
+    	    return null;
+    	}
+    },
     op12getGuildMembersAndPresences: async (guild) => {
         try {
             if (guild.members.length !== 0) {
