@@ -432,7 +432,7 @@ const database = {
 	    const user = await database.getAccountByUserId(m.user_id);
     
             if (user == null) {
-                continue;
+                return null;
             }
 
 	    let member_roles = JSON.parse(row.roles) ?? [];
