@@ -2713,6 +2713,20 @@ const database = {
                 return null;
             }
 
+            let currentDate = Date.now();
+            let createdAt = rows[0].createdat;
+            let maxAge = rows[0].maxage;
+
+            let createdTimestamp = new Date(createdAt);
+
+            if ((!createdAt || !createdTimestamp) || (currentDate - createdTimestamp) >= (maxAge * 1000)) {
+                await database.deleteInvite(rows[0].code);
+
+                return null;
+            }
+
+            //Remove invalid invites/expired invites lazily
+
             return {
                 code: rows[0].code,
                 temporary: rows[0].temporary == 1 ? true : false,
@@ -3035,12 +3049,6 @@ const database = {
         
                     return invite;
                 }
-            }
-
-            if (maxAge != 0) {
-                setTimeout(async () => {
-                    await database.deleteInvite(code);
-                }, maxAge * 1000); //maxAge = seconds * 1000 = milliseconds
             }
             
             await database.runQuery(`INSERT INTO invites (guild_id, channel_id, code, temporary, revoked, inviter_id, uses, maxuses, maxage, xkcdpass, createdat) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [guild_id, channel_id, code, temporary == true ? 1 : 0, 0, inviter_id, 0, maxUses, maxAge, xkcdpass == true ? 1 : 0, date]);
