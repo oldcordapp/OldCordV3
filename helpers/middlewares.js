@@ -225,7 +225,7 @@ function staffAccessMiddleware(privilege_needed) {
 
 async function authMiddleware(req, res, next) {
     try {
-        if (req.url.includes("/webhooks/") || (req.url.includes("/invite/") && req.method === "GET")) {
+        if ((req.url.includes("/webhooks/") || (req.url.includes("/invite/")) && req.method === "GET")) {
             return next();
         } //exclude webhooks and invites from this
 
@@ -247,10 +247,6 @@ async function authMiddleware(req, res, next) {
         }
       
         if (!account.bot) {
-            if (req.headers.length < 10) {
-                req.cannot_pass = true;
-            }
-
             let xSuperProperties = req.headers['X-Super-Properties'];
             let userAgent = req.headers['User-Agent'];
             
