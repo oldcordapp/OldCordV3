@@ -35,7 +35,7 @@ async function syncPresence(socket, packet) {
 
     // Sync
     for (let session of allSessions) {
-        if (session.id !== socket.session.id) {
+        if (session.id !== socket.session.id && session.presence.status != setStatusTo && session.presence.game_id != gameField) {
             session.presence.status = setStatusTo;
             session.presence.game_id = gameField;
         } //only do this for other sessions, not us as we're gonna update in a sec

@@ -3406,6 +3406,16 @@ const database = {
 
             let author = null;
 
+            if (nonce != null && nonce != 'NULL' && !Snowflake.isValid(nonce)) {
+                return null;
+            }
+
+            if (!nonce || nonce === 'NULL') {
+                nonce = Snowflake.generate();
+            }
+
+            //validate snowflakes
+
             if (author_id.startsWith("WEBHOOK_")) {
                 let webhookId = author_id.split('_')[1];
                 let webhook = await database.getWebhookById(webhookId);

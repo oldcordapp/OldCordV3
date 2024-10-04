@@ -62,7 +62,9 @@ class session {
     }
     async updatePresence(status, game_id = null, save_presence = true) {
         try {
-            if (status === this.presence.status) return;
+            if (this.presence.status.toLowerCase() === status.toLowerCase() && this.presence.game_id === game_id) {
+                return;
+            }
 
             let valid_status = [
                 "online",

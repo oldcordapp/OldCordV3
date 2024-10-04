@@ -225,27 +225,106 @@ function staffAccessMiddleware(privilege_needed) {
 
 async function authMiddleware(req, res, next) {
     try {
-        if (req.url.includes("/webhooks/") || req.url.includes("/invite/") && req.method === "GET") return next(); //exclude webhooks and invites from this
+        if (req.url.includes("/webhooks/") || (req.url.includes("/invite/") && req.method === "GET")) {
+            return next();
+        } //exclude webhooks and invites from this
 
         let token = req.headers['authorization'];
         
+        req.cannot_pass = false;
+        
         if (!token) {
-            return res.status(404).json({
-                code: 404,
-                message: "Not Found"
-            });
-        }
-
-        let account = await global.database.getAccountByToken(token);
-    
-        if (!account) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
             });
         }
 
-        if (account.disabled_until != null) {
+        let account = await global.database.getAccountByToken(token);
+    
+        if (!account || account.disabled_until != null) {
+            req.cannot_pass = true;
+        }
+      
+        if (!account.bot) {
+            if (req.headers.length < 10) {
+                req.cannot_pass = true;
+            }
+
+            let xSuperProperties = req.headers['X-Super-Properties'];
+            let userAgent = req.headers['User-Agent'];
+            
+            try {
+                let decodedProperties = Buffer.from(xSuperProperties, "base64").toString("utf-8");
+
+                if (!xSuperProperties || !userAgent || userAgent.length < 5 || xSuperProperties === "{}" || !decodedProperties || decodedProperties.length < 5) {
+                    req.cannot_pass = true;
+                }
+
+                if (!/^\{"os":"[^"]+","browser":"[^"]+","device":"[^"]*","referrer":"https?:\/\/[^"]+","referring_domain":"[^"]+"\}$/.test(decodedProperties)) {
+                    req.cannot_pass = true;
+                }
+            } catch {
+                req.cannot_pass = true;
+            }
+        }
+
+        let release_date = req.cookies['release_date'];
+
+        let valid_releases = [
+            "june_12_2015",
+            "july_10_2015",
+            "august_10_2015",
+            "september_2_2015",
+            "november_6_2015",
+            "december_23_2015",
+            "january_22_2016",
+            "february_9_2016",
+            "february_18_2016",
+            "march_4_2016",
+            "march_18_2016",
+            "april_8_2016",
+            "may_5_2016",
+            "may_19_2016",
+            "june_3_2016",
+            "june_23_2016",
+            "july_11_2016",
+            "july_28_2016",
+            "august_24_2016",
+            "september_8_2016",
+            "september_26_2016",
+            "october_13_2016",
+            "november_3_2016",
+            "november_22_2016",
+            "december_22_2016",
+            "january_23_2017",
+            "january_31_2017",
+            "march_30_2017",
+            "may_3_2017",
+            "may_17_2017",
+            "july_20_2017",
+            "august_17_2017",
+            "september_28_2017",
+            "october_5_2017",
+            "november_16_2017",
+            "december_21_2017",
+            "january_25_2018",
+            "march_7_2018",
+            "april_1_2018",
+            "april_23_2018",
+            "may_28_2018",
+            "june_29_2018",
+            "august_28_2018",
+            "september_29_2018",
+            "november_30_2018",
+            "december_31_2018",
+        ] //forgive me
+
+        if (release_date.length < 2 || typeof release_date !== 'string' || !valid_releases.includes(release_date)) {
+            req.cannot_pass = true;
+        }
+
+        if (req.cannot_pass) {
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -259,25 +338,32 @@ async function authMiddleware(req, res, next) {
     catch(err) {
         logText(err, "error");
 
-        return res.status(500).json({
-            code: 500,
-            message: "Internal Server Error"
+        return res.status(401).json({
+            code: 401,
+            message: "Unauthorized"
         });
     }
 }
 
 function instanceMiddleware(flag_check) {
     return function (req, res, next) {
-        let check = config.instance_flags.includes(flag_check);
+        const flagActive = config.instance_flags.includes(flag_check);
 
-        if (check) {
-            return res.status(400).json({
-                code: 400,
-                message: globalUtils.flagToReason(flag_check)
+        if (!flagActive) {
+            return next();
+        }
+
+        if (flag_check === "VERIFIED_EMAIL_REQUIRED" && (!req.account || !req.account.verified)) {
+            return res.status(403).json({
+                code: 403,
+                message: "You must verify your e-mail address to do this action."
             });
         }
 
-        next();
+        return res.status(400).json({
+            code: 400,
+            message: globalUtils.flagToReason(flag_check)
+        });
     };
 }
 
