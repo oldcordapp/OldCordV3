@@ -234,6 +234,7 @@ async function authMiddleware(req, res, next) {
         req.cannot_pass = false;
         
         if (!token) {
+            console.log('no token')
             return res.status(401).json({
                 code: 401,
                 message: "Unauthorized"
@@ -260,9 +261,7 @@ async function authMiddleware(req, res, next) {
                 if (!/^\{"os":"[^"]+","browser":"[^"]+","device":"[^"]*","referrer":"https?:\/\/[^"]+","referring_domain":"[^"]+"\}$/.test(decodedProperties)) {
                     req.cannot_pass = true;
                 }
-            } catch {
-                req.cannot_pass = true;
-            }
+            } catch { }
         }
 
         let release_date = req.cookies['release_date'];
@@ -343,23 +342,27 @@ async function authMiddleware(req, res, next) {
 
 function instanceMiddleware(flag_check) {
     return function (req, res, next) {
-        const flagActive = config.instance_flags.includes(flag_check);
+        let check = config.instance_flags.includes(flag_check);
 
-        if (!flagActive) {
-            return next();
-        }
+        if (check) {
+            if (flag_check === "VERIFIED_EMAIL_REQUIRED") {
+                if (req.account && req.account.verified) {
+                    return next();
+                }
 
-        if (flag_check === "VERIFIED_EMAIL_REQUIRED" && (!req.account || !req.account.verified)) {
-            return res.status(403).json({
-                code: 403,
-                message: "You must verify your e-mail address to do this action."
+                return res.status(403).json({
+                    code: 403,
+                    message: "You must verify your e-mail address to do this action."
+                }); 
+            }
+
+            return res.status(400).json({
+                code: 400,
+                message: globalUtils.flagToReason(flag_check)
             });
         }
 
-        return res.status(400).json({
-            code: 400,
-            message: globalUtils.flagToReason(flag_check)
-        });
+        next();
     };
 }
 

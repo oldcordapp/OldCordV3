@@ -81,7 +81,7 @@ app.use("/tutorial", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), tutorial);
 app.use("/users", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), users);
 app.use("/voice", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), voice);
 app.use("/guilds", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), guilds);
-app.use("/channels", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channels);
+app.use("/channels", channels);
 app.use("/entitlements", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), entitlements);
 app.use("/activities", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), activities);
 app.use("/invite", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), invites);
