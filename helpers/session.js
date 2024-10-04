@@ -348,11 +348,11 @@ class session {
                         });
                     }
 
-                    if (guild.members.length >= 100) {
-                        guild.members = [
-                            guild.members.find(x => x.id === this.user.id)
-                        ]
-                    }
+                    //if (guild.members.length >= 100) {
+                        //guild.members = [
+                            //guild.members.find(x => x.id === this.user.id)
+                        //]
+                    //} //uh someone do this better?
     
                     for(var channel of guild.channels) {
                         if ((year === 2017 && month < 9) || year < 2017) {
