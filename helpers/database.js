@@ -94,7 +94,6 @@ const database = {
                 created_at TEXT DEFAULT NULL,
                 avatar TEXT DEFAULT NULL,
                 bot INTEGER DEFAULT 0,
-                relationships TEXT DEFAULT '[]',
                 flags INTEGER DEFAULT 0,
                 registration_ip TEXT DEFAULT NULL,
                 email_token TEXT DEFAULT NULL,
@@ -105,6 +104,13 @@ const database = {
                 disabled_until TEXT DEFAULT NULL,
                 disabled_reason TEXT DEFAULT NULL
            );`, []); // 4 = Everyone, 3 = Friends of Friends & Server Members, 2 = Friends of Friends, 1 = Server Members, 0 = No one
+
+           await database.runQuery(`
+            CREATE TABLE IF NOT EXISTS relationships (
+	        user_id_1 TEXT,
+		type TINYINT,
+		user_id_2 TEXT
+	    );`, []); //User ID 1 will always be the user that initially establishes the relationship. Internally, the type will always be 3 for both incoming and outgoing FRs to avoid inserting 2 columns for one relationship. Checking whether the user id is in column 1 will also be the way to determine blocked users.
 
            await database.runQuery(`
             CREATE TABLE IF NOT EXISTS user_notes (
@@ -688,32 +694,6 @@ const database = {
             return null;
         }
     },
-    //temp fix for a memory leak, im going to redo this entire db wrapper one day.
-    getRelationshipUserById: async (id) => {
-        try {
-            const rows = await database.runQuery(`
-                SELECT * FROM users WHERE id = $1
-            `, [id]);
-
-            if (rows === null || rows.length === 0) {
-                return null;
-            }
-
-            return {
-                id: rows[0].id,
-                username: rows[0].username,
-                discriminator: rows[0].discriminator,
-                avatar: rows[0].avatar == 'NULL' ? null : rows[0].avatar,
-                premium: true,
-                flags: rows[0].flags ?? 0,
-                bot: rows[0].bot == 1 ? true : false
-            };
-        } catch (error) {
-            logText(error, "error");
-
-            return null;
-        }
-    },
     getAccountByToken: async (token) => {
         try {
             let rows = await database.runQuery(`
@@ -738,20 +718,16 @@ const database = {
                     }
                 }
 
-                let contents = JSON.parse(rows[0].relationships);
+                let contents = global.database.getRelationshipsByUserId(rows[0].id)
                 let relationships = [];
                 
                 if (contents && contents.length > 0) {
                     for (var relationship of contents) {
-                        let user = await global.database.getRelationshipUserById(relationship.id);
-
-                        if (user && user.id != rows[0].id) {
-                            relationships.push({
-                                id: relationship.id,
-                                type: relationship.type,
-                                user: user
-                            })
-                        }
+                        relationships.push({
+                            id: relationship.id,
+                            type: relationship.type,
+                            user: globalUtils.miniUserObject(relationship)
+                        })
                     }
                 }
 
@@ -775,25 +751,21 @@ const database = {
                 return null;
             }
 
-            let contents = JSON.parse(rows[0].relationships);
+            let contents = global.database.getRelationshipsByUserId(rows[0].id)
             let relationships = [];
             
             if (contents && contents.length > 0) {
                 for (var relationship of contents) {
-                    let user = await global.database.getRelationshipUserById(relationship.id);
-
-                    if (user && user.id != rows[0].id) {
-                        relationships.push({
-                            id: relationship.id,
-                            type: relationship.type,
-                            user: user
-                        })
-                    }
+                    relationships.push({
+                        id: relationship.id,
+                        type: relationship.type,
+                        user: globalUtils.miniUserObject(relationship)
+                    })
                 }
             }
 
             return globalUtils.prepareAccountObject(rows, relationships);
-        } catch (error) {
+	} catch (error) {
             logText(error, "error");
 
             return null;
@@ -982,25 +954,21 @@ const database = {
                     username: rows[0].username
                 }
             } else {
-                let contents = JSON.parse(rows[0].relationships);
+                let contents = global.database.getRelationshipsByUserId(rows[0].id)
                 let relationships = [];
-                
+            
                 if (contents && contents.length > 0) {
                     for (var relationship of contents) {
-                        let user = await global.database.getRelationshipUserById(relationship.id);
-    
-                        if (!user || user.id === id) continue;
-    
                         relationships.push({
                             id: relationship.id,
                             type: relationship.type,
-                            user: user
+                            user: globalUtils.miniUserObject(relationship)
                         })
                     }
                 }
-    
+
                 return globalUtils.prepareAccountObject(rows, relationships);
-            }
+	    }
         } catch (error) {
             logText(error, "error");
 
@@ -1338,8 +1306,15 @@ const database = {
     getRelationshipsByUserId: async(user_id) => {
         try {
             const rows = await database.runQuery(`
-                SELECT * FROM users WHERE id = $1
-            `, [user_id]);
+	        SELECT * FROM (
+		SELECT
+		    *,
+		    CASE r.user_id_1
+		        WHEN $1 THEN user_id_2
+		        ELSE user_id_1
+		    END AS id
+		FROM relationships
+		) r JOIN users u ON u.id=r.id`,[user_id])
 
             if (rows === null || rows.length === 0) {
                 return [];
@@ -1347,39 +1322,40 @@ const database = {
 
             let ret = [];
 
-            let contents = JSON.parse(rows[0].relationships);
-            
             if (contents && contents.length > 0) {
-                for(var relationship of contents) {
-                    let user = await database.getRelationshipUserById(relationship.id);
-
-                    if (!user || user.id === user_id) continue;
-
-                    ret.push({
-                        id: relationship.id,
-                        type: relationship.type,
-                        user: user
-                    })
+                for(var relationship of rows) {
+                    if (relationship.user_id_1 == user.id && relationship.type === 3) {
+                        relationship.type = 4;
+		    }
+                    if (!(relationship.type === 2 && relationship.user_id_1 != user.id)) { //another user blocked this user, this user does not need to know that.
+                        ret.push({
+                            id: relationship.id,
+                            type: relationship.type,
+                            user: globalUtils.miniUserObject(relationship)
+                        })
+		    }
                 }
-
-                return ret;
-            } else return [];
+            }
+            return ret;
         } catch (error) {
             logText(error, "error");
 
             return [];
         }
     },
-    modifyRelationships: async (user_id, relationships) => {
-        try {   
-            await database.runQuery(`UPDATE users SET relationships = $1 WHERE id = $2`, [JSON.stringify(relationships), user_id]);
-
+    modifyRelationship: async (user_id, relationship) => {
+        try {
+            if (relationship.type === 0) {
+                await database.runQuery(`DELETE FROM relationships WHERE (user_id_1 = $1 AND user_id_2 = $2) OR (user_id_2 = $1 AND user_id_1 = $2)`,[user_id,relationship.id]);
+	    } else {
+                await database.runQuery(`UPDATE relationships SET type = $1 WHERE user_id_1 = $2 OR user_id_2 = $2`, [relationship.type, user_id]);
+	    }
             return true;
         } catch (error) {
             logText(error, "error");
 
             return false;
-        }
+	}
     },
     getGuildBans: async (id) => {
         try {

@@ -66,86 +66,12 @@ router.delete("/:userid", async (req, res) => {
             return res.status(204).send(); //bots cannot add users
         }
 
-        let ourFriends = account.relationships;
-        let theirFriends = user.relationships;
-        let ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
-        let theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
+        relationship = account.relationships.filter(item => (item.id != req.user.id))[0];
+        
+        await global.database.modifyRelationship(account.id,relationship);
 
-        if (!ourRelationshipState) {
-            ourFriends.push({
-                id: user.id,
-                type: 0,
-                user: globalUtils.miniUserObject(user)
-            });
+        //do dispatch shit now
 
-            ourRelationshipState = ourFriends.find(x => x.user.id == user.id);
-        }
-
-        if (!theirRelationshipState) {
-            theirFriends.push({
-                id: account.id,
-                type: 0,
-                user: globalUtils.miniUserObject(account)
-            })
-
-            theirRelationshipState = theirFriends.find(x => x.user.id == account.id);
-        }
-
-        if (ourRelationshipState.type === 1 && theirRelationshipState.type === 1) {
-            // Unfriend scenario
-            ourRelationshipState.type = 0;
-            theirRelationshipState.type = 0;
-
-            await global.database.modifyRelationships(account.id, ourFriends);
-            await global.database.modifyRelationships(user.id, theirFriends);
-
-            await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_REMOVE", {
-                id: user.id
-            });
-
-            await global.dispatcher.dispatchEventTo(user.id, "RELATIONSHIP_REMOVE", {
-                id: account.id
-            });
-
-            return res.status(204).send();
-        } else if (ourRelationshipState.type === 2) {
-            ourRelationshipState.type = 0;
-
-            await global.database.modifyRelationships(account.id, ourFriends);
-
-            await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_REMOVE", {
-                id: user.id
-            });
-
-            return res.status(204).send();
-        } else if (ourRelationshipState.type === 3) {
-            // Declining a friend request
-            ourRelationshipState.type = 0;
-            theirRelationshipState.type = 0;
-
-            await global.database.modifyRelationships(account.id, ourFriends);
-            await global.database.modifyRelationships(user.id, theirFriends);
-
-            await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_REMOVE", {
-                id: user.id
-            });
-
-            return res.status(204).send();
-        } else if (ourRelationshipState.type === 4) {
-            //cancelling outgoing friend request
-
-            ourRelationshipState.type = 0;
-            theirRelationshipState.type = 0;
-
-            await global.database.modifyRelationships(account.id, ourFriends);
-            await global.database.modifyRelationships(user.id, theirFriends);
-
-            await global.dispatcher.dispatchEventTo(account.id, "RELATIONSHIP_REMOVE", {
-                id: user.id
-            });
-
-            return res.status(204).send();
-        } else return res.status(204).send();
     } catch (error) {
         logText(error, "error");
 
