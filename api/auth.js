@@ -27,7 +27,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                         email: "This field is required",
                     });
                 }
-	    }
+            }
 
             if (!req.body.email.includes("@")) {
                 return res.status(400).json({
@@ -45,6 +45,9 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                 });
             }
 
+            
+            let badEmail = await globalUtils.badEmail(req.body.email); //WHO THE FUCK MOVED THIS??
+
             if (badEmail) {
                 return res.status(400).json({
                     code: 400,
@@ -61,12 +64,12 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                         password: "This field is required",
                     });
                 }
-	    } else {
+            } else {
                 if (release_date != "june_12_2015" && (req.body.password.length < global.config.limits['password'].min || req.body.password.length >= global.config.limits['password'].max)) {
                     return res.status(400).json({
                         code: 400,
                         password: `Must be between ${global.config.limits['password'].min} and ${global.config.limits['password'].max} characters.`,
-                    });    
+                    });
                 }
             }
         }
@@ -80,8 +83,8 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
         if (req.body.username.length < global.config.limits['username'].min || req.body.username.length >= global.config.limits['username'].max) {
             return res.status(400).json({
-              code: 400,
-              username: `Must be between ${global.config.limits['username'].min} and ${global.config.limits['username'].max} characters.`
+                code: 400,
+                username: `Must be between ${global.config.limits['username'].min} and ${global.config.limits['username'].max} characters.`
             });
         }
 
@@ -91,11 +94,9 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             return res.status(goodUsername.code).json(goodUsername);
         }
 
-        let badEmail = await globalUtils.badEmail(req.body.email);
-
         //Before July 2016 Discord had no support for Recaptcha.
         //We get around this by redirecting clients on 2015/2016 who wish to make an account to a working 2018 client then back to their original clients after they make their account/whatever.
-        
+
         if (global.config.captcha_config.enabled) {
             if (req.body.captcha_key === undefined || req.body.captcha_key === null) {
                 return res.status(400).json({
@@ -111,7 +112,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                 });
             }
         }
-       
+
         let emailToken = globalUtils.generateString(60);
 
         if (!global.config.email_config.enabled) {
@@ -142,12 +143,12 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
 
         if (req.body.invite) {
             let code = req.body.invite;
-            
+
             let invite = await global.database.getInvite(code);
 
             if (invite) {
                 let guild = await global.database.getGuildById(invite.guild.id);
-                
+
                 if (guild) {
                     await global.database.joinGuild(account.id, guild);
 
@@ -158,7 +159,7 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
                         user: globalUtils.miniUserObject(account),
                         guild_id: invite.guild.id
                     });
-    
+
                     await global.dispatcher.dispatchEventInGuild(guild, "PRESENCE_UPDATE", {
                         game_id: null,
                         status: "online",
@@ -203,12 +204,12 @@ router.post("/register", instanceMiddleware("NO_REGISTRATION"), rateLimitMiddlew
             token: registrationAttempt.token,
         });
     }
-    catch(error) {
+    catch (error) {
         logText(error, "error");
 
         return res.status(500).json({
-          code: 500,
-          message: "Internal Server Error"
+            code: 500,
+            message: "Internal Server Error"
         });
     }
 });
@@ -221,16 +222,16 @@ router.post("/login", rateLimitMiddleware(global.config.ratelimit_config.registr
                 email: "This field is required",
             });
         }
-    
+
         if (!req.body.password) {
             return res.status(400).json({
                 code: 400,
                 password: "This field is required",
             });
         }
-    
+
         const loginAttempt = await global.database.checkAccount(req.body.email, req.body.password, req.ip ?? 'NULL');
-    
+
         if ('disabled_until' in loginAttempt) {
             return res.status(400).json({
                 code: 400,
@@ -245,16 +246,16 @@ router.post("/login", rateLimitMiddleware(global.config.ratelimit_config.registr
                 password: loginAttempt.reason
             });
         }
-    
+
         return res.status(200).json({
             token: loginAttempt.token,
-        }); 
-    } catch(error) {
+        });
+    } catch (error) {
         logText(error, "error");
 
         return res.status(500).json({
-          code: 500,
-          message: "Internal Server Error"
+            code: 500,
+            message: "Internal Server Error"
         });
     }
 });
@@ -292,16 +293,16 @@ router.post("/forgot", rateLimitMiddleware(global.config.ratelimit_config.regist
 
         //let emailToken = globalUtils.generateString(60);
         //to-do: but basically, handle the case if the user is unverified - then verify them aswell as reset pw
-        
+
         return res.status(204).send();
     }
-    catch(error) {
+    catch (error) {
         logText(error, "error");
 
         return res.status(500).json({
-          code: 500,
-          message: "Internal Server Error"
-        }); 
+            code: 500,
+            message: "Internal Server Error"
+        });
     }
 });
 
@@ -370,13 +371,13 @@ router.post("/verify", rateLimitMiddleware(global.config.ratelimit_config.regist
             token: req.headers['authorization']
         });
     }
-    catch(error) {
+    catch (error) {
         logText(error, "error");
 
         return res.status(500).json({
-          code: 500,
-          message: "Internal Server Error"
-        }); 
+            code: 500,
+            message: "Internal Server Error"
+        });
     }
 });
 
@@ -422,7 +423,7 @@ router.post("/verify/resend", rateLimitMiddleware(global.config.ratelimit_config
             return res.status(500).json({
                 code: 500,
                 message: "Internal Server Error"
-            }); 
+            });
         }
 
         if (newEmailToken) {
@@ -432,19 +433,19 @@ router.post("/verify/resend", rateLimitMiddleware(global.config.ratelimit_config
                 return res.status(500).json({
                     code: 500,
                     message: "Internal Server Error"
-                });  
+                });
             }
         }
 
         return res.status(204).send();
     }
-    catch(error) {
+    catch (error) {
         logText(error, "error");
 
         return res.status(500).json({
-          code: 500,
-          message: "Internal Server Error"
-        }); 
+            code: 500,
+            message: "Internal Server Error"
+        });
     }
 });
 

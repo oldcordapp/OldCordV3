@@ -62,7 +62,9 @@ class session {
     }
     async updatePresence(status, game_id = null, save_presence = true) {
         try {
-            if (status === this.presence.status) return;
+            if (this.presence.status.toLowerCase() === status.toLowerCase() && this.presence.game_id === game_id) {
+                return;
+            }
 
             let valid_status = [
                 "online",
@@ -346,11 +348,11 @@ class session {
                         });
                     }
 
-                    if (guild.members.length >= 100) {
-                        guild.members = [
-                            guild.members.find(x => x.id === this.user.id)
-                        ]
-                    }
+                    //if (guild.members.length >= 100) {
+                        //guild.members = [
+                            //guild.members.find(x => x.id === this.user.id)
+                        //]
+                    //} //uh someone do this better?
     
                     for(var channel of guild.channels) {
                         if ((year === 2017 && month < 9) || year < 2017) {

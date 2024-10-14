@@ -2695,13 +2695,11 @@ const database = {
 
             let createdTimestamp = new Date(createdAt);
 
-            if ((!createdAt || !createdTimestamp) || (currentDate - createdTimestamp) >= (maxAge * 1000)) {
-                await database.deleteInvite(rows[0].code);
+            if (createdTimestamp && maxAge != 0 && (currentDate - createdTimestamp) >= (maxAge * 1000)) {
+                await database.runQuery(`DELETE FROM invites WHERE code = $1`, [code]);
 
                 return null;
             }
-
-            //Remove invalid invites/expired invites lazily
 
             return {
                 code: rows[0].code,
@@ -3026,7 +3024,7 @@ const database = {
                     return invite;
                 }
             }
-            
+
             await database.runQuery(`INSERT INTO invites (guild_id, channel_id, code, temporary, revoked, inviter_id, uses, maxuses, maxage, xkcdpass, createdat) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [guild_id, channel_id, code, temporary == true ? 1 : 0, 0, inviter_id, 0, maxUses, maxAge, xkcdpass == true ? 1 : 0, date]);
 
             const invite = await database.getInvite(code);
@@ -3381,6 +3379,16 @@ const database = {
             const date = new Date().toISOString();
 
             let author = null;
+
+            if (nonce != null && nonce != 'NULL' && !Snowflake.isValid(nonce)) {
+                return null;
+            }
+
+            if (!nonce || nonce === 'NULL') {
+                nonce = Snowflake.generate();
+            }
+
+            //validate snowflakes
 
             if (author_id.startsWith("WEBHOOK_")) {
                 let webhookId = author_id.split('_')[1];

@@ -1,7 +1,7 @@
 const express = require('express');
 const globalUtils = require('../helpers/globalutils');
 const { logText } = require('../helpers/logger');
-const { channelPermissionsMiddleware, rateLimitMiddleware } = require('../helpers/middlewares');
+const { channelPermissionsMiddleware, rateLimitMiddleware, instanceMiddleware } = require('../helpers/middlewares');
 const fs = require('fs');
 const multer = require('multer');
 const Jimp = require('jimp');
@@ -15,11 +15,10 @@ const router = express.Router({ mergeParams: true });
 router.param('messageid', async (req, res, next, messageid) => {
     req.message = await global.database.getMessageById(messageid);
     
-
     next();
 });
 
-router.use("/:messageid/reactions", reactions);
+router.use("/:messageid/reactions", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), reactions);
 
 function handleJsonAndMultipart(req, res, next) {
     const contentType = req.headers['content-type'];
@@ -85,7 +84,7 @@ router.get("/", channelPermissionsMiddleware("READ_MESSAGE_HISTORY"), async (req
     }
 });
 
-router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.sendMessage.maxPerTimeFrame, global.config.ratelimit_config.sendMessage.timeFrame), async (req, res) => {
+router.post("/", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.sendMessage.maxPerTimeFrame, global.config.ratelimit_config.sendMessage.timeFrame), async (req, res) => {
     try {
         const author = req.account;
 
@@ -374,7 +373,7 @@ router.post("/", handleJsonAndMultipart, channelPermissionsMiddleware("SEND_MESS
     }
 });
 
-router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.deleteMessage.maxPerTimeFrame, global.config.ratelimit_config.deleteMessage.timeFrame), async (req, res) => {
+router.delete("/:messageid", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelPermissionsMiddleware("MANAGE_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.deleteMessage.maxPerTimeFrame, global.config.ratelimit_config.deleteMessage.timeFrame), async (req, res) => {
     try {
         const guy = req.account;
 
@@ -436,7 +435,7 @@ router.delete("/:messageid", channelPermissionsMiddleware("MANAGE_MESSAGES"), ra
     }
 });
 
-router.patch("/:messageid", rateLimitMiddleware(global.config.ratelimit_config.updateMessage.maxPerTimeFrame, global.config.ratelimit_config.updateMessage.timeFrame), async (req, res) => {
+router.patch("/:messageid", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), rateLimitMiddleware(global.config.ratelimit_config.updateMessage.maxPerTimeFrame, global.config.ratelimit_config.updateMessage.timeFrame), async (req, res) => {
     try {
         if (req.body.content && req.body.content == "") {
             return res.status(403).json({
@@ -523,7 +522,7 @@ router.patch("/:messageid", rateLimitMiddleware(global.config.ratelimit_config.u
     }
 });
 
-router.post("/:messageid/ack", rateLimitMiddleware(global.config.ratelimit_config.ackMessage.maxPerTimeFrame, global.config.ratelimit_config.ackMessage.timeFrame), async (req, res) => {
+router.post("/:messageid/ack", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), rateLimitMiddleware(global.config.ratelimit_config.ackMessage.maxPerTimeFrame, global.config.ratelimit_config.ackMessage.timeFrame), async (req, res) => {
     try {
         const guy = req.account;
 

@@ -3,7 +3,7 @@ const { logText } = require('../helpers/logger');
 const messages = require('./messages');
 const webhooks = require("./webhooks");
 const pins = require('./pins');
-const { channelPermissionsMiddleware, rateLimitMiddleware, guildPermissionsMiddleware, channelMiddleware } = require('../helpers/middlewares');
+const { channelPermissionsMiddleware, rateLimitMiddleware, guildPermissionsMiddleware, channelMiddleware, instanceMiddleware } = require('../helpers/middlewares');
 const globalUtils = require('../helpers/globalutils');
 
 const router = express.Router({ mergeParams: true });
@@ -53,7 +53,7 @@ router.get("/:channelid", channelMiddleware, channelPermissionsMiddleware("READ_
     return res.status(200).json(req.channel);
 });
 
-router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.typing.maxPerTimeFrame, global.config.ratelimit_config.typing.timeFrame), async (req, res) => {
+router.post("/:channelid/typing", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, channelPermissionsMiddleware("SEND_MESSAGES"), rateLimitMiddleware(global.config.ratelimit_config.typing.maxPerTimeFrame, global.config.ratelimit_config.typing.timeFrame), async (req, res) => {
     try {
         const typer = req.account;
 
@@ -108,7 +108,7 @@ router.post("/:channelid/typing", channelMiddleware, channelPermissionsMiddlewar
     }
 });
 
-router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(global.config.ratelimit_config.updateChannel.maxPerTimeFrame, global.config.ratelimit_config.updateChannel.timeFrame), async (req, res) => {
+router.patch("/:channelid", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, channelPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(global.config.ratelimit_config.updateChannel.maxPerTimeFrame, global.config.ratelimit_config.updateChannel.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -203,7 +203,7 @@ router.patch("/:channelid", channelMiddleware, channelPermissionsMiddleware("MAN
     }
 });
 
-router.get("/:channelid/invites", channelMiddleware, channelPermissionsMiddleware("MANAGE_CHANNELS"), async (req, res) => {
+router.get("/:channelid/invites", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, channelPermissionsMiddleware("MANAGE_CHANNELS"), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -229,7 +229,7 @@ router.get("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewar
     }
 });
 
-router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddleware("CREATE_INSTANT_INVITE"), async (req, res) => {
+router.post("/:channelid/invites", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, channelPermissionsMiddleware("CREATE_INSTANT_INVITE"), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -306,7 +306,7 @@ router.post("/:channelid/invites", channelMiddleware, channelPermissionsMiddlewa
 
 router.use("/:channelid/messages", channelMiddleware, messages);
 
-router.get("/:channelid/webhooks", channelMiddleware, channelPermissionsMiddleware("MANAGE_WEBHOOKS"), async (req, res) => {
+router.get("/:channelid/webhooks", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, channelPermissionsMiddleware("MANAGE_WEBHOOKS"), async (req, res) => {
     try {
         let account = req.account;
 
@@ -352,7 +352,7 @@ router.get("/:channelid/webhooks", channelMiddleware, channelPermissionsMiddlewa
     } 
 });
 
-router.post("/:channelid/webhooks",  channelMiddleware, channelPermissionsMiddleware("MANAGE_WEBHOOKS"), async (req, res) => {
+router.post("/:channelid/webhooks",  instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, channelPermissionsMiddleware("MANAGE_WEBHOOKS"), async (req, res) => {
     try {
         let account = req.account;
 
@@ -409,7 +409,7 @@ router.post("/:channelid/webhooks",  channelMiddleware, channelPermissionsMiddle
     }
 });
 
-router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMiddleware("MANAGE_ROLES"), async (req, res) => {
+router.put("/:channelid/permissions/:id", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, guildPermissionsMiddleware("MANAGE_ROLES"), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -523,7 +523,7 @@ router.put("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMid
     }
 });
 
-router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissionsMiddleware("MANAGE_ROLES"), async (req, res) => {
+router.delete("/:channelid/permissions/:id", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, guildPermissionsMiddleware("MANAGE_ROLES"), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -588,7 +588,7 @@ router.delete("/:channelid/permissions/:id", channelMiddleware, guildPermissions
 });
 
 //TODO: should have its own rate limit
-router.put("/:channelid/recipients/:recipientid", channelMiddleware, rateLimitMiddleware(global.config.ratelimit_config.updateMember.maxPerTimeFrame, global.config.ratelimit_config.updateMember.timeFrame), async (req, res) => {
+router.put("/:channelid/recipients/:recipientid", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, rateLimitMiddleware(global.config.ratelimit_config.updateMember.maxPerTimeFrame, global.config.ratelimit_config.updateMember.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
         
@@ -670,7 +670,7 @@ router.put("/:channelid/recipients/:recipientid", channelMiddleware, rateLimitMi
     }
 });
 
-router.delete("/:channelid/recipients/:recipientid", channelMiddleware, rateLimitMiddleware(global.config.ratelimit_config.updateMember.maxPerTimeFrame, global.config.ratelimit_config.updateMember.timeFrame), async (req, res) => {
+router.delete("/:channelid/recipients/:recipientid", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, rateLimitMiddleware(global.config.ratelimit_config.updateMember.maxPerTimeFrame, global.config.ratelimit_config.updateMember.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
         
@@ -735,7 +735,7 @@ router.delete("/:channelid/recipients/:recipientid", channelMiddleware, rateLimi
     }
 });
 
-router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(global.config.ratelimit_config.deleteChannel.maxPerTimeFrame, global.config.ratelimit_config.deleteChannel.timeFrame), async (req, res) => {
+router.delete("/:channelid", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), channelMiddleware, guildPermissionsMiddleware("MANAGE_CHANNELS"), rateLimitMiddleware(global.config.ratelimit_config.deleteChannel.maxPerTimeFrame, global.config.ratelimit_config.deleteChannel.timeFrame), async (req, res) => {
     try {
         const sender = req.account;
 
@@ -848,6 +848,6 @@ router.delete("/:channelid", channelMiddleware, guildPermissionsMiddleware("MANA
     }
 });
 
-router.use("/:channelid/pins", pins);
+router.use("/:channelid/pins", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), pins);
 
 module.exports = router;

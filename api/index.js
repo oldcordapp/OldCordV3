@@ -1,5 +1,5 @@
 const express = require('express');
-const { authMiddleware } = require('../helpers/middlewares');
+const { authMiddleware, instanceMiddleware } = require('../helpers/middlewares');
 const app = express();
 const globalUtils = require('../helpers/globalutils');
 const config = globalUtils.config;
@@ -22,7 +22,7 @@ global.config = globalUtils.config;
 //just in case
 
 app.use("/auth", auth);
-app.use("/connections", connections);
+app.use("/connections", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), connections);
 
 app.get("/incidents/unresolved.json", (req, res) => {
     return res.status(200).json({
@@ -76,18 +76,18 @@ app.get("/gateway", (req, res) => {
 
 app.use(authMiddleware);
 
-app.use("/admin", admin);
-app.use("/tutorial", tutorial);
-app.use("/users", users);
-app.use("/voice", voice);
-app.use("/guilds", guilds);
+app.use("/admin", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), admin);
+app.use("/tutorial", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), tutorial);
+app.use("/users", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), users);
+app.use("/voice", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), voice);
+app.use("/guilds", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), guilds);
 app.use("/channels", channels);
-app.use("/entitlements", entitlements);
-app.use("/activities", activities);
-app.use("/invite", invites);
-app.use("/webhooks", webhooks);
-app.use("/oauth2", oauth2);
-app.use("/store", store);
+app.use("/entitlements", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), entitlements);
+app.use("/activities", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), activities);
+app.use("/invite", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), invites);
+app.use("/webhooks", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), webhooks);
+app.use("/oauth2", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), oauth2);
+app.use("/store", instanceMiddleware("VERIFIED_EMAIL_REQUIRED"), store);
 
 app.use("/track", (_, res) => {
     return res.status(204).send();

@@ -81,6 +81,38 @@ class Snowflake {
         });
         return res;
     }
+
+    static isValid(snowflake, maxAge = null) {
+        if (!/^\d+$/.test(snowflake)) return false;
+
+        if (snowflake.length < 11) return false;
+
+        try {
+            const deconstructed = Snowflake.deconstruct(snowflake);
+
+            const timestamp = deconstructed.timestamp;
+            const workerID = deconstructed.workerID;
+            const processID = deconstructed.processID;
+            const increment = deconstructed.increment;
+
+            const currentTime = Date.now();
+
+            if (maxAge != null && Date.now() - maxAge > (1000 * 60 * 30)) {
+                return false;
+            }
+
+            if (timestamp < Snowflake.EPOCH || timestamp > currentTime) return false;
+
+            if (workerID < 0 || workerID > 31) return false;
+            if (processID < 0 || processID > 31) return false;
+
+            if (increment < 0 || increment > 4095) return false;
+
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
 }
 
 module.exports = Snowflake;
